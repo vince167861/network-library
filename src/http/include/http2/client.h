@@ -16,11 +16,13 @@ namespace leaf::network::http2 {
 		std::map<uint32_t, std::pair<response, std::promise<response>>>
 		pending_requests_;
 
-		std::string connected_host_;
+		std::optional<std::pair<std::string, uint16_t>> connected_remote_;
 
-		long connected_port_ = 0;
+		std::optional<uint32_t> closing_;
 
 		bool connect(std::string_view host, uint16_t port);
+
+		void close(error_t error_code = error_t::no_error, std::string_view additional = "");
 
 		void process_settings(const std::list<std::pair<settings_t, uint32_t>>&);
 
@@ -29,9 +31,11 @@ namespace leaf::network::http2 {
 
 		std::future<response> send(const request&);
 
-		void send(const frame&);
+		bool send(const frame&) const;
 
 		void process();
+
+		~client();
 	};
 
 

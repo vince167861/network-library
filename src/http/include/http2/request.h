@@ -20,6 +20,7 @@ namespace leaf::network::http2 {
 
 		void from_push_promise(header_list_t headers);
 
-		std::list<std::shared_ptr<frame>> build(uint32_t stream_id, header_packer&, uint32_t max_frame_size) const override;
+		std::list<std::shared_ptr<frame>>
+		build(uint32_t stream_id, header_packer&, uint32_t max_frame_size) const override;
 	};
 }

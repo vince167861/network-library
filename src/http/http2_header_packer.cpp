@@ -90,7 +90,7 @@ namespace leaf::network::http2 {
 
 	void read_integer(std::string_view::const_iterator& ptr, const uint8_t prefix_size, uint8_t& prefix_value, uint64_t& value) {
 		value = 0;
-		uint8_t prefix = *ptr++, mask = ~(~0 << prefix_size);
+		const uint8_t prefix = *ptr++, mask = ~(~0 << prefix_size);
 		prefix_value = prefix >> prefix_size;
 		if ((prefix & mask) == mask)
 			for (uint8_t i = 0;;) {

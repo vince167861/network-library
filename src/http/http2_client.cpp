@@ -5,22 +5,27 @@
 namespace leaf::network::http2 {
 
 	bool client::connect(const std::string_view host, const uint16_t port) {
-		if (client_.connected() && host == connected_host_ && port == connected_port_)
+		if (client_.connected() && connected_remote_.value().first == host && connected_remote_.value().second == port)
 			return true;
-		client_.close();
+		close();
 		if (!client_.connect(host, port))
 			return false;
 		client_.write("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
 		send(settings_frame{pack_settings()});
 		const auto first_frame = frame::parse(client_);
 		if (!first_frame || first_frame->type != frame_type_t::settings) {
-			client_.close();
+			close(error_t::protocol_error);
 			return false;
 		}
 		process_settings(reinterpret_cast<settings_frame&>(*first_frame).values);
-		connected_host_ = host;
-		connected_port_ = port;
+		connected_remote_.emplace(host, port);
 		return true;
+	}
+
+	void client::close(const error_t error_code, const std::string_view add) {
+		send(go_away_frame{remote_config.last_open_stream, error_code, add});
+		client_.close();
+		connected_remote_.reset();
 	}
 
 	void client::process_settings(const std::list<std::pair<settings_t, uint32_t>>& settings_f) {
@@ -47,16 +52,24 @@ namespace leaf::network::http2 {
 		if (port && connect(req.request_url.host, port)) {
 			auto stream_id = new_local_stream_id();
 			for (const auto& f: req.build(stream_id, local_packer, remote_config.max_frame_size))
-				send(*f);
+				if (!send(*f))
+					promise.set_exception(std::make_exception_ptr(std::exception{})); // TODO: Use custom exception
 			pending_requests_.emplace(stream_id, std::move(tuple));
 		} else
-			promise.set_exception(std::make_exception_ptr(std::exception{}));
+			promise.set_exception(std::make_exception_ptr(std::exception{})); // TODO: Use custom exception
 		return future;
 	}
 
-	void client::send(const frame& frame) {
+	bool client::send(const frame& frame) const {
+		if (!connected_remote_.has_value() || !client_.connected())
+			return false;
+		if (closing_.has_value()) {
+			if (const auto sf = dynamic_cast<const stream_frame*>(&frame); sf && sf->stream_id > closing_.value())
+				return false;
+		}
 		std::cout << "[HTTP/2 Client] Sending frame " << frame;
 		frame.send(client_);
+		return true;
 	}
 
 	void client::process() {
@@ -118,8 +131,26 @@ namespace leaf::network::http2 {
 					pending_requests_.at(pp_f.stream_id).first.pushed.emplace_back(tuple.second.get_future());
 					pending_requests_.emplace(pp_f.promised_stream_id, std::move(tuple));
 				}
+				case frame_type_t::go_away: {
+					auto& ga_f = reinterpret_cast<go_away_frame&>(*frame);
+					closing_ = ga_f.last_stream_id;
+					for (auto ptr = pending_requests_.begin(); ptr != pending_requests_.end();) {
+						const auto current = ptr++;
+						if (current->first > ga_f.last_stream_id) {
+							// TODO: Use custom exception
+							current->second.second.set_exception(std::make_exception_ptr(std::exception{}));
+							pending_requests_.erase(current);
+						}
+					}
+				}
+				default:
+					break;
 			}
 		}
+	}
+
+	client::~client() {
+		close();
 	}
 
 	stream_error::stream_error(const error_t err)

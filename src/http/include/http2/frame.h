@@ -33,11 +33,20 @@ namespace leaf::network::http2 {
 	std::ostream& operator<<(std::ostream&, const frame&);
 
 
-	class data_frame final: public frame {
+	/**
+	 * \brief A *potentially* stream-associated frame.
+	 */
+	class stream_frame: public frame {
+	public:
+		uint32_t stream_id;
+
+		stream_frame(frame_type_t, uint32_t stream_id);
+	};
+
+
+	class data_frame final: public stream_frame {
 	public:
 		bool end_stream: 1 = false;
-
-		uint32_t stream_id;
 
 		std::optional<uint8_t> padding;
 
@@ -53,14 +62,12 @@ namespace leaf::network::http2 {
 	};
 
 
-	class headers_info_frame: public frame {
+	class headers_info_frame: public stream_frame {
 	protected:
 		headers_info_frame(frame_type_t, uint32_t stream_id);
 
 	public:
 		bool end_headers: 1 = false;
-
-		uint32_t stream_id;
 
 		std::string field_block_fragments;
 	};
@@ -90,11 +97,11 @@ namespace leaf::network::http2 {
 	};
 
 
-	class priority_frame final: public frame {
+	class priority_frame final: public stream_frame {
 	public:
 		bool exclusive: 1 = false;
 
-		uint32_t stream_id, stream_dependence = 0;
+		uint32_t stream_dependence = 0;
 
 		uint8_t weight = 0;
 
@@ -106,10 +113,8 @@ namespace leaf::network::http2 {
 	};
 
 
-	class rst_stream final: public frame {
+	class rst_stream final: public stream_frame {
 	public:
-		uint32_t stream_id;
-
 		error_t error_code;
 
 		explicit rst_stream(std::string_view);
@@ -140,9 +145,9 @@ namespace leaf::network::http2 {
 	};
 
 
-	class push_promise_frame final: public frame {
+	class push_promise_frame final: public stream_frame {
 	public:
-		uint32_t stream_id, promised_stream_id;
+		uint32_t promised_stream_id;
 
 		std::string field_block_fragments;
 
@@ -174,14 +179,18 @@ namespace leaf::network::http2 {
 
 		std::string additional_data;
 
-		void send(stream& out) const override;
+		go_away_frame(std::string_view);
+
+		go_away_frame(uint32_t last_stream_id, error_t, std::string_view additional_data = "");
+
+		void send(stream&) const override;
+
+		void print(std::ostream&) const override;
 	};
 
 
-	class window_update_frame final: public frame {
+	class window_update_frame final: public stream_frame {
 	public:
-		uint32_t stream_id;
-
 		uint32_t window_size_increment;
 
 		explicit window_update_frame(std::string_view);

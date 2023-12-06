@@ -33,6 +33,8 @@ namespace leaf::network::http2 {
 				return std::make_shared<continuation_frame>(content);
 			case frame_type_t::headers:
 				return std::make_shared<headers_frame>(content);
+			case frame_type_t::go_away:
+				return std::make_shared<go_away_frame>(content);
 			default:
 				throw std::exception{};
 		}
@@ -43,12 +45,16 @@ namespace leaf::network::http2 {
 		return s;
 	}
 
+	stream_frame::stream_frame(const frame_type_t t, const uint32_t stream_id)
+		: frame(t), stream_id(stream_id) {
+	}
+
 	data_frame::data_frame(const uint32_t stream_id)
-		: frame(frame_type_t::data), stream_id(stream_id) {
+		: stream_frame(frame_type_t::data, stream_id) {
 	}
 
 	data_frame::data_frame(const std::string_view source) // NOLINT(*-pro-type-member-init)
-			: frame(frame_type_t::data) {
+			: stream_frame(frame_type_t::data, 0) {
 		auto ptr = source.begin();
 		uint8_t flags;
 		reverse_read(ptr, flags);
@@ -259,6 +265,23 @@ namespace leaf::network::http2 {
 	void ping_frame::print(std::ostream&) const {
 	}
 
+	go_away_frame::go_away_frame(const std::string_view source) // NOLINT(*-pro-type-member-init)
+		: frame(frame_type_t::go_away) {
+		auto ptr = source.begin();
+		uint32_t stream_id;
+		reverse_read(ptr, stream_id);
+		if (stream_id)
+			throw std::exception{}; // TODO: Use custom exception
+		reverse_read(ptr, last_stream_id);
+		reverse_read(ptr, error_code);
+		additional_data = {ptr, source.end()};
+	}
+
+	go_away_frame::go_away_frame(const uint32_t last_stream_id, const error_t e, const std::string_view additional_data)
+		: frame(frame_type_t::go_away), last_stream_id(last_stream_id),
+		error_code(e), additional_data(additional_data) {
+	}
+
 	void go_away_frame::send(stream& out) const {
 		reverse_write(out, 8 + additional_data.length(), 3);
 		reverse_write(out, frame_type_t::go_away);
@@ -267,6 +290,12 @@ namespace leaf::network::http2 {
 		reverse_write(out, last_stream_id);
 		reverse_write(out, error_code);
 		out.write(additional_data);
+	}
+
+	void go_away_frame::print(std::ostream& s) const {
+		s << "Go Away\n\tLast Stream ID: " << last_stream_id << "\n\tError: " << error_code << '\n';
+		if (!additional_data.empty())
+			s << "\tAdditional Data: " << additional_data << '\n';
 	}
 
 	window_update_frame::window_update_frame(const std::string_view source) // NOLINT(*-pro-type-member-init)
