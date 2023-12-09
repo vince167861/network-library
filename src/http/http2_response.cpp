@@ -1,12 +1,12 @@
 #include "http2/response.h"
 
 namespace leaf::network::http2 {
-
-	response::response(const http2::request& request)
-		: request(request) {
-	}
-
-	std::list<std::shared_ptr<frame>> response::build(uint32_t stream_id, header_packer&, uint32_t max_frame_size) const {
-		throw std::exception{};
+	void response::print(std::ostream& s) const {
+		s << "Response " << std::dec << status << '\n';
+		if (headers.empty())
+			s << "\t(No header)\n";
+		else for (auto& [key, value]: headers)
+			s << "\t" << key << ": " << value << '\n';
+		s << body << '\n';
 	}
 }

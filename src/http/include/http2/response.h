@@ -1,23 +1,21 @@
 #pragma once
 
 #include "http2/message.h"
-#include "http2/request.h"
 
 #include <future>
 
 namespace leaf::network::http2 {
 
+	class stream_handler;
+
 	class response final: public message {
 	public:
 		long status;
 
-		request request;
+		response() = default;
 
-		std::list<std::future<response>> pushed;
+		std::list<std::reference_wrapper<stream_handler>> pushed;
 
-		response(const http2::request&);
-
-		std::list<std::shared_ptr<frame>>
-		build(uint32_t stream_id, header_packer&, uint32_t max_frame_size) const override;
+		void print(std::ostream&) const;
 	};
 }

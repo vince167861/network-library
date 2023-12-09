@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <list>
 
 namespace leaf::network::http2 {
 
@@ -10,6 +11,7 @@ namespace leaf::network::http2 {
 		data = 0x00, headers = 0x01, priority = 0x02, rst_stream = 0x03, settings = 0x04, push_promise = 0x05,
 		ping = 0x06, go_away = 0x07, window_update = 0x08, continuation = 0x09
 	};
+
 
 	enum class error_t: uint32_t {
 		no_error = 0x00, protocol_error = 0x01, internal_error = 0x02, flow_control_error = 0x03,
@@ -20,8 +22,23 @@ namespace leaf::network::http2 {
 
 	std::ostream& operator<<(std::ostream&, error_t);
 
+
 	enum class settings_t: uint16_t {
 		header_table_size = 0x01, enable_push = 0x02, max_concurrent_stream = 0x03, initial_window_size = 0x04,
 		max_frame_size = 0x05, max_header_list_size = 0x06
+	};
+
+
+	using setting_values_t = std::list<std::pair<settings_t, int32_t>>;
+
+
+	struct endpoint_state_t {
+		uint32_t max_concurrent_streams = 100;
+		uint32_t last_open_stream = 0;
+		uint32_t max_frame_size: 24 = 65535;
+		uint32_t header_table_size = 4096;
+		uint32_t init_window_size = 65536;
+		uint32_t current_window_bytes = init_window_size;
+		bool enable_push = true;
 	};
 }

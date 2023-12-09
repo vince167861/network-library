@@ -27,6 +27,7 @@ add_library(http2
 		http2_request.cpp
 		http2_response.cpp
 		http2_type.cpp
+		http2_stream_control.cpp
 )
 target_link_libraries(http2
 		http tls)

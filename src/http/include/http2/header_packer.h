@@ -5,23 +5,6 @@
 #include <string>
 #include <unordered_map>
 
-template <class T>
-void hash_combine(std::size_t& seed, const T& v)
-{
-	std::hash<T> hasher;
-	seed ^= hasher(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
-}
-
-template<class A, class B>
-struct std::hash<std::pair<A, B>> {
-	std::size_t operator()(const std::pair<A, B>& pair) const {
-		std::size_t ret = 0;
-		hash_combine(ret, pair.first);
-		hash_combine(ret, pair.second);
-		return ret;
-	}
-};
-
 namespace leaf::network::http2 {
 
 

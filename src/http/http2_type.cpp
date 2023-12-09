@@ -11,6 +11,7 @@ namespace leaf::network::http2 {
 			build_enum_item(s, error_t, internal_error);
 			build_enum_item(s, error_t, flow_control_error);
 			build_enum_item(s, error_t, settings_timeout);
+			build_enum_item(s, error_t, compression_error);
 			default:
 				s << "unknown";
 		}

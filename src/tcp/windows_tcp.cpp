@@ -52,7 +52,7 @@ namespace leaf::network::tcp {
 		std::string read_data;
 		while (read_data.size() < size) {
 			char buffer[50];
-			auto count = recv(socket_, buffer, std::min<int>(size - read_data.length(), 50), 0);
+			const auto count = recv(socket_, buffer, std::min<int>(size - read_data.length(), 50), 0);
 			if (count < 0) {
 				switch (const int error_no = WSAGetLastError()) {
 					case WSAECONNABORTED:
