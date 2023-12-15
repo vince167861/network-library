@@ -1,37 +1,18 @@
 #include "http/request.h"
 
-#include "utils.h"
-#include <list>
-#include <sstream>
+#include <iostream>
+
 
 namespace leaf::network::http {
 
-	request& request::handler(event_handler_t&& handler) {
-		event_handlers.push_back(handler);
-		return *this;
+	request::request(std::string method, url target, std::list<std::pair<std::string, std::string>> headers)
+		: message{.headers = std::move(headers)}, method(std::move(method)), request_url(std::move(target)) {
 	}
 
-	void request::trigger(const event_argument_t& arg) const {
-		for (auto& handler: event_handlers)
-			handler(*this, arg);
+	void request::print(std::ostream& s) const {
+		s << "Request " << method << ' ' << request_url.to_string() << '\n';
+		for (auto& [key, value]: headers)
+			s << '\t' << key << ": " << value << '\n';
+		s << body << '\n';
 	}
-
-	std::string request::build() const {
-		std::list<std::pair<std::string, std::string>> headers_copy{headers.begin(), headers.end()};
-		headers_copy.remove_if([](const auto& p){
-			return ignore_case_equal(p.first, "Host");});
-		headers_copy.emplace_front("Host", target_url.host);
-		if (!body.empty())
-			headers_copy.emplace_back("content-length", std::to_string(body.length()));
-		std::stringstream request;
-		request << method << ' ' << (target_url.path.empty() ? "/" : target_url.path);
-		if (!target_url.query.empty())
-			request << '?' << to_url_encoded(target_url.query);
-		request << " HTTP/1.1\r\n";
-		for (auto& [field, value]: headers_copy)
-			request << field << ": " << value << "\r\n";
-		request << "\r\n" << body;
-		return request.str();
-	}
-
 }

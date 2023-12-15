@@ -1,7 +1,7 @@
 #pragma once
 
 #include "http2/frame.h"
-#include "http2/request.h"
+#include "http/request.h"
 #include "http2/response.h"
 #include "http2/context.h"
 
@@ -25,7 +25,7 @@ namespace leaf::network::http2 {
 
 		uint32_t window_bytes_;
 
-		request request_;
+		http::request request_;
 
 		response response_;
 
@@ -34,7 +34,7 @@ namespace leaf::network::http2 {
 	public:
 		stream_handler(uint32_t stream_id, context&, state_t state);
 
-		void send_request(stream&, const request&);
+		void send_request(stream&, const http::request&);
 
 		task<void> send(stream&, std::shared_ptr<stream_frame>);
 
@@ -45,5 +45,7 @@ namespace leaf::network::http2 {
 		std::future<response> get_future();
 
 		state_t state() const;
+
+		void close(stream&);
 	};
 }

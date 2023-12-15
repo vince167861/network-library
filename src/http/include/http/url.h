@@ -2,16 +2,25 @@
 
 #include "shared/client.h"
 
-#include <map>
+#include <list>
 #include <string>
 
 namespace leaf::network {
 
-	std::map<std::string, std::string> parse_http_fields(client&);
+	std::list<std::pair<std::string, std::string>>
+	parse_http_fields(client&);
 
-	std::map<std::string, std::string> from_url_encoded(std::string_view);
+	std::list<std::pair<std::string, std::string>>
+	from_url_encoded(std::string_view);
 
-	std::string to_url_encoded(const std::map<std::string, std::string>&);
+	std::string
+	to_url_encoded(const std::list<std::pair<std::string, std::string>>&);
+
+	std::string
+	from_percent_encoding(std::string_view);
+
+	std::string
+	to_percent_encoding(const std::string& string);
 
 	class url {
 	public:
@@ -28,17 +37,15 @@ namespace leaf::network {
 
 		std::string path;
 
-		std::map<std::string, std::string> query;
+		std::list<std::pair<std::string, std::string>> query;
 
 		std::string fragment;
 
 		url() = default;
 
-		url(std::string_view); // NOLINT(*-explicit-constructor)
+		url(std::string_view);
 
-		static std::string to_percent_encoding(const std::string& string);
-
-		static std::string from_percent_encoding(std::string_view);
+		std::string to_string() const;
 	};
 
 

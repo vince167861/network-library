@@ -7,9 +7,9 @@
 
 namespace leaf::network {
 
-	std::map<std::string, std::string>
+	std::list<std::pair<std::string, std::string>>
 	parse_http_fields(client& data) {
-		std::map<std::string, std::string> pair;
+		std::list<std::pair<std::string, std::string>> pair;
 		while (true) {
 			auto&& line = data.read_until('\n');
 			if (!line.ends_with("\r\n"))
@@ -19,33 +19,37 @@ namespace leaf::network {
 			auto colon = std::ranges::find(line, ':');
 			if (colon == line.end())
 				throw http_field_parse_error();
-			pair.emplace(to_lower({(line.begin()), colon}), trim({colon + 1, line.end()}));
+			pair.emplace_back(
+				to_lower({(line.begin()), colon}),
+				trim({colon + 1, line.end()}));
 		}
 		return pair;
 	}
 
 	std::string
-	to_url_encoded(const std::map<std::string, std::string>& values) {
+	to_url_encoded(const std::list<std::pair<std::string, std::string>>& values) {
 		bool first = true;
 		std::stringstream ret;
 		for (auto& [key, value]: values) {
 			if (first)
 				ret << '&', first = false;
-			ret << url::to_percent_encoding(key) << '=' << url::to_percent_encoding(value);
+			ret << to_percent_encoding(key) << '=' << to_percent_encoding(value);
 		}
 		return ret.str();
 	}
 
-	std::map<std::string, std::string>
+	std::list<std::pair<std::string, std::string>>
 	from_url_encoded(std::string_view source) {
-		std::map<std::string, std::string> pair;
+		std::list<std::pair<std::string, std::string>> pair;
 		while (!source.empty()) {
 			auto eq = std::ranges::find(source, '=');
 			auto amp = std::ranges::find(source, '&');
 			if (eq < amp)
-				pair.emplace(url::from_percent_encoding({source.begin(), eq}), url::from_percent_encoding({eq + 1, amp}));
+				pair.emplace_back(
+					from_percent_encoding({source.begin(), eq}),
+					from_percent_encoding({eq + 1, amp}));
 			else
-				pair.emplace(url::from_percent_encoding({source.begin(), amp}), "");
+				pair.emplace_back(from_percent_encoding({source.begin(), amp}), "");
 			if (amp == source.end())
 				break;
 			source = {amp + 1, source.end()};
@@ -103,8 +107,31 @@ namespace leaf::network {
 			fragment = {query_ends + 1, string.end()};
 	}
 
-	std::string
-	url::to_percent_encoding(const std::string& string) {
+	std::string url::to_string() const {
+		std::stringstream out;
+		out << scheme << ':';
+		if (!host.empty()) {
+			out << "//";
+			if (!username.empty()) {
+				out << username;
+				if (!password.empty())
+					out << ':' << password;
+				out << '@';
+			}
+			out << host;
+			if (port)
+				out << ':' << port;
+		}
+		if (!path.empty())
+			out << path;
+		if (!query.empty())
+			out << '?' << to_url_encoded(query);
+		if (!fragment.empty())
+			out << '#' << fragment;
+		return out.str();
+	}
+
+	std::string to_percent_encoding(const std::string& string) {
 		std::stringstream result;
 		for (auto c: string) {
 			switch (c) {
@@ -121,8 +148,7 @@ namespace leaf::network {
 		return result.str();
 	}
 
-	std::string
-	url::from_percent_encoding(const std::string_view string) {
+	std::string from_percent_encoding(const std::string_view string) {
 		std::string result;
 		result.reserve(string.length());
 		for (auto ptr = string.begin(); ptr != string.end(); ++ptr) {

@@ -1,9 +1,9 @@
 #include <iostream>
-#include <http2/stream_control.h>
 
 #include "tcp/client.h"
 #include "tls/client.h"
 #include "http2/client.h"
+#include "http2/stream_control.h"
 
 using namespace leaf::network;
 
@@ -18,9 +18,11 @@ int main() {
 
 	http2::client http2_client(tls_client);
 
-	http2::request request("GET", {target_url});
+	http::request request{"GET", {target_url}};
 	auto future = http2_client.send(request);
+
 	http2_client.process();
+
 	const auto response = future.get();
 	response.print(std::cout);
 	for (auto& handler_ref: response.pushed)

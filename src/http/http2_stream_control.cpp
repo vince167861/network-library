@@ -13,7 +13,7 @@ namespace leaf::network::http2 {
 			window_bytes_(context_.remote_config.init_window_size) {
 	}
 
-	void stream_handler::send_request(stream& s, const request& req) {
+	void stream_handler::send_request(stream& s, const http::request& req) {
 		if (state_ != state_t::local_reserved && state_ != state_t::idle)
 			throw stream_unavailable;
 		request_ = req;
@@ -171,6 +171,8 @@ namespace leaf::network::http2 {
 			}
 			case frame_type_t::rst_stream: {
 				auto& r_f = reinterpret_cast<const rst_stream&>(frame);
+				pending_promise_.set_exception(std::make_exception_ptr(
+					std::runtime_error{"Stream reset by peer (RST_STREAM)."}));
 				state_ = state_t::remote_closed;
 				break;
 			}
@@ -192,5 +194,11 @@ namespace leaf::network::http2 {
 
 	stream_handler::state_t stream_handler::state() const {
 		return state_;
+	}
+
+	void stream_handler::close(stream& s) {
+		auto df = std::make_shared<data_frame>(stream_id_);
+		df->end_stream = true;
+		context_.add_task(send(s, std::move(df)));
 	}
 }

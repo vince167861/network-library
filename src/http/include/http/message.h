@@ -1,14 +1,14 @@
 #pragma once
 
-#include <map>
+#include <list>
 #include <string>
 
 namespace leaf::network::http {
 
-	class message {
-	public:
-		std::map<std::string, std::string> headers;
+	struct message {
+		std::list<std::pair<std::string, std::string>> headers;
+
 		std::string body;
 	};
 
-} // leaf
+}

@@ -37,12 +37,6 @@ namespace leaf::network::http2 {
 		connected_remote_.reset();
 	}
 
-	void client::close_stream(const uint32_t stream_id, const error_t error_code) {
-		rst_stream frame{stream_id};
-		frame.error_code = error_code;
-		send(frame);
-	}
-
 	void client::process_settings(const setting_values_t& settings_f) {
 		update_remote_config(settings_f);
 		send(settings_frame{});
@@ -52,7 +46,7 @@ namespace leaf::network::http2 {
 		: context(endpoint_type_t::client), client_(client_) {
 	}
 
-	std::future<response> client::send(const request& req) {
+	std::future<response> client::send(const http::request& req) {
 		uint16_t port = req.request_url.port;
 		if (port == 0) {
 			if (req.request_url.scheme == "http")

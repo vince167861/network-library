@@ -3,7 +3,7 @@
 #include "shared/client.h"
 #include "http2/context.h"
 #include "http2/frame.h"
-#include "http2/request.h"
+#include "http/request.h"
 #include "http2/response.h"
 
 #include <future>
@@ -24,15 +24,18 @@ namespace leaf::network::http2 {
 
 		void close(error_t error_code = error_t::no_error, std::string_view additional = "");
 
-		void close_stream(uint32_t stream_id, error_t error_code = error_t::no_error);
-
 		void process_settings(const setting_values_t& settings_f);
 
 	public:
 		explicit client(network::client&);
 
-		std::future<response> send(const request&);
+		std::future<response> send(const http::request&);
 
+		/**
+		 * \brief Send connection frames.
+		 *
+		 * \details Blocking `send` to send critical frames of HTTP/2 connections.
+		 */
 		void send(const frame&) const;
 
 		void process();

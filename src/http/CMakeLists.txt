@@ -24,7 +24,6 @@ add_library(http2
 		http2_frame.cpp
 		http2_header_packer.cpp
 		http2_context.cpp
-		http2_request.cpp
 		http2_response.cpp
 		http2_type.cpp
 		http2_stream_control.cpp
@@ -41,7 +40,6 @@ target_sources(http2
 		include/http2/header_packer.h
 		include/http2/context.h
 		include/http2/message.h
-		include/http2/request.h
 		include/http2/response.h
 		include/http2/type.h
 )

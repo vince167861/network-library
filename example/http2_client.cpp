@@ -11,8 +11,8 @@ int main() {
 
 	http2::client http2_client{tcp_client};
 
-	http2::request request_1{"GET", {"http://nghttp2.org/"}},
-			request_2{"GET", {"http://nghttp2.org/documentation/h2load.1.html"}};
+	http::request request_1{"GET", {"http://nghttp2.org/"}},
+			request_2{"GET", {"http://nghttp2.org/documentation/"}};
 	auto future_1 = http2_client.send(request_1), future_2 = http2_client.send(request_2);
 
 	http2_client.process();

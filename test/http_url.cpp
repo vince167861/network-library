@@ -1,4 +1,4 @@
-#include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include "http/url.h"
 
@@ -14,12 +14,12 @@ TEST(HTTP_URL, valid) {
 	EXPECT_EQ(url_2.host, "example.com");
 	EXPECT_EQ(url_2.port, 79);
 	EXPECT_EQ(url_2.path, "");
-	EXPECT_EQ(url_2.query["a20"], "b39");
+	EXPECT_THAT(url_2.query, testing::Contains(testing::Pair("a20", "b39")));
 	url url_3("ftp://www.gookle.com.lla:/ppa/aap?df=fd#ddddd");
 	EXPECT_EQ(url_3.scheme, "ftp");
 	EXPECT_EQ(url_3.host, "www.gookle.com.lla");
 	EXPECT_EQ(url_3.path, "/ppa/aap");
-	EXPECT_EQ(url_3.query["df"], "fd");
+	EXPECT_THAT(url_3.query, testing::Contains(testing::Pair("df", "fd")));
 	EXPECT_EQ(url_3.fragment, "ddddd");
 	url url_4("ftp://w.lla/ppa/aap/#ddddd");
 	EXPECT_EQ(url_4.scheme, "ftp");
