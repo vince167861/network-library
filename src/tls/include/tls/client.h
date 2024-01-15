@@ -13,7 +13,7 @@
 
 namespace leaf::network::tls {
 
-	class client: public network::client, private context {
+	class client final: public network::client, context {
 	public:
 		bool compatibility_mode = false;
 
@@ -30,7 +30,7 @@ namespace leaf::network::tls {
 
 		void handshake();
 
-		void send(record&);
+		void send(const record&) const;
 
 	public:
 		const std::shared_ptr<random_number_generator> random_generator;

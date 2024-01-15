@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tls-extension/extension.h"
+#include "tls-record/record.h"
 #include "tls-cipher/cipher_suite.h"
 #include "tls-context/context.h"
 
@@ -8,173 +9,158 @@
 
 namespace leaf::network::tls {
 
-	class handshake: public record {
 
-		virtual std::string build_handshake_() const = 0;
-
-	public:
-		enum class handshake_type_t: uint8_t {
-			client_hello = 1, server_hello = 2, new_session_ticket = 4, end_of_early_data = 5, encrypted_extensions = 8,
-			certificate = 11, certificate_request = 13, certificate_verify = 15, finished = 20, key_update = 24,
-			message_hash = 254
-		};
-
-		handshake_type_t handshake_type;
-		// uint24_t length;
-		// ...
-
-		handshake(handshake_type_t, bool encrypted);
-
-		std::string build_content_() final;
-
-		static std::shared_ptr<handshake>
-		parse(context& context, std::string_view::const_iterator& source, bool encrypted);
+	enum class handshake_type_t: std::uint8_t {
+		client_hello = 1, server_hello = 2, new_session_ticket = 4, end_of_early_data = 5, encrypted_extensions = 8,
+		certificate = 11, certificate_request = 13, certificate_verify = 15, finished = 20, key_update = 24,
+		message_hash = 254
 	};
+
+
+	struct handshake_base: message {};
 
 
 	/**
 	 * TLS "ClientHello" handshake message
-	 * Structure:
-	 * 	uint16_t legacy_version
-	 * 	opaque random[32]
-	 * 	opaque legacy_session_id<0..32>
-	 * 	cipher_suite_t cipher_suites<2..2^16-2>
-	 * 	opaque legacy_compression_methods<1..2^8-1>
-	 * 	extension extensions<8..2^16-1>
 	 */
-	class client_hello: public handshake {
+	struct client_hello final: handshake_base {
 
-		void print(std::ostream& ostream) const override;
-
-	public:
 		protocol_version_t legacy_version = protocol_version_t::TLS1_2;
 		random_t random;
 		std::string legacy_session_id;
 		std::list<cipher_suite_t> cipher_suites;
 		std::string legacy_compression_methods;
-		std::list<std::shared_ptr<extension>> extensions;
+		std::list<raw_extension> extensions;
 
 		client_hello(const context& context);
 
-		client_hello(std::string_view, context&);
+		client_hello(std::string_view);
 
-		std::string build_handshake_() const override;
+		std::string to_bytestring() const override;
+
+		void format(std::format_context::iterator&) const override;
 	};
 
 
 	/**
 	 * TLS "ServerHello" handshake message
 	 */
-	class server_hello: public handshake {
+	struct server_hello final: handshake_base {
 
-		void print(std::ostream& ostream) const override;
-
-	public:
 		protocol_version_t legacy_version = protocol_version_t::TLS1_2;
 		random_t random;
 		std::string legacy_session_id_echo; // 0..32 bytes
 		cipher_suite_t cipher_suite;
 		uint8_t legacy_compression_method = 0;
-		std::list<std::shared_ptr<extension>> extensions; // 6..2^16-1 bytes
+		std::list<raw_extension> extensions; // 6..2^16-1 bytes
 
 		bool is_hello_retry_request = false;
 
-		server_hello();
+		server_hello() = default;
 
-		server_hello(std::string_view, context&);
+		server_hello(std::string_view);
 
-		std::string build_handshake_() const override;
+		std::string to_bytestring() const override;
+
+		void format(std::format_context::iterator&) const override;
+
 	};
 
 
 	/**
-	 * TLS "EncryptedExtensions" handshake message
+	 * \brief TLS "EncryptedExtensions" handshake message
+	 * \note Encryption required
 	 */
-	class encrypted_extension: public handshake {
-		std::string build_handshake_() const override;
+	struct encrypted_extension final: handshake_base {
 
-		void print(std::ostream& ostream) const override;
+		std::list<raw_extension> extensions;
 
-	public:
-		std::list<std::shared_ptr<extension>> extensions;
+		encrypted_extension(std::string_view);
 
-		encrypted_extension(std::string_view, context&);
+		std::string to_bytestring() const override;
+
+		void format(std::format_context::iterator&) const override;
 	};
 
 
 	/**
 	 * TLS "Certificate" handshake message
 	 */
-	class certificate: public handshake {
-	public:
-	private:
-		std::string build_handshake_() const override;
+	struct certificate final: handshake_base {
 
-		void print(std::ostream& ostream) const override;
-
-	public:
 		struct certificate_entry {
 			std::string data;
-			std::list<std::shared_ptr<extension>> extensions;
+			std::list<raw_extension> extensions;
 		};
 
 		std::string certificate_request_context;
 
 		std::list<certificate_entry> certificate_list;
 
-		certificate(std::string_view, context&);
+		certificate(std::string_view);
+
+		std::string to_bytestring() const override;
+
+		void format(std::format_context::iterator&) const override;
 	};
 
 
 	/**
-	 * TLS "CertificateRequest" handshake message
+	 * \brief A TLS "CertificateRequest" handshake message.
+	 * \note Encryption required.
 	 */
-	class certificate_request: public handshake {
-	public:
+	struct certificate_request final: handshake_base {
+
 		std::string certificate_request_context;
 
-		std::list<std::shared_ptr<extension>> extensions;
+		std::list<raw_extension> extensions;
 
-		certificate_request(std::string_view, context&);
+		certificate_request(std::string_view);
+
+		std::string to_bytestring() const override;
+
+		void format(std::format_context::iterator&) const override;
 	};
 
 
-	class certificate_verify: public handshake {
-	public:
-	private:
-		std::string build_handshake_() const override;
+	/**
+	 * \brief A TLS "CertificateVerify" handshake message.
+	 * \note Encryption required.
+	 */
+	struct certificate_verify final: handshake_base {
 
-		void print(std::ostream& ostream) const override;
-
-	public:
 		signature_scheme_t signature_scheme;
 
 		std::string signature;
 
 		certificate_verify(std::string_view);
+
+		std::string to_bytestring() const override;
+
+		void format(std::format_context::iterator&) const override;
 	};
 
 
-	class finished: public handshake {
-		std::string build_handshake_() const override;
+	/**
+	 * \brief A TLS "Finished" handshake message.
+	 * \note Encryption required.
+	 */
+	struct finished final: handshake_base {
 
-		void print(std::ostream& ostream) const override;
-
-	public:
 		std::string verify_data;
 
 		finished(context&, std::string_view handshake_msgs);
 
 		finished(std::string_view source, context&);
+
+		std::string to_bytestring() const override;
+
+		void format(std::format_context::iterator&) const override;
 	};
 
 
-	class new_session_ticket: public handshake {
-		std::string build_handshake_() const override;
+	struct new_session_ticket final: handshake_base {
 
-		void print(std::ostream& ostream) const override;
-
-	public:
 		uint32_t ticket_lifetime;
 
 		uint32_t ticket_age_add;
@@ -183,18 +169,18 @@ namespace leaf::network::tls {
 
 		std::string ticket;
 
-		std::list<std::shared_ptr<extension>> extensions;
+		std::list<raw_extension> extensions;
 
-		new_session_ticket(std::string_view, context&);
+		new_session_ticket(std::string_view);
+
+		std::string to_bytestring() const override;
+
+		void format(std::format_context::iterator&) const override;
 	};
 
 
-	class key_update: public handshake {
-		std::string build_handshake_() const override;
+	struct key_update final: handshake_base {
 
-		void print(std::ostream& ostream) const override;
-
-	public:
 		enum class key_update_request: uint8_t {
 			update_not_requested = 0, update_requested = 1
 		} request_update;
@@ -202,7 +188,16 @@ namespace leaf::network::tls {
 		key_update(std::string_view);
 
 		key_update(bool request);
+
+		std::string to_bytestring() const override;
+
+		void format(std::format_context::iterator&) const override;
 	};
 
-	std::string message_hash(cipher_suite&, client_hello&);
+	std::string message_hash(const cipher_suite&, std::string_view);
+
+	using handshake = std::variant<client_hello, server_hello, encrypted_extension, certificate, certificate_request,
+			certificate_verify, finished, new_session_ticket, key_update>;
+
+	std::optional<handshake> parse_handshake(context&, std::string_view& source, bool encrypted);
 }

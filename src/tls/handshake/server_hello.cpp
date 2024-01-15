@@ -9,32 +9,7 @@ namespace leaf::network::tls {
 	constexpr const char* TLS1_1_RANDOM_MAGIC = "\x44\x4F\x57\x4E\x47\x52\x44\x00";
 
 
-	std::string server_hello::build_handshake_() const {
-		std::string msg;
-		//	legacy_version
-		reverse_write(msg, legacy_version);
-		//	random
-		forward_write(msg, random);
-		//	legacy_session_id_echo
-		uint8_t echo_size = legacy_session_id_echo.size();
-		reverse_write(msg, echo_size);
-		msg += legacy_session_id_echo;
-		//	cipher_suite
-		reverse_write(msg, cipher_suite);
-		//	legacy_compression_method == 0
-		msg.push_back(static_cast<char>(legacy_compression_method));
-		//	extensions
-		std::string ext;
-		for (auto& e: extensions)
-			ext += e->build();
-		extension_size_t size = ext.size();
-		reverse_write(msg, size);
-		msg += ext;
-		return msg;
-	}
-
-	server_hello::server_hello(std::string_view source, context& context)
-			: handshake(handshake_type_t::server_hello, false) {
+	server_hello::server_hello(std::string_view source) {
 		auto ptr = source.begin();
 		//	legacy_version
 		reverse_read(ptr, legacy_version);
@@ -55,30 +30,50 @@ namespace leaf::network::tls {
 		extension_size_t size;
 		//	extensions
 		reverse_read(ptr, size);
-		auto available = std::distance(ptr, source.end());
-		if (available != size)
+		if (const auto available = std::distance(ptr, source.end()); available != size)
 			throw alert::decode_error_early_end_of_data("ServerHello.extension", available, size);
-		while (ptr != source.end())
-			extensions.emplace_back(tls::extension::parse(context, ptr, *this));
+		std::string_view ext_fragments{ptr, std::next(ptr, size)};
+		while (!ext_fragments.empty()) {
+			auto ext = parse_extension(ext_fragments);
+			if (!ext) break;
+			extensions.push_back(std::move(ext.value()));
+		}
 	}
 
-	server_hello::server_hello()
-			: handshake{handshake_type_t::server_hello, false} {
+	std::string server_hello::to_bytestring() const {
+		std::string data;
+		reverse_write(data, legacy_version);
+		forward_write(data, random);
+		reverse_write(data, legacy_session_id_echo.size(), 1);
+		data += legacy_session_id_echo;
+		reverse_write(data, cipher_suite);
+		data.push_back(static_cast<char>(legacy_compression_method));  // legacy_compression_method == 0
+		//	extensions
+		std::string ext;
+		for (auto& e: extensions)
+			ext += e.to_bytestring();
+		reverse_write(data, ext.size(), 2);
+		data += ext;
+		std::string str;
+		reverse_write(str, handshake_type_t::server_hello);
+		reverse_write(str, data.size(), 3);
+		return str + data;
 	}
 
-	void server_hello::print(std::ostream& s) const {
-		s << (is_hello_retry_request ? "HelloRetryRequest" : "ServerHello")
-			<< "\n\tlegacy_version: " << legacy_version << "\n\trandom: 0x";
-		for (auto& u: random)
-			s << std::hex << static_cast<uint32_t>(u);
-		s << "\n\tlegacy_session_id_echo: ";
+	void server_hello::format(std::format_context::iterator& it) const {
+		it = std::format_to(it, "{}\n\tlegacy_version: {}\n\trandom: 0x",
+			is_hello_retry_request ? "HelloRetryRequest" : "ServerHello", legacy_version);
+		for (auto u: random)
+			it = std::format_to(it, "{:02x}", u);
+		it = std::ranges::copy("\n\tlegacy_session_id_echo: ", it).out;
 		if (legacy_session_id_echo.empty())
-			s << "(empty)";
-		else
-			for (auto& u: legacy_session_id_echo)
-				s << std::hex << static_cast<uint32_t>(u);
-		s << "\n\tcipher_suites: " << cipher_suite << "\n\tExtensions:\n";
-		for (auto& ext: extensions)
-			ext->print(s, 2);
+			it = std::ranges::copy(" (empty)", it).out;
+		else for (auto u: legacy_session_id_echo)
+			it = std::format_to(it, "{:02x}", u);
+		it = std::format_to(it, "\n\tcipher_suites: {}\n\tExtensions:", cipher_suite);
+		if (extensions.empty())
+			it = std::ranges::copy(" (empty)", it).out;
+		else for (auto& ext: extensions)
+			it = std::format_to(it, "{}", ext);
 	}
 }

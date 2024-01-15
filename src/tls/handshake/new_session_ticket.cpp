@@ -3,8 +3,7 @@
 
 namespace leaf::network::tls {
 
-	new_session_ticket::new_session_ticket(std::string_view source, context& context)
-			: handshake(handshake_type_t::new_session_ticket, true) {
+	new_session_ticket::new_session_ticket(std::string_view source) {
 		auto ptr = source.begin();
 		reverse_read(ptr, ticket_lifetime);
 		reverse_read(ptr, ticket_age_add);
@@ -18,35 +17,38 @@ namespace leaf::network::tls {
 		ptr += t_size;
 		uint16_t ext_size;
 		reverse_read(ptr, ext_size);
-		while (ptr != source.end())
-			extensions.emplace_back(extension::parse(context, ptr, *this));
+		for (std::string_view ext_data{ptr, std::next(ptr, ext_size)}; !ext_data.empty(); ) {
+			auto ext = parse_extension(ext_data);
+			if (!ext) break;
+			extensions.push_back(std::move(ext.value()));
+		}
 	}
 
-	std::string new_session_ticket::build_handshake_() const {
-		std::string msg;
-		reverse_write(msg, ticket_lifetime);
-		reverse_write(msg, ticket_age_add);
-		uint8_t n_size = ticket_nonce.size();
-		reverse_write(msg, n_size);
-		msg += ticket_nonce;
-		uint16_t t_size = ticket.size();
-		reverse_write(msg, t_size);
-		msg += ticket;
-		std::string ext;
-		for (auto& e: extensions)
-			ext += e->build();
-		uint16_t ext_size = ext.size();
-		reverse_write(msg, ext_size);
-		msg += ext;
-		return msg;
-	}
-
-	void new_session_ticket::print(std::ostream& s) const {
-		s << "NewSessionTicket\n\tLifetime: " << ticket_lifetime << "\n\tAge add: " << ticket_age_add << '\n';
-		s << "\tNonce: " << ticket_nonce << "\n\tTicket: " << ticket << "\n\tExtensions:\n";
+	void new_session_ticket::format(std::format_context::iterator& it) const {
+		it = std::format_to(it,
+			"NewSessionTicket\n\tLifetime: {}\n\tAge add: {}\n\tNonce: {}\n\tTicket: {}\n\tExtensions:",
+			ticket_lifetime, ticket_age_add, ticket_nonce, ticket);
 		if (extensions.empty())
-			s << "\t\t(empty)\n";
+			it = std::ranges::copy(" (empty)", it).out;
 		else for (auto& ext: extensions)
-			ext->print(s, 2);
+			it = std::format_to(it, "\n{}", ext);
+	}
+
+	std::string new_session_ticket::to_bytestring() const {
+		std::string data, exts;
+		reverse_write(data, ticket_lifetime);
+		reverse_write(data, ticket_age_add);
+		reverse_write(data, ticket_nonce.size(), 1);
+		data += ticket_nonce;
+		reverse_write(data, ticket.size(), 2);
+		data += ticket;
+		for (auto& ext: extensions)
+			exts += ext.to_bytestring();
+		reverse_write(data, exts.size(), 2);
+		data += exts;
+		std::string str;
+		reverse_write(str, handshake_type_t::new_session_ticket);
+		reverse_write(str, data.size(), 3);
+		return str + data;
 	}
 }

@@ -75,10 +75,12 @@ namespace leaf::network::tls {
 					sender_write_key = &client_write_key;
 					sender_write_iv = &client_write_iv;
 					break;
-				case context::endpoint_type_t::server:
+				case endpoint_type_t::server:
 					sender_write_key = &server_write_key;
 					sender_write_iv = &server_write_iv;
 					break;
+				default:
+					throw std::runtime_error{"unimplemented"};
 			}
 			record_nonce.set(fixed_unsigned(write_nonce++));
 			record_nonce ^= *sender_write_iv;
@@ -87,10 +89,10 @@ namespace leaf::network::tls {
 		return active_cipher_->encrypt(record_nonce.to_bytes(), header, fragment);
 	}
 
-	std::string context::decrypt(std::string_view header, std::string_view fragment) {
+	std::string context::decrypt(const std::string_view header, const std::string_view fragment) {
 		var_unsigned record_nonce(active_cipher_->iv_length * 8);
 		{
-			const var_unsigned* sender_write_key = nullptr, * sender_write_iv = nullptr;
+			const var_unsigned* sender_write_key, * sender_write_iv;
 			switch (endpoint_type) {
 				case endpoint_type_t::client:
 					sender_write_key = &server_write_key;
@@ -100,6 +102,8 @@ namespace leaf::network::tls {
 					sender_write_key = &client_write_key;
 					sender_write_iv = &client_write_iv;
 					break;
+				default:
+					throw std::runtime_error{"unimplemented"};
 			}
 			record_nonce.set(fixed_unsigned(read_nonce++));
 			record_nonce ^= *sender_write_iv;

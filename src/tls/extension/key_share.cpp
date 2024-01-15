@@ -4,49 +4,7 @@
 
 namespace leaf::network::tls {
 
-	std::string key_share::build_() const {
-		std::string msg;
-		switch (message_type) {
-			case msg_type_t::client_hello: {
-				std::string client_shares;
-				for (auto& [group, key]: shares) {
-					uint16_t k_size = key.size();
-					//	key_share_entry
-					//		.group
-					reverse_write(client_shares, group);
-					//		.public_key
-					reverse_write(client_shares, k_size);
-					client_shares += key;
-				}
-				//	client_shares
-				uint16_t s_size = client_shares.size();
-				reverse_write(msg, s_size);
-				msg += client_shares;
-				break;
-			}
-			case msg_type_t::hello_retry_request: {
-				//	selected_group
-				reverse_write(msg, shares.front().first);
-				break;
-			}
-			case msg_type_t::server_hello: {
-				//	server_share
-				//		.group
-				reverse_write(msg, shares.front().first);
-				//		.public_key_
-				//			.size
-				uint16_t k_size = shares.front().second.size();
-				reverse_write(msg, k_size);
-				//			.payload
-				msg += shares.front().second;
-				break;
-			}
-		}
-		return msg;
-	}
-
-	key_share::key_share(const context& context)
-			: extension(ext_type_t::key_share) {
+	key_share::key_share(const context& context) {
 		switch (context.endpoint_type) {
 			case context::endpoint_type_t::server:
 				message_type = msg_type_t::server_hello;
@@ -60,8 +18,7 @@ namespace leaf::network::tls {
 				shares.emplace_back(m->group, m->public_key());
 	}
 
-	key_share::key_share(std::string_view source, bool is_hello_retry_request, context& context)
-			: extension(ext_type_t::key_share) {
+	key_share::key_share(std::string_view source, bool is_hello_retry_request, context& context) {
 		auto ptr = source.begin();
 		switch (context.endpoint_type) {
 			case context::endpoint_type_t::server: {
@@ -114,15 +71,43 @@ namespace leaf::network::tls {
 		}
 	}
 
-	void key_share::print(std::ostream& s, std::size_t level) const {
-		s << std::string(level, '\t') << "key_share:\n";
+	void key_share::format(std::format_context::iterator& it, std::size_t level) const {
+		it = std::ranges::fill_n(it, level, '\t');
+		it = std::ranges::copy("key_share:", it).out;
 		if (shares.empty())
-			s << std::string(level + 1, '\t') << "(empty)\n";
+			it = std::ranges::copy(" (empty)", it).out;
 		else for (auto& [group, key]: shares) {
-			s << std::string(level + 1, '\t') << group;
+			*it++ = '\n';
+			it = std::ranges::fill_n(it, level + 1, '\t');
+			it = std::format_to(it, "{}", group);
 			if (!key.empty())
-				s << ": " << var_unsigned::from_bytes(key).to_string();
-			s << '\n';
+				it = std::format_to(it, ": {}", var_unsigned::from_bytes(key).to_string());
 		}
+	}
+
+	key_share::operator raw_extension() const {
+		std::string data;
+		switch (message_type) {
+			case msg_type_t::client_hello: {
+				std::string client_shares;
+				for (auto& [group, key]: shares) {
+					reverse_write(client_shares, group);
+					reverse_write(client_shares, key.size(), 2);
+					client_shares += key;
+				}
+				reverse_write(data, client_shares.size(), 2);
+				data += client_shares;
+				break;
+			}
+			case msg_type_t::hello_retry_request:
+				reverse_write(data, shares.front().first);
+				break;
+			case msg_type_t::server_hello:
+				reverse_write(data, shares.front().first);
+				reverse_write(data, shares.front().second.size(), 2);
+				data += shares.front().second;
+				break;
+		}
+		return {ext_type_t::key_share, std::move(data)};
 	}
 }

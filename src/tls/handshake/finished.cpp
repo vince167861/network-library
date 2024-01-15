@@ -1,29 +1,31 @@
 #include "tls-handshake/handshake.h"
 #include "tls-record/alert.h"
+#include "utils.h"
 
 namespace leaf::network::tls {
-	finished::finished(std::string_view source, context& context)
-			: handshake(handshake_type_t::finished, true) {
+
+	finished::finished(std::string_view source, context& context) {
 		if (context.active_cipher().digest_length != source.length())
 			throw alert::decrypt_error();
 		verify_data = source;
 	}
 
-	std::string finished::build_handshake_() const {
-		return verify_data;
-	}
-
-	void finished::print(std::ostream& s) const {
-		s << "Finished\n\tVerify data: ";
-		for (auto c: verify_data)
-			s << std::hex << std::setw(2) << std::setfill('0') << (static_cast<uint32_t>(c) & 0xff);
-		s << '\n';
-	}
-
-	finished::finished(context& context, std::string_view handshake_msgs)
-			: handshake(handshake::handshake_type_t::finished, true) {
+	finished::finished(context& context, std::string_view handshake_msgs) {
 		auto& cipher = context.active_cipher();
 		auto&& finished_key = cipher.HKDF_expand_label(context.client_handshake_traffic_secret.to_bytes(), "finished", "", cipher.digest_length);
 		verify_data = cipher.HMAC_hash(cipher.hash(handshake_msgs), finished_key);
+	}
+
+	void finished::format(std::format_context::iterator& it) const {
+		it = std::ranges::copy("Finished\n\tVerify data: ", it).out;
+		for (auto c: verify_data)
+			it = std::format_to(it, "{:#04x}", c);
+	}
+
+	std::string finished::to_bytestring() const {
+		std::string str;
+		reverse_write(str, handshake_type_t::finished);
+		reverse_write(str, verify_data.size(), 3);
+		return str + verify_data;
 	}
 }

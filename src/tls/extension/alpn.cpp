@@ -7,11 +7,10 @@
 namespace leaf::network::tls {
 
 	alpn::alpn(std::list<std::string> protocols)
-		: extension(ext_type_t::alpn), protocol_name_list(std::move(protocols)) {
+		: protocol_name_list(std::move(protocols)) {
 	}
 
-	alpn::alpn(const std::string_view source)
-		: extension(ext_type_t::alpn) {
+	alpn::alpn(const std::string_view source) {
 		auto ptr = source.begin();
 		uint16_t size;
 		reverse_read(ptr, size);
@@ -24,21 +23,27 @@ namespace leaf::network::tls {
 		}
 	}
 
-	std::string alpn::build_() const {
-		std::string list_string;
-		for (auto& p: protocol_name_list) {
-			reverse_write(list_string, p.size(), 1);
-			list_string += p;
+	void alpn::format(std::format_context::iterator& it, std::size_t level) const {
+		it = std::ranges::fill_n(it, level, '\t');
+		it = std::ranges::copy("ALPN:", it).out;
+		if (protocol_name_list.empty())
+			it = std::ranges::copy(" (empty)", it).out;
+		else for (auto& p: protocol_name_list) {
+			*it++ = '\n';
+			it = std::ranges::fill_n(it, level + 1, '\t');
+			it = std::ranges::copy(p, it).out;
 		}
-		std::string ret;
-		reverse_write(ret, list_string.size(), 2);
-		ret += list_string;
-		return ret;
 	}
 
-	void alpn::print(std::ostream& s, const std::size_t level) const {
-		s << std::string(level, '\t') << "ALPN:\n";
-		for (auto& p: protocol_name_list)
-			s << std::string(level + 1, '\t') << p << '\n';
+	alpn::operator raw_extension() const {
+		std::string list_str;
+		for (auto& p: protocol_name_list) {
+			reverse_write(list_str, p.size(), 1);
+			list_str += p;
+		}
+		std::string data;
+		reverse_write(data, list_str.size(), 2);
+		data += list_str;
+		return {ext_type_t::alpn, std::move(data)};
 	}
 }

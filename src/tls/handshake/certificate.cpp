@@ -5,8 +5,7 @@
 
 namespace leaf::network::tls {
 
-	certificate::certificate(std::string_view source, context& context)
-			: handshake(handshake_type_t::certificate, true) {
+	certificate::certificate(std::string_view source) {
 		auto ptr = source.begin();
 		uint8_t c_size;
 		reverse_read(ptr, c_size);
@@ -25,46 +24,50 @@ namespace leaf::network::tls {
 			ptr += d_size;
 			uint16_t ext_size;
 			reverse_read(ptr, ext_size);
-			while (ptr != ptr + ext_size)
-				entry.extensions.emplace_back(extension::parse(context, ptr, *this));
+			std::string_view ext_data{ptr, ptr + ext_size};
+			while (!ext_data.empty()) {
+				auto ext = parse_extension(ext_data);
+				if (!ext) break;
+				entry.extensions.push_back(std::move(ext.value()));
+			}
 			certificate_list.push_back(std::move(entry));
 		}
 	}
 
-	std::string certificate::build_handshake_() const {
-		std::string msg;
-		uint8_t c_size = certificate_request_context.size();
-		reverse_write(msg, c_size);
-		msg += certificate_request_context;
+	std::string certificate::to_bytestring() const {
+		std::string data;
+		reverse_write(data, certificate_request_context.size(), 1);
+		data += certificate_request_context;
 		std::string cert_list;
-		for (auto& cert: certificate_list) {
-			uint32_t d_size = cert.data.size();
-			reverse_write(cert_list, d_size, 3);
-			cert_list += cert.data;
+		for (const auto& [data, extensions]: certificate_list) {
+			reverse_write(cert_list, data.size(), 3);
+			cert_list += data;
 			std::string ext;
-			for (auto& e: cert.extensions)
-				ext += e->build();
-			uint16_t ext_size = ext.size();
-			reverse_write(cert_list, ext_size);
+			for (auto& e: extensions)
+				ext += e.to_bytestring();
+			reverse_write(cert_list, ext.size(), 2);
 			cert_list += ext;
 		}
-		uint32_t cl_size = cert_list.size();
-		reverse_write(msg, cl_size, 3);
-		msg += cert_list;
-		return msg;
+		reverse_write(data, cert_list.size(), 3);
+		data += cert_list;
+		std::string str;
+		reverse_write(str, handshake_type_t::certificate);
+		reverse_write(str, data.size(), 3);
+		return str + data;
 	}
 
-	void certificate::print(std::ostream& s) const {
-		s << "Certificate\n\tCertificate request context: " << certificate_request_context << "\n\tCertificate list:\n";
-		for (auto& cert: certificate_list) {
-			s << "\t\tEntry:\n\t\t\tData: ";
-			for (auto c: cert.data)
-				s << std::hex << std::setfill('0') << std::setw(2) << (static_cast<uint32_t>(c) & 0xff);
-			s << "\n\t\t\tExtensions:\n";
-			if (cert.extensions.empty())
-				s << "\t\t\t\t(empty)\n";
-			else for (auto& ext: cert.extensions)
-					ext->print(s, 4);
+	void certificate::format(std::format_context::iterator& it) const {
+		it = std::format_to(it, "Certificate\n\tCertificate request context: {}\n\tCertificate list:",
+			certificate_request_context);
+		for (const auto& [data, extensions]: certificate_list) {
+			it = std::ranges::copy("\n\t\tEntry:\n\t\t\tData: ", it).out;
+			for (auto c: data)
+				it = std::format_to(it, "{:04x}", c);
+			it = std::ranges::copy("\n\t\t\tExtensions:", it).out;
+			if (extensions.empty())
+				it = std::ranges::copy(" (empty)", it).out;
+			else for (auto& ext: extensions)
+				it = std::format_to(it, "\n\t\t\t\t{}", ext);
 		}
 	}
 }

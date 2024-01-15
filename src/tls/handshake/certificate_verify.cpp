@@ -3,8 +3,7 @@
 
 namespace leaf::network::tls {
 
-	certificate_verify::certificate_verify(std::string_view source)
-			: handshake(handshake_type_t::certificate_verify, true) {
+	certificate_verify::certificate_verify(std::string_view source) {
 		auto ptr = source.begin();
 		reverse_read(ptr, signature_scheme);
 		uint16_t size;
@@ -13,19 +12,20 @@ namespace leaf::network::tls {
 		ptr += size;
 	}
 
-	std::string certificate_verify::build_handshake_() const {
-		std::string msg;
-		reverse_write(msg, signature_scheme);
-		uint16_t size = signature.size();
-		reverse_write(msg, size);
-		msg += signature;
-		return msg;
+	std::string certificate_verify::to_bytestring() const {
+		std::string data;
+		reverse_write(data, signature_scheme);
+		reverse_write(data, signature.size(), 2);
+		data += signature;
+		std::string str;
+		reverse_write(str, handshake_type_t::certificate_verify);
+		reverse_write(str, data.size(), 3);
+		return str + data;
 	}
 
-	void certificate_verify::print(std::ostream& s) const {
-		s << "CertificateVerify\n\tScheme: " << signature_scheme << "\n\tSignature: ";
+	void certificate_verify::format(std::format_context::iterator& it) const {
+		it = std::format_to(it, "CertificateVerify\n\tScheme: {}\n\tSignature: ", signature_scheme);
 		for (auto c: signature)
-			s << std::hex << std::setw(2) << std::setfill('0') << (static_cast<uint32_t>(c) & 0xff);
-		s << '\n';
+			it = std::format_to(it, "{:02x}", c);
 	}
 }

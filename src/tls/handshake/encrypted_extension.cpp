@@ -4,36 +4,36 @@
 
 namespace leaf::network::tls {
 
-	encrypted_extension::encrypted_extension(std::string_view source, context& context)
-			: handshake(handshake_type_t::encrypted_extensions, true) {
+	encrypted_extension::encrypted_extension(std::string_view source) {
 		auto ptr = source.begin();
 		uint16_t size;
 		reverse_read(ptr, size);
 		if (const auto available = std::distance(ptr, source.end()); size > available)
 			throw alert::decode_error_early_end_of_data("extensions.size", available, size);
-		while (ptr != source.end())
-			extensions.emplace_back(extension::parse(context, ptr, *this));
+		for (std::string_view ext_fragments{ptr, std::next(ptr, size)}; !ext_fragments.empty(); ) {
+			auto ext = parse_extension(ext_fragments);
+			if (!ext) break;
+			extensions.push_back(std::move(ext.value()));
+		}
 	}
 
-	std::string encrypted_extension::build_handshake_() const {
-		std::string exts;
+	std::string encrypted_extension::to_bytestring() const {
+		std::string data, exts;
 		for (auto& ext: extensions)
-			exts += ext->build();
-		std::string msg;
-		reverse_write<uint16_t>(msg, exts.size());
-		msg += exts;
-		return msg;
+			exts += ext.to_bytestring();
+		reverse_write(data, exts.size(), 2);
+		data += exts;
+		std::string str;
+		reverse_write(str, handshake_type_t::encrypted_extensions);
+		reverse_write(str, data.size(), 3);
+		return str + data;
 	}
 
-	void encrypted_extension::print(std::ostream& s) const {
-		s << "EncryptedExtension\n";
+	void encrypted_extension::format(std::format_context::iterator& it) const {
+		it = std::ranges::copy("EncryptedExtension", it).out;
 		if (extensions.empty())
-			s << "\t(empty)\n";
-		else
-			for (auto& ext: extensions)
-				if (ext)
-					ext->print(s, 1);
-				else
-					s << "\t(unrecognized)\n";
+			it = std::ranges::copy(" (empty)", it).out;
+		else for (auto& ext: extensions)
+			it = std::format_to(it, "{}", ext);
 	}
 }

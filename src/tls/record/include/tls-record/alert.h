@@ -7,25 +7,25 @@
 
 namespace leaf::network::tls {
 
-	class alert: public record, public std::exception {
-		std::string debug_string, out;
+	struct alert final: message, std::exception {
 
-		std::string build_content_() override;
-
-		void print(std::ostream& ostream) const override;
-
-	public:
 		alert_level_t level;
 
 		alert_description_t description;
 
-		alert(alert_level_t, alert_description_t, std::string debug = "", bool encrypted = false);
+		std::string debug_string;
 
-		alert(std::string_view, bool encrypted);
+		alert(alert_level_t, alert_description_t, std::string debug = "");
+
+		alert(std::string_view);
+
+		std::string to_bytestring() const override;
+
+		void format(std::format_context::iterator&) const override;
 
 		const char* what() const _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW override;
 
-		static alert close_notify(bool encrypted);
+		static alert close_notify();
 
 		static alert unexpected_message();
 

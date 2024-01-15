@@ -2,60 +2,54 @@
 
 #include "tls-utils/type.h"
 #include "tls-context/context.h"
+#include "tls-utils/binary_object.h"
 
 #include <string>
-#include <list>
-#include <functional>
+#include <format>
 
 namespace leaf::network::tls {
 
 	/**
-	 * Generates TLSPlainText
-	 * Structure:
-	 * 	content_type type
-	 * 	protocol_version_t legacy_record_version
-	 * 	uint16 length
-	 * 	opaque fragment[TLSPlaintext.length]
+	 * \brief A protocol layer message.
 	 */
-	class record {
+	struct message: binary_object {
+		virtual void format(std::format_context::iterator&) const = 0;
+	};
 
-		virtual std::string build_content_() = 0;
 
-		virtual void print(std::ostream&) const = 0;
-
-	public:
-		enum class content_type_t: uint8_t {
-			invalid = 0, change_cipher_spec = 20, alert = 21, handshake = 22, application_data = 23
-		};
-
-		const bool encrypted;
+	/**
+	 * \brief A record layer packet.
+	 */
+	struct record final: binary_object {
 
 		content_type_t type;
 
+		bool encrypted;
+
 		protocol_version_t legacy_record_version = protocol_version_t::TLS1_2;
 
-		record(content_type_t type, bool encrypted);
+		std::string messages;
 
-		std::list<std::string> build(context&);
+		std::string to_bytestring() const override;
 
-		/**
-		 * `parse()` only parse the incoming records, thus does not care about state of the `context`.
-		 */
-		static void parse(context& context, const std::function<void(record&)>& callback);
+		static record extract(context&);
 
-		friend std::ostream& operator<<(std::ostream&, const record&);
+		static record
+		construct(content_type_t, bool encrypted, const message&, context&);
 
-		virtual ~record() = default;
-	};
+		record(content_type_t type, bool encrypted, context&);
 
-	class application_data: public record {
-		std::string build_content_() override;
-
-		void print(std::ostream& ostream) const override;
-
-	public:
-		std::string data;
-
-		application_data(std::string_view data);
+		context& context_;
 	};
 }
+
+
+template<>
+struct std::formatter<leaf::network::tls::record> {
+
+	constexpr auto parse(const std::format_parse_context& ctx) {
+		return ctx.begin();
+	}
+
+	std::format_context::iterator format(const leaf::network::tls::record&, std::format_context&) const;
+};

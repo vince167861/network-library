@@ -1,16 +1,18 @@
 #include "tls-extension/extension.h"
+#include "utils.h"
 
 namespace leaf::network::tls {
 
 	session_ticket::session_ticket(std::string_view data)
-		: extension(ext_type_t::session_ticket), data(data) {
+		: data(data) {
 	}
 
-	std::string session_ticket::build_() const {
-		return data;
+	void session_ticket::format(std::format_context::iterator& it, const std::size_t level) const {
+		it = std::ranges::fill_n(it, level, '\t');
+		it = std::format_to(it, "session_ticket: {}", data);
 	}
 
-	void session_ticket::print(std::ostream& s, std::size_t level) const {
-		s << "session_ticket: " << data;
+	session_ticket::operator raw_extension() const {
+		return {ext_type_t::session_ticket, data};
 	}
 }

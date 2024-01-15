@@ -7,121 +7,73 @@
 #include "utils.h"
 #include <utility>
 #include <algorithm>
-#include <iostream>
 
 namespace leaf::network::tls {
 
-	std::list<std::string> record::build(context& context) {
-		std::list<std::string> packets;
-		auto content = build_content_();
-		for (auto ptr = content.begin(); ptr != content.end(); ) {
-			std::string packet;
-			//	type
-			content_type_t t = encrypted ? content_type_t::application_data : type;
-			reverse_write(packet, t);
-			//	legacy_record_version
-			reverse_write(packet, legacy_record_version);
-			uint16_t length = std::min<std::ptrdiff_t>(std::distance(ptr, content.end()), 1 << 14);
-			std::string_view fragment{ptr, ptr + length};
-			if (!encrypted) {
-				//	length
-				reverse_write(packet, length);
-				//	fragment
-				packet += fragment;
+	record::record(const content_type_t type, const bool encrypted, context& context)
+		: context_(context), type(type), encrypted(encrypted) {
+	}
+
+	std::string record::to_bytestring() const {
+		std::string str;
+		for (auto it = messages.begin(), end = messages.end(); it != end; ) {
+			const std::uint16_t length = std::min<std::ptrdiff_t>(std::distance(it, end), 1 << 14);
+			std::string record;
+			reverse_write(record, encrypted ? content_type_t::application_data : type);
+			reverse_write(record, legacy_record_version);
+			std::string plain_text{it, std::next(it, length)};
+			if (encrypted) {
+				reverse_write(plain_text, type);
+				reverse_write(record, plain_text.size() + 16, 2);
+				record += context_.encrypt(record, plain_text);
 			} else {
-				std::string payload(fragment);
-				reverse_write(payload, type);
-				uint16_t encrypted_length = payload.size() + 16;
-				//	length
-				reverse_write(packet, encrypted_length);
-				//	fragment
-				auto&& encrypted_record = context.encrypt(packet, payload);
-				packet += encrypted_record;
+				reverse_write(record, length, 2);
+				record.append(it, std::next(it, length));
 			}
-			packets.push_back(std::move(packet));
-			ptr += length;
+			str += record;
+			std::advance(it, length);
 		}
-		return packets;
+		return str;
 	}
 
-	record::record(content_type_t type, bool encrypted)
-			: encrypted(encrypted), type(type) {
-	}
-
-	void record::parse(context& context, const std::function<void(record&)>& callback) {
-		auto&& header = context.client_.read(sizeof type + sizeof legacy_record_version + sizeof(uint16_t));
-		auto ptr = header.cbegin();
+	record record::extract(context& context) {
+		const auto header = context.client_.read(
+			sizeof(content_type_t) + sizeof(protocol_version_t) + sizeof(std::uint16_t));
+		auto ptr = header.begin();
 		content_type_t type;
 		protocol_version_t version;
-		uint16_t length;
+		std::uint16_t length;
 		reverse_read(ptr, type);
 		reverse_read(ptr, version);
 		reverse_read(ptr, length);
+		bool encrypted = false;
 
-		const auto fragment = context.client_.read(length);
-		const std::string_view fragment_view = fragment;
-
-		switch (type) {
-			case content_type_t::handshake:
-				for (auto f_ptr = fragment_view.begin(); f_ptr != fragment_view.end(); ) {
-					auto msg_ptr = handshake::parse(context, f_ptr, false);
-					if (msg_ptr)
-						callback(*msg_ptr);
-				}
-				break;
-			case content_type_t::alert: {
-				alert alert(fragment_view, false);
-				callback(alert);
-				break;
-			}
-			case content_type_t::application_data: {
-				auto&& plain_text = context.decrypt(header, fragment_view);
-				std::string_view plain_view = plain_text;
-				auto&& end = std::find_if(plain_view.rbegin(), plain_view.rend(), [](auto c){ return c != 0; }).base() - 1;
-				switch (static_cast<content_type_t>(*end)) {
-					case content_type_t::handshake:
-						for (auto p_ptr = plain_view.begin(); p_ptr != end; ) {
-							auto msg_ptr = handshake::parse(context, p_ptr, true);
-							if (msg_ptr)
-								callback(*msg_ptr);
-						}
-						break;
-					case content_type_t::alert: {
-						alert alert({plain_view.begin(), end}, true);
-						callback(alert);
-						break;
-					}
-					case content_type_t::application_data: {
-						application_data record({plain_view.begin(), end});
-						callback(record);
-						break;
-					}
-					default:
-						throw std::exception();
-				}
-				break;
-			}
-			case content_type_t::change_cipher_spec:
-				if (fragment != "\1")
-					throw alert::unexpected_message();
-				break;
+		auto fragment = context.client_.read(length);
+		if (content_type_t::application_data == type) {
+			auto plain_fragment = context.decrypt(header, fragment);
+			const auto pos = plain_fragment.find_last_not_of('\0');
+			type = static_cast<content_type_t>(plain_fragment[pos]);
+			plain_fragment.erase(pos);
+			fragment = std::move(plain_fragment);
+			encrypted = true;
 		}
+		record record{type, encrypted, context};
+		if (content_type_t::change_cipher_spec == type && fragment != "\1")
+			throw alert::unexpected_message();
+		record.messages = std::move(fragment);
+		return record;
 	}
 
-	std::ostream& operator<<(std::ostream& s, const record& obj) {
-		obj.print(s);
-		return s;
+	record record::construct(const content_type_t type,
+		const bool encrypted, const message& message, context& context) {
+		record record{type, encrypted, context};
+		record.messages = message.to_bytestring();
+		return record;
 	}
 
-	application_data::application_data(std::string_view data)
-			: record(content_type_t::application_data, true), data(data) {
-	}
+}
 
-	std::string application_data::build_content_() {
-		return data;
-	}
-
-	void application_data::print(std::ostream& s) const {
-		s << "Application data\n";
-	}
+std::format_context::iterator
+std::formatter<leaf::network::tls::record>::format(const leaf::network::tls::record& record, format_context& ctx) const {
+	return std::format_to(ctx.out(), "record [{}, payload size = {}]", record.type, record.messages.size());
 }

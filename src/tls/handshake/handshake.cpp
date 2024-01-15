@@ -4,94 +4,90 @@
 
 namespace leaf::network::tls {
 
-	std::shared_ptr<handshake> handshake::parse(context& context, std::string_view::const_iterator& ptr, bool encrypted) {
+	std::optional<handshake> parse_handshake(context& context, std::string_view& source, const bool encrypted) {
+		auto ptr = source.begin();
+
 		handshake_type_t type;
-		uint32_t length = 0;
+		std::uint32_t length = 0;
 
 		reverse_read(ptr, type);
 		reverse_read<3>(ptr, length);
 
-		std::string_view content(ptr, ptr + length);
-		ptr += length;
+		if (length > source.size() - sizeof(handshake_type_t) - 3)
+			return {};
 
-		std::shared_ptr<handshake> ret;
+		const auto end = std::next(ptr, length);
+		const std::string_view content{ptr, end};
+		source = {end, source.end()};
 
 		if (!encrypted)
 			switch (type) {
-			case handshake_type_t::client_hello:
-				ret.reset(new client_hello(content, context));
-				break;
-			case handshake_type_t::server_hello:
-				ret.reset(new server_hello(content, context));
-				break;
-			default:
-				throw alert::unexpected_message();
+				case handshake_type_t::client_hello:
+					return client_hello{content};
+				case handshake_type_t::server_hello:
+					return server_hello{content};
+				default:
+					throw alert::unexpected_message();
 			}
-		else
-			switch (type) {
+		switch (type) {
 			case handshake_type_t::encrypted_extensions:
-				ret.reset(new encrypted_extension(content, context));
-				break;
+				return encrypted_extension{content};
 			case handshake_type_t::certificate:
-				ret.reset(new certificate(content, context));
-				break;
+				return certificate{content};
 			case handshake_type_t::certificate_verify:
-				ret.reset(new certificate_verify(content));
-				break;
+				return certificate_verify{content};
 			case handshake_type_t::finished:
-				ret.reset(new finished(content, context));
-				break;
+				return finished{content, context};
 			case handshake_type_t::new_session_ticket:
-				ret.reset(new new_session_ticket(content, context));
-				break;
+				return new_session_ticket{content};
 			case handshake_type_t::key_update:
-				ret.reset(new key_update(content));
-				break;
+				return key_update{content};
 			default:
 				throw alert::unexpected_message();
-			}
-		return ret;
+		}
 	}
 
-	std::string handshake::build_content_() {
-		std::string msg;
-		auto&& data = build_handshake_();
-		uint32_t D = data.size();
-
-		reverse_write(msg, handshake_type);
-		reverse_write(msg, D, 3);
-		msg += data;
-
-		return msg;
-	}
-
-	handshake::handshake(handshake_type_t type, bool encrypted)
-			: record(content_type_t::handshake, encrypted), handshake_type(type) {
-	}
-
-	certificate_request::certificate_request(std::string_view source, context& context)
-			: handshake(handshake_type_t::certificate_request, true) {
+	certificate_request::certificate_request(std::string_view source) {
 		auto ptr = source.begin();
 		uint8_t c_size;
 		reverse_read(ptr, c_size);
 		certificate_request_context = {ptr, ptr + c_size};
 		uint16_t ext_size;
 		reverse_read(ptr, ext_size);
-		auto available = std::distance(ptr, source.end());
-		if (available < ext_size)
+		if (const auto available = std::distance(ptr, source.end()); available < ext_size)
 			throw alert::decode_error_early_end_of_data("certificate_list.size", available, ext_size);
-		while (ptr != source.end())
-			extensions.emplace_back(extension::parse(context, ptr, *this));
+		std::string_view ext_fragments{ptr, std::next(ptr, ext_size)};
+		while (true) {
+			auto ext = parse_extension(ext_fragments);
+			if (!ext) break;
+			extensions.push_back(std::move(ext.value()));
+		}
 	}
 
-	std::string message_hash(cipher_suite& cipher, client_hello& client_hello) {
+	std::string certificate_request::to_bytestring() const {
+		std::string data, exts;
+		reverse_write(data, certificate_request_context.size(), 1);
+		data += certificate_request_context;
+		for (auto& ext: extensions)
+			exts += ext.to_bytestring();
+		reverse_write(data, exts.size(), 2);
+		data += exts;
+		std::string str;
+		reverse_write(str, handshake_type_t::certificate_request);
+		reverse_write(str, data.size(), 3);
+		return str + data;
+	}
+
+	void certificate_request::format(std::format_context::iterator& it) const {
+		it = std::format_to(it, "CertificateRequest");
+	}
+
+	std::string message_hash(const cipher_suite& cipher, const std::string_view data) {
 		std::string msg;
-		auto t = handshake::handshake_type_t::message_hash;
-		reverse_write(msg, t);
+		reverse_write(msg, handshake_type_t::message_hash);
 		msg.append({0, 0});
-		auto s = static_cast<uint8_t>(cipher.digest_length);
-		reverse_write(msg, s);
-		msg += cipher.hash(client_hello.build_content_());
+		reverse_write(msg, cipher.digest_length, 1);
+		msg += cipher.hash(data);
 		return msg;
 	}
 }

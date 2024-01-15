@@ -5,8 +5,7 @@
 
 namespace leaf::network::tls {
 
-	supported_groups::supported_groups(const context& context)
-			: extension(ext_type_t::supported_groups) {
+	supported_groups::supported_groups(const context& context) {
 		switch (context.endpoint_type) {
 			case context::endpoint_type_t::client:
 				message_type = msg_type_t::client_hello;
@@ -19,28 +18,7 @@ namespace leaf::network::tls {
 			named_group_list.push_back(m->group);
 	}
 
-	std::string supported_groups::build_() const {
-		std::string msg;
-		//	named_group_list.size
-		uint16_t D = named_group_list.size() * sizeof(named_group_t);
-		reverse_write(msg, D);
-		//	named_group_list.payload
-		for (auto& g: named_group_list)
-			reverse_write(msg, g);
-		return msg;
-	}
-
-	void supported_groups::print(std::ostream& s, std::size_t level) const {
-		s << std::string(level, '\t') << "supported_groups: \n";
-		if (named_group_list.empty())
-			s << std::string(level + 1, '\t') << "(empty)\n";
-		else
-			for (auto g: named_group_list)
-				s << std::string(level + 1, '\t') << g << '\n';
-	}
-
-	supported_groups::supported_groups(std::string_view source, context& context)
-			: extension(ext_type_t::supported_groups) {
+	supported_groups::supported_groups(std::string_view source, context& context) {
 		switch (context.endpoint_type) {
 			case context::endpoint_type_t::client:
 				message_type = msg_type_t::server_hello;
@@ -62,5 +40,25 @@ namespace leaf::network::tls {
 			reverse_read(ptr, ng);
 			named_group_list.push_back(ng);
 		}
+	}
+
+	void supported_groups::format(std::format_context::iterator& it, std::size_t level) const {
+		it = std::ranges::fill_n(it, level, '\t');
+		it = std::ranges::copy("supported_groups: \n", it).out;
+		if (named_group_list.empty())
+			it = std::ranges::copy(" (empty)", it).out;
+		else for (auto g: named_group_list) {
+			*it++ = '\n';
+			it = std::ranges::fill_n(it, level + 1, '\t');
+			it = std::format_to(it, "{}", g);
+		}
+	}
+
+	supported_groups::operator raw_extension() const {
+		std::string data;
+		reverse_write(data, named_group_list.size() * sizeof(named_group_t), 2);
+		for (auto g: named_group_list)
+			reverse_write(data, g);
+		return {ext_type_t::supported_groups, std::move(data)};
 	}
 }

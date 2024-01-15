@@ -7,36 +7,10 @@
 namespace leaf::network::tls {
 
 	server_name::server_name(std::initializer_list<std::pair<name_type_t, std::string>> list)
-		: extension(ext_type_t::server_name), server_name_list(list) {
+		: server_name_list(list) {
 	}
 
-	std::string server_name::build_() const {
-		std::string msg;
-		for (auto& [type, value]: server_name_list) {
-			reverse_write(msg, type);
-			switch (type) {
-				case name_type_t::host_name: {
-					uint16_t h_size = value.size();
-					reverse_write(msg, h_size);
-					msg += value;
-				}
-			}
-		}
-		uint16_t snl_size = msg.size();
-		std::string ret;
-		reverse_write(ret, snl_size);
-		return std::move(ret) + std::move(msg);
-	}
-
-	void server_name::print(std::ostream& s, std::size_t level) const {
-		s << std::string(level, '\t') << "server_name: \n";
-		for (auto& [type, value]: server_name_list)
-			s << std::string(level + 1, '\t') << "0x" << std::hex << std::setfill('0') << static_cast<uint32_t>(type) <<
-					": " << value << '\n';
-	}
-
-	server_name::server_name(std::string_view source)
-		: extension(ext_type_t::server_name) {
+	server_name::server_name(std::string_view source) {
 		auto ptr = source.begin();
 		uint16_t snl_size;
 		reverse_read(ptr, snl_size);
@@ -55,5 +29,31 @@ namespace leaf::network::tls {
 				}
 			}
 		}
+	}
+
+	void server_name::format(std::format_context::iterator& it, std::size_t level) const {
+		it = std::ranges::fill_n(it, level, '\t');
+		it = std::ranges::copy("server_name:", it).out;
+		for (auto& [type, value]: server_name_list) {
+			*it++ = '\n';
+			it = std::ranges::fill_n(it, level, '\t');
+			it = std::format_to(it, "{:#x}: {}", static_cast<std::uint8_t>(type), value);
+		}
+	}
+
+	server_name::operator raw_extension() const {
+		std::string list_str;
+		for (auto& [type, value]: server_name_list) {
+			reverse_write(list_str, type);
+			switch (type) {
+				case name_type_t::host_name:
+					reverse_write(list_str, value.size(), 2);
+				list_str += value;
+				break;
+			}
+		}
+		std::string data;
+		reverse_write(data, list_str.size(), 2);
+		return {ext_type_t::server_name, std::move(data)};
 	}
 }

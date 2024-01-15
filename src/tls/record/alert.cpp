@@ -6,8 +6,31 @@
 
 namespace leaf::network::tls {
 
-	alert::alert(alert_level_t lvl, alert_description_t d, std::string debug, bool encrypted)
-			: record(content_type_t::alert, encrypted), debug_string(std::move(debug)), level(lvl), description(d) {
+	void alert::format(std::format_context::iterator& it) const {
+		it = std::format_to(it, "Alert\n\tLevel: {}\n\tDescription: {}", level, description);
+		if (!debug_string.empty())
+			it = std::format_to(it, "\n\tDebug: {}", debug_string);
+	}
+
+	std::string alert::to_bytestring() const {
+		std::string str;
+		reverse_write(str, level);
+		reverse_write(str, description);
+		return str;
+	}
+
+	const char* alert::what() const _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW {
+		return debug_string.c_str();
+	}
+
+	alert::alert(const alert_level_t level, const alert_description_t dsc, std::string debug)
+		: level(level), description(dsc), debug_string(std::move(debug)) {
+	}
+
+	alert::alert(const std::string_view source) {
+		auto ptr = source.begin();
+		reverse_read(ptr, level);
+		reverse_read(ptr, description);
 	}
 
 	alert alert::bad_record_mac() {
@@ -20,10 +43,6 @@ namespace leaf::network::tls {
 
 	alert alert::record_overflow() {
 		return {alert_level_t::fatal, alert_description_t::record_overflow};
-	}
-
-	const char* alert::what() const _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW {
-		return debug_string.c_str();
 	}
 
 	alert alert::handshake_failure() {
@@ -49,27 +68,7 @@ namespace leaf::network::tls {
 		return {alert_level_t::fatal, alert_description_t::decrypt_error};
 	}
 
-	std::string alert::build_content_() {
-		std::string msg;
-		reverse_write(msg, level);
-		reverse_write(msg, description);
-		return msg;
-	}
-
-	void alert::print(std::ostream& s) const {
-		s << "Alert\n\tLevel: " << level << "\n\tDescription: " << description << '\n';
-		if (!debug_string.empty())
-			s << "\tDebug: " << debug_string << '\n';
-	}
-
-	alert::alert(std::string_view source, bool encrypted)
-			: record(content_type_t::alert, encrypted) {
-		auto ptr = source.begin();
-		reverse_read(ptr, level);
-		reverse_read(ptr, description);
-	}
-
-	alert alert::close_notify(bool encrypted) {
-		return {alert_level_t::warning, alert_description_t::close_notify, "", encrypted};
+	alert alert::close_notify() {
+		return {alert_level_t::warning, alert_description_t::close_notify, ""};
 	}
 }
