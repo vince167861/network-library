@@ -14,7 +14,7 @@ int main() {
 			request_1("GET", {"http://example.com"}, {{"accept", "text/html"}}),
 			request_2{"GET", {"http://example.com/1"}};
 
-	auto future_1 = http_client.send(request_1), future_2 = http_client.send(request_2);
+	auto future_1 = http_client.fetch(request_1), future_2 = http_client.fetch(request_2);
 	http_client.process();
 	std::cout << future_1.get().body << '\n' << future_2.get().body;
 

@@ -84,15 +84,15 @@ namespace leaf {
 		return ret;
 	}
 
-	inline std::string trim_begin(const std::string& str) {
+	inline std::string_view trim_begin(const std::string_view str) {
 		return {std::ranges::find_if(str, [](char c) { return std::isspace(c) == 0; }), str.end()};
 	}
 
-	inline std::string trim_end(const std::string& str) {
+	inline std::string_view trim_end(const std::string_view str) {
 		return {str.begin(), std::find_if(str.rbegin(), str.rend(), [](char c) { return std::isspace(c) == 0; }).base()};
 	}
 
-	inline std::string trim(const std::string& str) {
+	inline std::string_view trim(const std::string_view str) {
 		return trim_end(trim_begin(str));
 	}
 

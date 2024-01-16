@@ -20,10 +20,12 @@ namespace leaf::network::http {
 
 		bool connect_(std::string_view host, uint16_t port);
 
+		void send_(const request&);
+
 	public:
 		explicit client(network::client&);
 
-		std::future<response> send(const request&);
+		std::future<response> fetch(const request&);
 
 		void process();
 	};

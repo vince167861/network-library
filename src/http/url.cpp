@@ -1,41 +1,18 @@
 #include "http/url.h"
-#include "http/http_exception.h"
 
 #include "utils.h"
-#include <sstream>
-#include <iomanip>
+#include <format>
 
 namespace leaf::network {
 
-	std::list<std::pair<std::string, std::string>>
-	parse_http_fields(client& data) {
-		std::list<std::pair<std::string, std::string>> pair;
-		while (true) {
-			auto&& line = data.read_until('\n');
-			if (!line.ends_with("\r\n"))
-				throw http_field_parse_error();
-			if (line.length() == 2)		// only contains "\r\n"; end of fields
-				break;
-			auto colon = std::ranges::find(line, ':');
-			if (colon == line.end())
-				throw http_field_parse_error();
-			pair.emplace_back(
-				to_lower({(line.begin()), colon}),
-				trim({colon + 1, line.end()}));
-		}
-		return pair;
-	}
-
 	std::string
 	to_url_encoded(const std::list<std::pair<std::string, std::string>>& values) {
-		bool first = true;
-		std::stringstream ret;
-		for (auto& [key, value]: values) {
-			if (first)
-				ret << '&', first = false;
-			ret << to_percent_encoding(key) << '=' << to_percent_encoding(value);
+		std::string str;
+		for (bool first = true; auto& [key, value]: values) {
+			str += std::format("{}{}={}",
+				first ? (first = false, "") : "&", to_percent_encoding(key), to_percent_encoding(value));
 		}
-		return ret.str();
+		return str;
 	}
 
 	std::list<std::pair<std::string, std::string>>
@@ -107,45 +84,51 @@ namespace leaf::network {
 			fragment = {query_ends + 1, string.end()};
 	}
 
-	std::string url::to_string() const {
-		std::stringstream out;
-		out << scheme << ':';
+	std::string url::url_string() const {
+		auto str = scheme + ':';
 		if (!host.empty()) {
-			out << "//";
-			if (!username.empty()) {
-				out << username;
-				if (!password.empty())
-					out << ':' << password;
-				out << '@';
-			}
-			out << host;
+			str += "//";
+			if (!username.empty())
+				str += std::format("{}{}@", username, password.empty() ? "" : ':' + password);
+			str += host;
 			if (port)
-				out << ':' << port;
+				str += ':' + port;
 		}
-		if (!path.empty())
-			out << path;
-		if (!query.empty())
-			out << '?' << to_url_encoded(query);
-		if (!fragment.empty())
-			out << '#' << fragment;
-		return out.str();
+		str += uri_string();
+		return str;
 	}
 
-	std::string to_percent_encoding(const std::string& string) {
-		std::stringstream result;
+	std::string url::uri_string() const {
+		auto uri = path;
+		if (!query.empty())
+			uri += "?" + to_url_encoded(query);
+		if (!fragment.empty())
+			uri += "#" + fragment;
+		return uri;
+	}
+
+	std::string url::requesting_uri_string() const {
+		auto uri = path.empty() ? "/" : path;
+		if (!query.empty())
+			uri += "?" + to_url_encoded(query);
+		return uri;
+	}
+
+	std::string to_percent_encoding(const std::string_view string) {
+		std::string str;
 		for (auto c: string) {
 			switch (c) {
 				case ':':case '/':case '?':case '#':case '[':
 				case ']':case '@':case '!':case '$':case '&':
 				case '\'':case '(':case ')':case '*':case '+':
 				case ',':case ';':case '=':
-					result << '%' << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << c;
+					str += std::format("%{:02X}", c);
 					break;
 				default:
-					result << c;
+					str.push_back(c);
 			}
 		}
-		return result.str();
+		return str;
 	}
 
 	std::string from_percent_encoding(const std::string_view string) {

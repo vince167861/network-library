@@ -15,11 +15,9 @@ int main() {
 
 	http::client https_client(tls_client);
 
-	http::request request("GET", {"https://www.google.com"});
-	request.handler([](auto& req, auto& res) {
-		if (std::holds_alternative<http::response>(res))
-			std::cout << std::get<http::response>(res).body;
-	});
+	auto response = https_client.fetch({"GET", {"https://www.google.com"}});
 
-	https_client.send(request);
+	https_client.process();
+
+	std::cout << std::format("{}\n", response.get());
 }

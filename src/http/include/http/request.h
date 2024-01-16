@@ -8,17 +8,19 @@
 
 namespace leaf::network::http {
 
-	class request final: public message {
-	public:
+	struct request final: message {
+
 		std::string method;
 
 		url request_url;
 
+		std::string body;
+
 		request() = default;
 
-		request(std::string method, url, std::list<std::pair<std::string, std::string>> headers = {});
+		request(std::string method, url, http_fields headers = {});
 
 		void print(std::ostream&) const;
 	};
 
-} // leaf
+}

@@ -5,6 +5,11 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 	target_link_libraries(example-http_client
 			tcp http)
 
+	add_executable(example-https_client
+			https_client.cpp)
+	target_link_libraries(example-https_client
+			tcp tls http)
+
 	add_executable(example-http2_client
 			http2_client.cpp)
 	target_link_libraries(example-http2_client

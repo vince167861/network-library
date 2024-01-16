@@ -1,13 +1,29 @@
 #pragma once
 
 #include "message.h"
-#include "shared/client.h"
+
+#include <format>
 
 namespace leaf::network::http {
 
-	class response: public message {
-	public:
+	struct response: message {
+
 		long status;
+
+		std::string body;
 	};
 
-} // leaf
+}
+
+
+template<>
+struct std::formatter<leaf::network::http::response> {
+
+	constexpr auto parse(std::format_parse_context& ctx) {
+		return ctx.begin();
+	}
+
+	auto format(const leaf::network::http::response& response, std::format_context& ctx) const {
+		return std::format_to(ctx.out(), "response (status {})\n\t{}", response.status, response.body);
+	}
+};

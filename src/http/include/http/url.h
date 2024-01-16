@@ -8,19 +8,14 @@
 namespace leaf::network {
 
 	std::list<std::pair<std::string, std::string>>
-	parse_http_fields(client&);
-
-	std::list<std::pair<std::string, std::string>>
 	from_url_encoded(std::string_view);
 
 	std::string
 	to_url_encoded(const std::list<std::pair<std::string, std::string>>&);
 
-	std::string
-	from_percent_encoding(std::string_view);
+	std::string from_percent_encoding(std::string_view);
 
-	std::string
-	to_percent_encoding(const std::string& string);
+	std::string to_percent_encoding(std::string_view);
 
 	class url {
 	public:
@@ -45,7 +40,11 @@ namespace leaf::network {
 
 		url(std::string_view);
 
-		std::string to_string() const;
+		std::string url_string() const;
+
+		std::string uri_string() const;
+
+		std::string requesting_uri_string() const;
 	};
 
 

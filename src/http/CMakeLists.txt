@@ -3,6 +3,7 @@ add_library(http
 		http_request.cpp
 		http_response.cpp
 		url.cpp
+		http_message.cpp
 )
 target_include_directories(http
 		PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>
