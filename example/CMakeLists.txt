@@ -25,4 +25,9 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 	target_link_libraries(example-https_event_stream_client
 			tcp tls http)
 
+	add_executable(example-http2s_event_stream_client
+			http2s_event_stream_client.cpp)
+	target_link_libraries(example-http2s_event_stream_client
+			tcp tls http2)
+
 endif ()

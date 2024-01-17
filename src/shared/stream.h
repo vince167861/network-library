@@ -11,6 +11,18 @@ namespace leaf {
 			read(count);
 		}
 
+		virtual std::string read_until(std::string_view terminator) {
+			std::string str;
+			while (true) {
+				auto ch = read(1);
+				if (!ch.empty())
+					str += ch;
+				if (terminator.contains(ch[0]))
+					break;
+			}
+			return str;
+		}
+
 		virtual std::size_t write(std::string_view) = 0;
 
 		virtual ~stream() = default;

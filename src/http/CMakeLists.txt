@@ -3,6 +3,7 @@ add_library(http_message
 	http_message.cpp
 	http_request.cpp
 	http_response.cpp
+		http_event_stream.cpp
 )
 target_include_directories(http_message
 	PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/http> $<INSTALL_INTERFACE:include/http>)
@@ -12,6 +13,7 @@ target_sources(http_message
 	include/http/message.h
 	include/http/request.h
 	include/http/response.h
+	include/http/event_stream.h
 )
 install(TARGETS http_message EXPORT leaf
 	FILE_SET http_message_headers)
@@ -26,11 +28,6 @@ target_sources(http
 		PUBLIC FILE_SET http_headers TYPE HEADERS BASE_DIRS include FILES
 		include/http/client.h
 		include/http/http_exception.h
-		include/http/message.h
-		include/http/request.h
-		include/http/response.h
-		include/http/url.h
-		include/http/event_stream.h
 )
 target_link_libraries(http
 	http_message)
@@ -43,7 +40,7 @@ add_library(http2
 		http2_header_packer.cpp
 		http2_context.cpp
 		http2_type.cpp
-		http2_stream_control.cpp
+		http2_stream.cpp
 )
 target_link_libraries(http2
 		http_message tls)
@@ -57,5 +54,5 @@ target_sources(http2
 		include/http2/header_packer.h
 		include/http2/context.h
 		include/http2/type.h
-		include/http2/stream_control.h
+		include/http2/stream.h
 )

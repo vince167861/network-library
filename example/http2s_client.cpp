@@ -3,7 +3,7 @@
 #include "tcp/client.h"
 #include "tls/client.h"
 #include "http2/client.h"
-#include "http2/stream_control.h"
+#include "http2/stream.h"
 
 using namespace leaf::network;
 

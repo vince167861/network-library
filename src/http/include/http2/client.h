@@ -5,6 +5,7 @@
 #include "http2/frame.h"
 #include "http/request.h"
 #include "http/response.h"
+#include "http/event_stream.h"
 
 #include <future>
 
@@ -29,14 +30,16 @@ namespace leaf::network::http2 {
 		/**
 		 * \brief Send connection frames.
 		 *
-		 * \details Blocking `send` to send critical frames of HTTP/2 connections.
+		 * \details Blocking `write` to write_to_ critical frames of HTTP/2 connections.
 		 */
-		void send(const frame&) const;
+		void write(const frame&) const;
 
 	public:
 		explicit client(network::client&);
 
 		std::future<http::response> fetch(const http::request&);
+
+		http::event_source stream(const http::request&);
 
 		void process();
 

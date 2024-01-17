@@ -46,13 +46,13 @@ namespace leaf::network::http2 {
 
 	class data_frame final: public stream_frame {
 	public:
-		bool end_stream: 1 = false;
+		bool end_stream: 1;
 
 		std::optional<uint8_t> padding;
 
 		std::string data;
 
-		explicit data_frame(uint32_t stream_id);
+		explicit data_frame(uint32_t stream_id, bool end_stream = false);
 	};
 
 

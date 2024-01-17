@@ -24,9 +24,9 @@ namespace leaf::network::http {
 
 		operator std::string();
 
-		static http_fields from_http_headers(client&);
+		static http_fields from_http_headers(stream& source);
 
-		static http_fields from_event_stream(client&);
+		static http_fields from_event_stream(stream& source);
 	};
 
 

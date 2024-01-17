@@ -1,4 +1,8 @@
 #pragma once
+
+#include "http/message.h"
+
+#include <optional>
 #include <coroutine>
 #include <queue>
 

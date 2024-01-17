@@ -147,7 +147,7 @@ namespace leaf::network::http2 {
 					return g_frame;
 				}
 				default:
-					throw std::runtime_error("Unimplemented frame");
+					throw std::runtime_error{"invalid frame: unimplemented or peer does not support HTTP/2"};
 			}
 		}
 	}
@@ -156,8 +156,8 @@ namespace leaf::network::http2 {
 		: stream_id(stream_id) {
 	}
 
-	data_frame::data_frame(const uint32_t stream_id)
-		: stream_frame(stream_id) {
+	data_frame::data_frame(const uint32_t stream_id, const bool end_stream)
+		: stream_frame(stream_id), end_stream(end_stream) {
 	}
 
 	headers_based_frame::headers_based_frame(const uint32_t stream_id)

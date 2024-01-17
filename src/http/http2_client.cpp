@@ -3,7 +3,7 @@
 #include "http2/client.h"
 #include "utils.h"
 
-#include "http2/stream_control.h"
+#include "http2/stream.h"
 
 #include <iostream>
 
@@ -18,7 +18,7 @@ namespace leaf::network::http2 {
 			return false;
 		connected_remote_.emplace(host, port);
 		client_.write("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
-		send(settings_frame{pack_settings()});
+		write(settings_frame{pack_settings()});
 		const auto first_frame = parse_frame(client_);
 		if (!std::holds_alternative<settings_frame>(first_frame)) {
 			close(error_t::protocol_error);
@@ -34,14 +34,14 @@ namespace leaf::network::http2 {
 
 	void client::close(const error_t error_code, const std::string_view add) {
 		if (connected())
-			send(go_away{remote_config.last_open_stream, error_code, add});
+			write(go_away{remote_config.last_open_stream, error_code, add});
 		client_.close();
 		connected_remote_.reset();
 	}
 
 	void client::process_settings(const setting_values_t& settings_f) {
 		update_remote_config(settings_f);
-		send(settings_frame{});
+		write(settings_frame{});
 	}
 
 	client::client(network::client& client_)
@@ -60,12 +60,31 @@ namespace leaf::network::http2 {
 			throw std::runtime_error("Unknown scheme; assign port explicitly.");
 		if (!connect(req.request_url.host, port))
 			throw std::runtime_error{"Connect failed."};
-		auto& http2_stream = local_open_stream();
-		http2_stream.send_request(client_, req);
-		return http2_stream.get_future();
+		auto http2_stream = std::make_unique<response_handler>(client_, *this, req);
+		auto future = http2_stream->get_future();
+		register_handler(std::move(http2_stream));
+		return future;
 	}
 
-	void client::send(const frame& frame) const {
+	http::event_source client::stream(const http::request& request) {
+		uint16_t port = request.request_url.port;
+		if (port == 0) {
+			if (request.request_url.scheme == "http")
+				port = 80;
+			else if (request.request_url.scheme == "https")
+				port = 443;
+		}
+		if (!port)
+			throw std::runtime_error("Unknown scheme; assign port explicitly.");
+		if (!connect(request.request_url.host, port))
+			throw std::runtime_error{"Connect failed."};
+		auto http2_stream = std::make_unique<event_stream_handler>(*this, request);
+		auto source = http2_stream->get_event_source(client_);
+		register_handler(std::move(http2_stream));
+		return source;
+	}
+
+	void client::write(const frame& frame) const {
 		if (!connected())
 			throw std::runtime_error("Client is not connected.");
 		std::cout << std::format("[HTTP/2 client] Sending {}\n", frame);
@@ -103,7 +122,7 @@ namespace leaf::network::http2 {
 			client_.write(casted.additional_data);
 			return;
 		}
-		throw std::runtime_error{"Unimplemented frame send."};
+		throw std::runtime_error{"Unimplemented frame write_to_."};
 	}
 
 	void client::process() {
@@ -129,10 +148,10 @@ namespace leaf::network::http2 {
 				ping_frame ack;
 				ack.ack = true;
 				ack.data = casted.data;
-				send(ack);
+				write(ack);
 			} else if (std::holds_alternative<headers_frame>(frame)) {
 				auto& casted = std::get<headers_frame>(frame);
-				get_stream(casted.stream_id).open(casted.get_headers(remote_packer), casted.end_stream);
+				get_stream(casted.stream_id).notify(casted.get_headers(remote_packer), casted.end_stream);
 			} else if (std::holds_alternative<push_promise_frame>(frame)) {
 				auto& casted = std::get<push_promise_frame>(frame);
 				get_stream(casted.stream_id).reserve(casted.promised_stream_id, casted.get_headers(remote_packer));

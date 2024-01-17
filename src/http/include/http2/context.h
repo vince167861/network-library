@@ -6,6 +6,7 @@
 #include <coroutine>
 #include <list>
 #include <map>
+#include <memory>
 
 
 namespace leaf::network::http2 {
@@ -14,13 +15,9 @@ namespace leaf::network::http2 {
 
 
 	class context {
-		std::map<stream_id_t, stream_handler> handlers_;
+		std::map<stream_id_t, std::unique_ptr<stream_handler>> handlers_;
 
 		std::list<std::coroutine_handle<>> tasks_;
-
-		stream_id_t next_remote_stream_id_();
-
-		stream_id_t next_local_stream_id_();
 
 	public:
 		const enum class endpoint_type_t: std::uint8_t {
@@ -35,9 +32,11 @@ namespace leaf::network::http2 {
 
 		[[nodiscard]] setting_values_t pack_settings() const;
 
-		stream_handler& local_open_stream();
+		stream_id_t next_remote_stream_id();
 
-		stream_handler& remote_reserve_stream(uint32_t);
+		stream_id_t next_local_stream_id();
+
+		void register_handler(std::unique_ptr<stream_handler> handler);
 
 		stream_handler& get_stream(stream_id_t);
 

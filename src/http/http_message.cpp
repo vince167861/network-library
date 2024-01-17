@@ -33,7 +33,7 @@ namespace leaf::network::http {
 		return std::is_gt(result) && lhs == "host" || std::is_lt(result);
 	}
 
-	http_fields http_fields::from_http_headers(client& source) {
+	http_fields http_fields::from_http_headers(stream& source) {
 		http_fields fields;
 		while (true) {
 			auto line = source.read_until("\n");
@@ -49,7 +49,7 @@ namespace leaf::network::http {
 		return fields;
 	}
 
-	http_fields http_fields::from_event_stream(client& source) {
+	http_fields http_fields::from_event_stream(stream& source) {
 		http_fields fields;
 		for (char last_terminator = '\n';;) {
 			auto line = source.read_until("\r\n");
