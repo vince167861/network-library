@@ -6,7 +6,7 @@
 
 namespace leaf::network::http2 {
 
-	const std::list<std::pair<std::string, std::string>>
+	const std::vector<std::pair<std::string_view, std::string>>
 	static_header_pairs {
 		{"", ""},
 		{":authority", ""},
@@ -112,7 +112,13 @@ namespace leaf::network::http2 {
 		shrink_();
 	}
 
-	std::string header_packer::encode(const header_list_t& headers) {
+	template<class T1, class T2, class U1, class U2>
+	constexpr inline bool operator==(
+			const std::pair<T1, T2>& lhs, const std::pair<U1, U2>& rhs) {
+		return lhs.first == rhs.first && lhs.second == rhs.second;
+	}
+
+	std::string header_packer::encode(const http::http_fields& headers) {
 		std::string ret;
 		for (auto& pair: headers) {
 			auto& [name, value] = pair;
@@ -143,19 +149,21 @@ namespace leaf::network::http2 {
 		return ret;
 	}
 
-	header_list_t header_packer::decode(const std::string_view source) {
-		header_list_t members;
+	http::http_fields header_packer::decode(const std::string_view source) {
+		http::http_fields members;
 		uint8_t unused;
 		uint64_t value;
 		auto ptr = source.begin();
 		if (const uint8_t header = *ptr; header & 1 << 7) {
 			read_integer(ptr, 7, unused, value);
 			std::pair<std::string, std::string> pair;
-			if (value < 62)
-				pair = *std::next(static_header_pairs.begin(), value);
-			else
-				pair = *std::next(dynamic_header_pairs.begin(), value - 62);
-			members.push_back(std::move(pair));
+			if (value < 62) {
+				auto& [name, field] = static_header_pairs[value];
+				members.append(name, field);
+			} else {
+				auto& [name, field] = *std::next(dynamic_header_pairs.begin(), value - 62);
+				members.append(name, field);
+			}
 		} else if (header & 1 << 5) {
 			read_integer(ptr, 5, unused, value);
 			dynamic_table_size_ = value;
@@ -179,7 +187,7 @@ namespace leaf::network::http2 {
 			read_integer(ptr, 7, unused, value);
 			const auto begin = ptr;
 			std::advance(ptr, value);
-			members.emplace_back(std::move(name), std::string{begin, ptr});
+			members.append(std::move(name), std::string{begin, ptr});
 		}
 		return members;
 	}

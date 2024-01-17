@@ -4,7 +4,7 @@
 #include "http2/context.h"
 #include "http2/frame.h"
 #include "http/request.h"
-#include "http2/response.h"
+#include "http/response.h"
 
 #include <future>
 
@@ -26,11 +26,6 @@ namespace leaf::network::http2 {
 
 		void process_settings(const setting_values_t& settings_f);
 
-	public:
-		explicit client(network::client&);
-
-		std::future<response> send(const http::request&);
-
 		/**
 		 * \brief Send connection frames.
 		 *
@@ -38,16 +33,13 @@ namespace leaf::network::http2 {
 		 */
 		void send(const frame&) const;
 
+	public:
+		explicit client(network::client&);
+
+		std::future<http::response> fetch(const http::request&);
+
 		void process();
 
 		~client();
-	};
-
-
-	class stream_error final: public std::exception {
-	public:
-		error_t code;
-
-		explicit stream_error(error_t);
 	};
 }

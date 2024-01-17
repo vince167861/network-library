@@ -115,25 +115,23 @@ namespace leaf::network::http2 {
 		throw std::runtime_error("Unimplemented or invalid frame.");
 	}
 
-	void stream_handler::open(header_list_t headers, bool end_stream) {
+	void stream_handler::open(http::http_fields headers, bool end_stream) {
 		state_ = state_t::open;
-		for (auto& p: headers)
-			if (p.first == ":status")
-				response_.status = std::stol(p.second);
-			else
-				response_.headers.emplace_back(std::move(p));
+		response_.headers = std::move(headers);
+		if (auto status_node = response_.headers.extract(":status"))
+			response_.status = std::stol(status_node.mapped());
 		if (end_stream) {
 			pending_promise_.set_value(response_);
 			state_ = state_t::remote_half_closed;
 		}
 	}
 
-	void stream_handler::reserve(stream_id_t promised, header_list_t headers) {
+	void stream_handler::reserve(stream_id_t promised, http::http_fields headers) {
 		if (state_ != state_t::open && state_ != state_t::local_half_closed)
 			throw std::runtime_error{"Unexpected PUSH_PROMISE at closed/half-closed stream."};
 
 		auto& promised_stream = context_.remote_reserve_stream(promised);
-		response_.pushed.emplace_back(promised_stream);
+		promised_stream_.emplace_back(promised_stream);
 		promised_stream.request_.headers = std::move(headers);
 	}
 
@@ -162,7 +160,7 @@ namespace leaf::network::http2 {
 		return std::min(context_.remote_config.max_frame_size, window_bytes_);
 	}
 
-	std::future<response> stream_handler::get_future() {
+	std::future<http::response> stream_handler::get_future() {
 		return pending_promise_.get_future();
 	}
 

@@ -172,11 +172,11 @@ namespace leaf::network::http2 {
 			conclude_ = true;
 	}
 
-	header_list_t headers_based_frame::get_headers(header_packer& decoder) const {
+	http::http_fields headers_based_frame::get_headers(header_packer& decoder) const {
 		return decoder.decode(pending_fragments);
 	}
 
-	void headers_based_frame::set_header(header_packer& encoder, const header_list_t& list) {
+	void headers_based_frame::set_header(header_packer& encoder, const http::http_fields& list) {
 		pending_fragments = encoder.encode(list);
 		conclude_ = true;
 	}

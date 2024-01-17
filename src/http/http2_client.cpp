@@ -48,7 +48,7 @@ namespace leaf::network::http2 {
 		: context(endpoint_type_t::client), client_(client_) {
 	}
 
-	std::future<response> client::send(const http::request& req) {
+	std::future<http::response> client::fetch(const http::request& req) {
 		uint16_t port = req.request_url.port;
 		if (port == 0) {
 			if (req.request_url.scheme == "http")
@@ -149,9 +149,4 @@ namespace leaf::network::http2 {
 	client::~client() {
 		close();
 	}
-
-	stream_error::stream_error(const error_t err)
-		: code(err) {
-	}
-
 }

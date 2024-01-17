@@ -19,13 +19,11 @@ int main() {
 	http2::client http2_client(tls_client);
 
 	http::request request{"GET", {target_url}};
-	auto future = http2_client.send(request);
+	auto future = http2_client.fetch(request);
 
 	http2_client.process();
 
 	const auto response = future.get();
 	std::cout << std::format("{}\n", response);
-	for (auto& handler_ref: response.pushed)
-		std::cout << std::format("{}", handler_ref.get().get_future().get());
 	return 0;
 }

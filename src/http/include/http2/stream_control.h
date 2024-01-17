@@ -2,7 +2,7 @@
 
 #include "http2/frame.h"
 #include "http/request.h"
-#include "http2/response.h"
+#include "http/response.h"
 #include "http2/context.h"
 #include "shared/task.h"
 
@@ -28,9 +28,11 @@ namespace leaf::network::http2 {
 
 		http::request request_;
 
-		response response_;
+		http::response response_;
 
-		std::promise<response> pending_promise_;
+		std::promise<http::response> pending_promise_;
+
+		std::list<std::reference_wrapper<stream_handler>> promised_stream_;
 
 	public:
 		stream_handler(stream_id_t, context&, state_t);
@@ -39,9 +41,9 @@ namespace leaf::network::http2 {
 
 		task<void> send(stream&, const frame&);
 
-		void open(header_list_t, bool end_stream);
+		void open(http::http_fields, bool end_stream);
 
-		void reserve(stream_id_t, header_list_t);
+		void reserve(stream_id_t, http::http_fields);
 
 		void notify(std::string_view, bool end_stream);
 
@@ -51,7 +53,7 @@ namespace leaf::network::http2 {
 
 		std::uint32_t get_available_window() const;
 
-		std::future<response> get_future();
+		std::future<http::response> get_future();
 
 		state_t state() const;
 

@@ -111,3 +111,11 @@ namespace leaf {
 		return list;
 	}
 }
+
+namespace std {
+
+	template<class T1, class T2, class U1, class U2>
+	constexpr inline bool operator==(const std::pair<T1, T2>& lhs, const std::pair<U1, U2>& rhs) {
+		return lhs.first == rhs.first && lhs.second == rhs.second;
+	}
+}

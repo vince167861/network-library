@@ -3,6 +3,7 @@
 #include "shared/stream.h"
 #include "http2/type.h"
 #include "http2/header_packer.h"
+#include "http/message.h"
 
 #include <cstdint>
 #include <format>
@@ -37,9 +38,9 @@ namespace leaf::network::http2 {
 
 		void add_fragment(std::string_view, bool last_frame);
 
-		header_list_t get_headers(header_packer& decoder) const;
+		http::http_fields get_headers(header_packer& decoder) const;
 
-		void set_header(header_packer& encoder, const header_list_t&);
+		void set_header(header_packer& encoder, const http::http_fields&);
 	};
 
 

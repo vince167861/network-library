@@ -1,9 +1,11 @@
 #pragma once
 
+#include "http/message.h"
+
 #include <cstdint>
 #include <list>
 #include <string>
-#include <unordered_map>
+#include <vector>
 
 namespace leaf::network::http2 {
 
@@ -73,7 +75,7 @@ namespace leaf::network::http2 {
 		/* www-authenticate */ www_authenticate
 	};
 
-	extern const std::list<std::pair<std::string, std::string>>
+	extern const std::vector<std::pair<std::string_view, std::string>>
 	static_header_pairs;
 
 
@@ -90,8 +92,8 @@ namespace leaf::network::http2 {
 		std::size_t dynamic_table_size_ = 4096;
 
 	public:
-		std::string encode(const header_list_t&);
+		std::string encode(const http::http_fields&);
 
-		header_list_t decode(std::string_view);
+		http::http_fields decode(const std::string_view source);
 	};
 }
