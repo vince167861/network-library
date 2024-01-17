@@ -8,7 +8,7 @@
 using namespace leaf::network;
 
 int main() {
-	constexpr std::string_view target_url{"https://www.google.com"};
+	constexpr std::string_view target_url{"https://nghttp2.org/"};
 	tcp::client tcp_client;
 
 	tls::client tls_client(tcp_client);
@@ -24,8 +24,8 @@ int main() {
 	http2_client.process();
 
 	const auto response = future.get();
-	response.print(std::cout);
+	std::cout << std::format("{}\n", response);
 	for (auto& handler_ref: response.pushed)
-		handler_ref.get().get_future().get().print(std::cout);
+		std::cout << std::format("{}", handler_ref.get().get_future().get());
 	return 0;
 }

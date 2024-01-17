@@ -1,12 +1,12 @@
 #include "http2/response.h"
 
-namespace leaf::network::http2 {
-	void response::print(std::ostream& s) const {
-		s << "Response " << std::dec << status << '\n';
-		if (headers.empty())
-			s << "\t(No header)\n";
-		else for (auto& [key, value]: headers)
-			s << "\t" << key << ": " << value << '\n';
-		s << body << '\n';
-	}
+std::format_context::iterator
+std::formatter<leaf::network::http2::response>::format(
+	const leaf::network::http2::response& response, std::format_context& context) const {
+	auto it = std::format_to(context.out(), "Response ({})", response.status);
+	if (response.headers.empty())
+		it = std::ranges::copy("\n\t(No header)", it).out;
+	else for (auto& [key, value]: response.headers)
+		it = std::format_to(it, "\n\t{}: {}", key, value);
+	return std::format_to(it, "\n{}", response.body);
 }

@@ -8,7 +8,7 @@ namespace leaf::network::http2 {
 	const std::runtime_error
 	illegal_stream_id{"Illegal stream identifier."};
 
-	uint32_t context::next_remote_stream_id_() {
+	stream_id_t context::next_remote_stream_id_() {
 		if (remote_config.last_open_stream == 0)
 			switch (endpoint_type) {
 				case endpoint_type_t::client: remote_config.last_open_stream = 2; break;
@@ -20,7 +20,7 @@ namespace leaf::network::http2 {
 		return remote_config.last_open_stream;
 	}
 
-	uint32_t context::next_local_stream_id_() {
+	stream_id_t context::next_local_stream_id_() {
 		if (local_config.last_open_stream == 0)
 			switch (endpoint_type) {
 				case endpoint_type_t::client:
@@ -82,7 +82,7 @@ namespace leaf::network::http2 {
 				).first->second;
 	}
 
-	stream_handler& context::get_stream(const uint32_t stream_id) {
+	stream_handler& context::get_stream(const stream_id_t stream_id) {
 		if (handlers_.contains(stream_id))
 			return handlers_.at(stream_id);
 		throw illegal_stream_id;

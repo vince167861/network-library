@@ -17,15 +17,23 @@ int main() {
 
 	http2_client.process();
 
-	const auto response_1 = future_1.get(), response_2 = future_2.get();
+	try {
+		const auto response_1 = future_1.get();
+		std::cout << std::format("{}\n", response_1);
+		for (auto& sub_future: response_1.pushed)
+			std::cout << std::format("{}\n", sub_future.get().get_future().get());
+	} catch (const std::exception& error) {
+		std::cout << std::format("Failed to retrieve first response: {}\n", error.what());
+	}
 
-	response_1.print(std::cout);
-	for (auto& sub_future: response_1.pushed)
-		sub_future.get().get_future().get().print(std::cout);
-
-	response_2.print(std::cout);
-	for (auto& sub_future: response_2.pushed)
-		sub_future.get().get_future().get().print(std::cout);
+	try {
+		const auto response_2 = future_2.get();
+		std::cout << std::format("{}\n", response_2);
+		for (auto& sub_future: response_2.pushed)
+			std::cout << std::format("{}\n", sub_future.get().get_future().get());
+	} catch (const std::exception& error) {
+		std::cout << std::format("Failed to retrieve second response: {}\n", error.what());
+	}
 
 	return 0;
 }

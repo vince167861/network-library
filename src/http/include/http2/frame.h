@@ -1,47 +1,27 @@
 #pragma once
 
 #include "shared/stream.h"
-#include "shared/task.h"
 #include "http2/type.h"
 #include "http2/header_packer.h"
 
 #include <cstdint>
+#include <format>
 #include <string>
 #include <list>
 #include <memory>
 #include <optional>
+#include <variant>
 
 
 namespace leaf::network::http2 {
 
 
-	class frame {
-	protected:
-		explicit frame(frame_type_t);
-
-	public:
-		frame_type_t type;
-
-		virtual void print(std::ostream&) const = 0;
-
-		virtual bool valid() const {
-			return true;
-		}
-
-		virtual ~frame() = default;
-
-		static std::shared_ptr<frame> parse(stream&);
-	};
-
-	std::ostream& operator<<(std::ostream&, const frame&);
-
-
 	/**
 	 * \brief A *potentially* stream-associated frame.
 	 */
-	class stream_frame: virtual public frame {
+	class stream_frame {
 	public:
-		uint32_t stream_id;
+		stream_id_t stream_id;
 
 		explicit stream_frame(uint32_t stream_id);
 	};
@@ -72,8 +52,6 @@ namespace leaf::network::http2 {
 		std::string data;
 
 		explicit data_frame(uint32_t stream_id);
-
-		void print(std::ostream&) const override;
 	};
 
 
@@ -91,9 +69,7 @@ namespace leaf::network::http2 {
 
 		std::optional<uint8_t> padding;
 
-		explicit headers_frame(uint32_t stream_id);
-
-		void print(std::ostream&) const override;
+		explicit headers_frame(stream_id_t);
 	};
 
 
@@ -105,9 +81,7 @@ namespace leaf::network::http2 {
 
 		uint8_t weight = 0;
 
-		explicit priority_frame(uint32_t stream_id);
-
-		void print(std::ostream&) const override;
+		explicit priority_frame(stream_id_t);
 	};
 
 
@@ -115,13 +89,11 @@ namespace leaf::network::http2 {
 	public:
 		error_t error_code = error_t::no_error;
 
-		explicit rst_stream(uint32_t stream_id);
-
-		void print(std::ostream&) const override;
+		explicit rst_stream(stream_id_t);
 	};
 
 
-	class settings_frame final: public frame {
+	class settings_frame final {
 	public:
 		bool ack: 1;
 
@@ -130,8 +102,6 @@ namespace leaf::network::http2 {
 		settings_frame();
 
 		explicit settings_frame(setting_values_t);
-
-		void print(std::ostream&) const override;
 	};
 
 
@@ -139,23 +109,19 @@ namespace leaf::network::http2 {
 	public:
 		uint32_t promised_stream_id;
 
-		explicit push_promise_frame(uint32_t stream_id);
-
-		void print(std::ostream&) const override;
+		explicit push_promise_frame(stream_id_t);
 	};
 
 
-	class ping_frame final: public frame {
+	class ping_frame final {
 	public:
 		bool ack: 1;
 
 		uint64_t data;
-
-		void print(std::ostream&) const override;
 	};
 
 
-	class go_away_frame final: public frame {
+	class go_away final {
 	public:
 		uint32_t last_stream_id;
 
@@ -163,11 +129,9 @@ namespace leaf::network::http2 {
 
 		std::string additional_data;
 
-		go_away_frame();
+		go_away() = default;
 
-		go_away_frame(uint32_t last_stream_id, error_t, std::string_view additional_data = "");
-
-		void print(std::ostream&) const override;
+		go_away(uint32_t last_stream_id, error_t, std::string_view additional_data = "");
 	};
 
 
@@ -176,9 +140,24 @@ namespace leaf::network::http2 {
 		uint32_t window_size_increment;
 
 		explicit window_update_frame(uint32_t stream_id);
-
-		void print(std::ostream&) const override;
 	};
 
 
+	using frame = std::variant<data_frame, headers_frame, priority_frame, rst_stream, settings_frame,
+	push_promise_frame, ping_frame, go_away, window_update_frame>;
+
+	frame parse_frame(stream&);
 }
+
+
+template<>
+struct std::formatter<leaf::network::http2::frame> {
+
+	std::format_parse_context::iterator
+	constexpr parse(const std::format_parse_context& context) {
+		return context.begin();
+	}
+
+	format_context::iterator
+	format(const leaf::network::http2::frame& f, format_context& context) const;
+};

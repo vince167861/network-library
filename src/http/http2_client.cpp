@@ -1,3 +1,5 @@
+#include <format>
+
 #include "http2/client.h"
 #include "utils.h"
 
@@ -17,12 +19,12 @@ namespace leaf::network::http2 {
 		connected_remote_.emplace(host, port);
 		client_.write("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
 		send(settings_frame{pack_settings()});
-		const auto first_frame = frame::parse(client_);
-		if (!first_frame || first_frame->type != frame_type_t::settings) {
+		const auto first_frame = parse_frame(client_);
+		if (!std::holds_alternative<settings_frame>(first_frame)) {
 			close(error_t::protocol_error);
 			return false;
 		}
-		process_settings(reinterpret_cast<settings_frame&>(*first_frame).values);
+		process_settings(std::get<settings_frame>(first_frame).values);
 		return true;
 	}
 
@@ -32,7 +34,7 @@ namespace leaf::network::http2 {
 
 	void client::close(const error_t error_code, const std::string_view add) {
 		if (connected())
-			send(go_away_frame{remote_config.last_open_stream, error_code, add});
+			send(go_away{remote_config.last_open_stream, error_code, add});
 		client_.close();
 		connected_remote_.reset();
 	}
@@ -66,68 +68,80 @@ namespace leaf::network::http2 {
 	void client::send(const frame& frame) const {
 		if (!connected())
 			throw std::runtime_error("Client is not connected.");
-		if (closing_.has_value()) {
-			if (const auto sf = dynamic_cast<const stream_frame*>(&frame); sf && sf->stream_id > closing_.value())
-				throw std::runtime_error("Connection is closing.");
-		}
-		std::cout << "[HTTP/2 Client] Sending " << frame;
-		if (const auto s_f = dynamic_cast<const settings_frame*>(&frame)) {
+		std::cout << std::format("[HTTP/2 client] Sending {}\n", frame);
+		if (std::holds_alternative<settings_frame>(frame)) {
+			auto& casted = std::get<settings_frame>(frame);
 			std::string data;
-			for (auto& [s, v]: s_f->values) {
+			for (auto& [s, v]: casted.values) {
 				reverse_write(data, s);
 				reverse_write(data, v);
 			}
-			reverse_write<std::uint32_t>(client_, data.size(), 3);
+			reverse_write(client_, data.size(), 3);
 			reverse_write(client_, frame_type_t::settings);
-			reverse_write<uint8_t>(client_, s_f->ack ? 1 : 0);
-			reverse_write<uint32_t>(client_, 0);
+			reverse_write<std::uint8_t>(client_, casted.ack ? 1 : 0);
+			reverse_write<std::uint32_t>(client_, 0);
 			client_.write(data);
-		} else if (const auto p_f = dynamic_cast<const ping_frame*>(&frame)) {
+			return;
+		}
+		if (std::holds_alternative<ping_frame>(frame)) {
+			auto& casted = std::get<ping_frame>(frame);
 			reverse_write<uint32_t>(client_, 8, 3);
 			reverse_write(client_, frame_type_t::ping);
-			reverse_write<uint8_t>(client_, p_f->ack ? 1 : 0);
+			reverse_write<uint8_t>(client_, casted.ack ? 1 : 0);
 			reverse_write<uint32_t>(client_, 0);
-			reverse_write(client_, p_f->data);
-		} else if (const auto g_f = dynamic_cast<const go_away_frame*>(&frame)) {
-			reverse_write(client_, 8 + g_f->additional_data.length(), 3);
+			reverse_write(client_, casted.data);
+			return;
+		}
+		if (std::holds_alternative<go_away>(frame)) {
+			auto& casted = std::get<go_away>(frame);
+			reverse_write(client_, 8 + casted.additional_data.length(), 3);
 			reverse_write(client_, frame_type_t::go_away);
 			reverse_write<uint8_t>(client_, 0);
 			reverse_write<uint32_t>(client_, 0);
-			reverse_write(client_, g_f->last_stream_id);
-			reverse_write(client_, g_f->error_code);
-			client_.write(g_f->additional_data);
-		} else
-			throw std::runtime_error{"Unimplemented frame send."};
+			reverse_write(client_, casted.last_stream_id);
+			reverse_write(client_, casted.error_code);
+			client_.write(casted.additional_data);
+			return;
+		}
+		throw std::runtime_error{"Unimplemented frame send."};
 	}
 
 	void client::process() {
 		while (client_.connected() && (!process_tasks() || has_pending_streams())) {
-			auto frame = frame::parse(client_);
-			std::cout << "[HTTP/2 Client] Received " << *frame;
-			if (const auto wu = std::dynamic_pointer_cast<window_update_frame>(frame);
-					wu && wu->stream_id == 0) {
-				remote_config.current_window_bytes += wu->window_size_increment;
-			} else if (const auto s_f = std::dynamic_pointer_cast<stream_frame>(frame))
-				get_stream(s_f->stream_id).handle(*s_f);
-			else {
-				switch (frame->type) {
-					case frame_type_t::settings: {
-						if (auto& settings_f = reinterpret_cast<settings_frame&>(*frame); !settings_f.ack)
-							process_settings(settings_f.values);
-						break;
-					}
-					case frame_type_t::go_away: {
-						auto& ga_f = reinterpret_cast<go_away_frame&>(*frame);
-						closing_ = ga_f.last_stream_id;
-						remote_closing(ga_f.last_stream_id);
-						break;
-					}
-					case frame_type_t::ping: {
-						break;
-					}
-					default:
-						break;
-				}
+			auto frame = parse_frame(client_);
+			std::cout << std::format("[HTTP/2 client] Received {}\n", frame);
+			if (std::holds_alternative<window_update_frame>(frame)) {
+				const auto& casted = std::get<window_update_frame>(frame);
+				if (const auto stream_id = casted.stream_id)
+					get_stream(stream_id).increase_window(casted.window_size_increment);
+				else
+					remote_config.current_window_bytes += casted.window_size_increment;
+			} else if (std::holds_alternative<settings_frame>(frame)) {
+				auto& casted = std::get<settings_frame>(frame);
+				if (!casted.ack)
+					process_settings(casted.values);
+			} else if (std::holds_alternative<go_away>(frame)) {
+				auto& casted = std::get<go_away>(frame);
+				closing_ = casted.last_stream_id;
+				remote_closing(casted.last_stream_id);
+			} else if (std::holds_alternative<ping_frame>(frame)) {
+				auto& casted = std::get<ping_frame>(frame);
+				ping_frame ack;
+				ack.ack = true;
+				ack.data = casted.data;
+				send(ack);
+			} else if (std::holds_alternative<headers_frame>(frame)) {
+				auto& casted = std::get<headers_frame>(frame);
+				get_stream(casted.stream_id).open(casted.get_headers(remote_packer), casted.end_stream);
+			} else if (std::holds_alternative<push_promise_frame>(frame)) {
+				auto& casted = std::get<push_promise_frame>(frame);
+				get_stream(casted.stream_id).reserve(casted.promised_stream_id, casted.get_headers(remote_packer));
+			} else if (std::holds_alternative<data_frame>(frame)) {
+				auto& casted = std::get<data_frame>(frame);
+				get_stream(casted.stream_id).notify(casted.data, casted.end_stream);
+			} else if (std::holds_alternative<rst_stream>(frame)) {
+				auto& casted = std::get<rst_stream>(frame);
+				get_stream(casted.stream_id).reset();
 			}
 		}
 	}

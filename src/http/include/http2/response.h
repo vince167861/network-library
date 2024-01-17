@@ -3,6 +3,7 @@
 #include "http2/message.h"
 
 #include <future>
+#include <format>
 
 namespace leaf::network::http2 {
 
@@ -16,6 +17,16 @@ namespace leaf::network::http2 {
 
 		std::list<std::reference_wrapper<stream_handler>> pushed;
 
-		void print(std::ostream&) const;
 	};
 }
+
+template<>
+struct std::formatter<leaf::network::http2::response> {
+	constexpr format_parse_context::iterator
+	parse(const format_parse_context& context) {
+		return context.begin();
+	}
+
+	format_context::iterator
+	format(const leaf::network::http2::response&, format_context&) const;
+};

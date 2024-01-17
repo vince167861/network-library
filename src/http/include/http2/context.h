@@ -14,16 +14,16 @@ namespace leaf::network::http2 {
 
 
 	class context {
-		std::map<std::uint32_t, stream_handler> handlers_;
+		std::map<stream_id_t, stream_handler> handlers_;
 
 		std::list<std::coroutine_handle<>> tasks_;
 
-		uint32_t next_remote_stream_id_();
+		stream_id_t next_remote_stream_id_();
 
-		uint32_t next_local_stream_id_();
+		stream_id_t next_local_stream_id_();
 
 	public:
-		const enum class endpoint_type_t: uint8_t {
+		const enum class endpoint_type_t: std::uint8_t {
 			server, client
 		} endpoint_type;
 
@@ -39,7 +39,7 @@ namespace leaf::network::http2 {
 
 		stream_handler& remote_reserve_stream(uint32_t);
 
-		stream_handler& get_stream(uint32_t);
+		stream_handler& get_stream(stream_id_t);
 
 		void remote_closing(uint32_t last_stream_id);
 
