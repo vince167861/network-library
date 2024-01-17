@@ -40,14 +40,12 @@ namespace leaf::network {
 
 		url(std::string_view);
 
+		void replace(std::string_view uri);
+
 		std::string url_string() const;
 
 		std::string uri_string() const;
 
 		std::string requesting_uri_string() const;
 	};
-
-
-	class invalid_url final: public std::exception {
-	};
-} // leaf
+}

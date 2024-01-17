@@ -32,4 +32,38 @@ namespace leaf::network::http {
 		auto result = lhs <=> rhs;
 		return std::is_gt(result) && lhs == "host" || std::is_lt(result);
 	}
+
+	http_fields http_fields::from_http_headers(client& source) {
+		http_fields fields;
+		while (true) {
+			auto line = source.read_until("\n");
+			if (!line.ends_with("\r\n"))
+				throw http_field_parse_error;
+			if (line.length() == 2)		// only contains "\r\n"; end of fields
+				break;
+			auto colon = std::ranges::find(line, ':');
+			if (colon == line.end())
+				throw http_field_parse_error;
+			fields.append({line.begin(), colon}, trim({colon + 1, line.end()}));
+		}
+		return fields;
+	}
+
+	http_fields http_fields::from_event_stream(client& source) {
+		http_fields fields;
+		for (char last_terminator = '\n';;) {
+			auto line = source.read_until("\r\n");
+			if (last_terminator == '\r' && line.starts_with('\n'))
+				line.erase(0, 1);
+			last_terminator = line.back();
+			if (line.length() == 1)		// only contains terminator; end of fields
+				break;
+			auto colon = std::ranges::find(line, ':');
+			fields.append(
+					{line.begin(), colon},
+					trim(colon == line.end() ? "" : std::string_view{colon + 1, line.end()}),
+					"\n");
+		}
+		return fields;
+	}
 }

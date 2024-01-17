@@ -3,6 +3,7 @@
 #include "shared/client.h"
 #include "http/request.h"
 #include "http/response.h"
+#include "http/event_stream.h"
 
 #include <optional>
 #include <future>
@@ -26,6 +27,8 @@ namespace leaf::network::http {
 		explicit client(network::client&);
 
 		std::future<response> fetch(const request&);
+
+		event_source stream(request);
 
 		void process();
 	};

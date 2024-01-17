@@ -23,6 +23,10 @@ namespace leaf::network::http {
 		void remove(std::string_view name);
 
 		operator std::string();
+
+		static http_fields from_http_headers(client&);
+
+		static http_fields from_event_stream(client&);
 	};
 
 

@@ -16,6 +16,7 @@ target_sources(http
 		include/http/request.h
 		include/http/response.h
 		include/http/url.h
+		include/http/event_stream.h
 )
 install(TARGETS http EXPORT leaf
 		FILE_SET http_headers)

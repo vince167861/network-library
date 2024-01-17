@@ -11,8 +11,9 @@ namespace leaf::network::http {
 		long status;
 
 		std::string body;
-	};
 
+		bool is_redirection() const;
+	};
 }
 
 

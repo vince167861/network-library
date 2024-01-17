@@ -5,6 +5,8 @@
 
 namespace leaf::network {
 
+	std::runtime_error invalid_url{"url provided is invalid."};
+
 	std::string
 	to_url_encoded(const std::list<std::pair<std::string, std::string>>& values) {
 		std::string str;
@@ -37,7 +39,7 @@ namespace leaf::network {
 	url::url(std::string_view string) {
 		const auto scheme_end = std::ranges::find(string, ':');
 		if (scheme_end == string.end())
-			throw invalid_url{};
+			throw invalid_url;
 		scheme = {string.begin(), scheme_end};
 		for (std::size_t i = 0; i < scheme.size(); ++i) {
 			auto& c = scheme[i];
@@ -45,7 +47,7 @@ namespace leaf::network {
 				continue;
 			if (i > 0 && ('0' <= c && c <= '9' || c == '+' || c == '-' || c == '.'))
 				continue;
-			throw invalid_url{};
+			throw invalid_url;
 		}
 		auto authority_end = scheme_end + 1;
 		if (*authority_end == '/' && *(authority_end + 1) == '/') {
@@ -112,6 +114,51 @@ namespace leaf::network {
 		if (!query.empty())
 			uri += "?" + to_url_encoded(query);
 		return uri;
+	}
+
+	void url::replace(std::string_view uri) {
+		auto scheme_end = std::ranges::find(uri, ':');
+		if (scheme_end != uri.end()) {
+			scheme = {uri.begin(), scheme_end};
+			for (std::size_t i = 0; i < scheme.size(); ++i) {
+				auto& c = scheme[i];
+				if ('a' <= c && c <= 'z' || 'A' <= c && c <= 'Z')
+					continue;
+				if (i > 0 && ('0' <= c && c <= '9' || c == '+' || c == '-' || c == '.'))
+					continue;
+				throw invalid_url;
+			}
+		} else
+			std::advance(scheme_end, -1);
+		auto authority_end = std::next(scheme_end, 1);
+		if (std::equal(authority_end, std::next(authority_end, 2), "//")) {
+			authority_end = std::ranges::find_first_of(std::string_view{authority_end + 2, uri.end()}, "/?#");
+			auto at = std::find(scheme_end + 3, authority_end, '@');
+			if (at != authority_end) {
+				if (const auto colon = std::find(scheme_end + 3, at, ':'); colon != at) {
+					this->username = {scheme_end + 3, colon};
+					this->password = {colon + 1, at};
+				} else
+					this->username = {scheme_end + 3, at};
+			} else
+				at = scheme_end + 3;
+			if (const auto colon = std::find(at, authority_end, ':'); colon != authority_end) {
+				host = {at, colon};
+				std::string port_string{colon + 1, authority_end};
+				if (!port_string.empty())
+					this->port = std::stoi(port_string);
+			} else
+				host = {at, authority_end};
+		}
+		const auto path_end = std::ranges::find_first_of(std::string_view{authority_end, uri.end()}, "?#");
+		path = {authority_end, path_end};
+		auto query_ends = path_end;
+		if (path_end != uri.end() && *path_end == '?') {
+			query_ends = std::find(path_end + 1, uri.end(), '#');
+			query = from_url_encoded({path_end + 1, query_ends});
+		}
+		if (query_ends != uri.end() && *query_ends == '#')
+			fragment = {query_ends + 1, uri.end()};
 	}
 
 	std::string to_percent_encoding(const std::string_view string) {

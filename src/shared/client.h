@@ -23,13 +23,13 @@ namespace leaf::network {
 		 * \brief Read until reaches `terminator`.
 		 * \return Read string with `terminator` at the end if no error occur.
 		 */
-		virtual std::string read_until(char terminator) {
+		virtual std::string read_until(std::string_view terminator) {
 			std::string str;
 			while (connected()) {
-				auto&& ch = read(1);
+				auto ch = read(1);
 				if (!ch.empty())
 					str += ch;
-				if (ch[0] == terminator)
+				if (terminator.contains(ch[0]))
 					break;
 			}
 			return str;
