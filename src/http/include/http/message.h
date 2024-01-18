@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared/client.h"
+#include "basic_client.h"
 
 #include <string>
 #include <map>
@@ -13,8 +13,6 @@ namespace leaf::network::http {
 
 
 	struct http_fields: std::map<std::string, std::string, http_field_name_less> {
-
-		http_fields() = default;
 
 		std::string& append(std::string_view name, std::string_view value, std::string_view sep = ",");
 

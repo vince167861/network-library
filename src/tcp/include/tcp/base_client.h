@@ -1,6 +1,8 @@
 #pragma once
 
-#include "shared/client.h"
+#include "basic_client.h"
+
+#include <format>
 
 namespace leaf::network::tcp {
 
@@ -14,13 +16,9 @@ namespace leaf::network::tcp {
 		}
 
 		api_failed(const std::string_view func_name, const int result, const std::string_view desc = "") {
-			info = func_name;
-			info += ": ";
-			info += std::to_string(result);
-			if (!desc.empty()) {
-				info += ": ";
-				info += desc;
-			}
+			info = std::format("{}: {}", func_name, result);
+			if (!desc.empty())
+				info += std::format(": {}", desc);
 		}
 	};
 

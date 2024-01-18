@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared/client.h"
+#include "basic_client.h"
 
 #include <list>
 #include <string>

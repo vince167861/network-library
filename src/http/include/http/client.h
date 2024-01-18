@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared/client.h"
+#include "basic_client.h"
 #include "http/request.h"
 #include "http/response.h"
 #include "http/event_stream.h"

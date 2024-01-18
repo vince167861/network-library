@@ -1,6 +1,6 @@
 #pragma once
 
-#include "..\..\..\..\number\include\number\flexible.h"
+#include "number/flexible.h"
 
 #include <string>
 #include <random>

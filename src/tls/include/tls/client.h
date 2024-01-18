@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared/client.h"
+#include "basic_client.h"
 #include "tls-handshake/handshake.h"
 #include "tls-key/manager.h"
 #include "tls-record/record.h"

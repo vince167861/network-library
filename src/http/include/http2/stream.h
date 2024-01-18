@@ -5,7 +5,7 @@
 #include "http/event_stream.h"
 #include "http2/frame.h"
 #include "http2/context.h"
-#include "shared/task.h"
+#include "task.h"
 
 #include <cstdint>
 #include <sstream>

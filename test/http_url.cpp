@@ -32,8 +32,8 @@ TEST(HTTP_URL, valid) {
 }
 
 TEST(HTTP_URL, invalid) {
-	EXPECT_THROW(url{"1hts:urk:aldjf?aa"}, invalid_url);
-	EXPECT_THROW(url{"ht^s:urk:aldjf#45"}, invalid_url);
+	EXPECT_THROW(url{"1hts:urk:aldjf?aa"}, std::runtime_error);
+	EXPECT_THROW(url{"ht^s:urk:aldjf#45"}, std::runtime_error);
 }
 
 int main() {

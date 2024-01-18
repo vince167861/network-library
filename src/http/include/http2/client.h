@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared/client.h"
+#include "basic_client.h"
 #include "http2/context.h"
 #include "http2/frame.h"
 #include "http/request.h"

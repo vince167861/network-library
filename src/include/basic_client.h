@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stream.h"
+#include "basic_stream.h"
 
 #include <string>
 #include <cstdint>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shared/stream.h"
+#include "basic_stream.h"
 
 #include <list>
 #include <string>

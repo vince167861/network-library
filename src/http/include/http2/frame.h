@@ -1,9 +1,9 @@
 #pragma once
 
-#include "shared/stream.h"
+#include "basic_stream.h"
+#include "http/message.h"
 #include "http2/type.h"
 #include "http2/header_packer.h"
-#include "http/message.h"
 
 #include <cstdint>
 #include <format>

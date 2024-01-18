@@ -6,6 +6,7 @@ target_sources(tls-utils
 		PUBLIC FILE_SET tls_utils_headers TYPE HEADERS BASE_DIRS include FILES
 		include/tls-utils/rng.h
 		include/tls-utils/type.h
+		include/tls-utils/binary_object.h
 )
 target_link_libraries(tls-utils
 		number)

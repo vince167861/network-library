@@ -6,7 +6,7 @@ add_library(http_message
 		http_event_stream.cpp
 )
 target_include_directories(http_message
-	PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/http> $<INSTALL_INTERFACE:include/http>)
+	PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 target_sources(http_message
 	PUBLIC FILE_SET http_message_headers TYPE HEADERS BASE_DIRS include FILES
 	include/http/url.h
@@ -43,7 +43,7 @@ add_library(http2
 		http2_stream.cpp
 )
 target_link_libraries(http2
-		http_message tls)
+		http_message)
 target_include_directories(http2
 		PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>
 )

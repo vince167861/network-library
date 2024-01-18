@@ -1,27 +1,11 @@
 #pragma once
 
-#include "base_client.h"
+#include "tcp/base_client.h"
 
 #include <lwip/sockets.h>
 #include <lwip/netdb.h>
 
 namespace leaf::network::tcp {
-
-
-	class api_failed: public std::exception {
-		std::string info;
-
-	public:
-		const char* what() const noexcept override {
-			return info.c_str();
-		}
-
-		api_failed(const std::string_view func_name, const int result) {
-			info = func_name;
-			info += std::to_string(result);
-		}
-	};
-
 
 	class client: public base_client {
 

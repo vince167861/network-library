@@ -1,11 +1,9 @@
-#include <format>
-
 #include "http2/client.h"
+#include "http2/stream.h"
 #include "utils.h"
 
-#include "http2/stream.h"
-
 #include <iostream>
+#include <format>
 
 namespace leaf::network::http2 {
 
