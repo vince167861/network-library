@@ -14,7 +14,7 @@ namespace leaf::network::tls {
 		: context_(context), type(type), encrypted(encrypted) {
 	}
 
-	std::string record::to_bytestring() const {
+	std::string record::to_bytestring(std::endian) const {
 		std::string str;
 		for (auto it = messages.begin(), end = messages.end(); it != end; ) {
 			const std::uint16_t length = std::min<std::ptrdiff_t>(std::distance(it, end), 1 << 14);

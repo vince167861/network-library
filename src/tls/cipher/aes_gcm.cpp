@@ -6,11 +6,12 @@
 
 namespace leaf::network::tls {
 	std::string aes_128_gcm_sha256::hash(const std::string_view hash) const {
-		return sha_256::hash(var_unsigned::from_bytes(hash)).to_bytes();
+		return sha_256::hash(var_unsigned::from_bytes(hash)).to_bytestring(std::endian::big);
 	}
 
 	std::string aes_128_gcm_sha256::HMAC_hash(const std::string_view data, const std::string_view key) const {
-		return hashing::HMAC_sha_256(var_unsigned::from_bytes(data), var_unsigned::from_bytes(key)).to_bytes();
+		return hashing::HMAC_sha_256(var_unsigned::from_bytes(data), var_unsigned::from_bytes(key))
+				.to_bytestring(std::endian::big);
 	}
 
 	aes_128_gcm_sha256::aes_128_gcm_sha256()
@@ -34,11 +35,12 @@ namespace leaf::network::tls {
 	}
 
 	std::string aes_256_gcm_sha384::hash(std::string_view hash) const {
-		return sha_384::hash(var_unsigned::from_bytes(hash)).to_bytes();
+		return sha_384::hash(var_unsigned::from_bytes(hash)).to_bytestring(std::endian::big);
 	}
 
 	std::string aes_256_gcm_sha384::HMAC_hash(std::string_view data, std::string_view key) const {
-		return hashing::HMAC_sha_384(var_unsigned::from_bytes(data), var_unsigned::from_bytes(key)).to_bytes();
+		return hashing::HMAC_sha_384(var_unsigned::from_bytes(data), var_unsigned::from_bytes(key))
+				.to_bytestring(std::endian::big);
 	}
 
 	aes_256_gcm_sha384::aes_256_gcm_sha384()

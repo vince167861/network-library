@@ -6,11 +6,10 @@ add_compile_options(-Werror=return-type -Wno-deprecated-declarations -Wextra -Wp
 enable_testing()
 
 project(leaf)
-if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
-    add_compile_definitions(PLATFORM=1)
-# elseif (${CMAKE_SYSTEM_NAME} STREQUAL Linux)
-else ()
-    add_compile_definitions(PLATFORM=2)
+add_compile_definitions(PLATFORM_${CMAKE_SYSTEM_NAME})
+
+if (${CMAKE_SYSTEM_NAME} STREQUAL Generic)
+	add_compile_options(-mlongcalls)
 endif ()
 
 include_directories(./src)

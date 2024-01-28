@@ -12,7 +12,7 @@ namespace leaf::network::tls {
 
 	finished::finished(context& context, std::string_view handshake_msgs) {
 		auto& cipher = context.active_cipher();
-		auto&& finished_key = cipher.HKDF_expand_label(context.client_handshake_traffic_secret.to_bytes(), "finished", "", cipher.digest_length);
+		auto&& finished_key = cipher.HKDF_expand_label(context.client_handshake_traffic_secret.to_bytestring(), "finished", "", cipher.digest_length);
 		verify_data = cipher.HMAC_hash(cipher.hash(handshake_msgs), finished_key);
 	}
 
@@ -22,7 +22,7 @@ namespace leaf::network::tls {
 			it = std::format_to(it, "{:#04x}", c);
 	}
 
-	std::string finished::to_bytestring() const {
+	std::string finished::to_bytestring(std::endian) const {
 		std::string str;
 		reverse_write(str, handshake_type_t::finished);
 		reverse_write(str, verify_data.size(), 3);

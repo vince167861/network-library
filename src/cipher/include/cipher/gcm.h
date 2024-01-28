@@ -1,6 +1,6 @@
 #pragma once
-#include "..\..\..\number\include\number\fixed.h"
-#include "..\..\..\number\include\number\flexible.h"
+#include "number/fixed.h"
+#include "number/flexible.h"
 
 namespace leaf {
 

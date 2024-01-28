@@ -24,7 +24,7 @@ namespace leaf::network::tls {
 		}
 	}
 
-	std::string key_update::to_bytestring() const {
+	std::string key_update::to_bytestring(std::endian) const {
 		std::string str;
 		reverse_write(str, handshake_type_t::key_update);
 		reverse_write(str, 1);

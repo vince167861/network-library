@@ -14,7 +14,7 @@ namespace leaf::network::tls {
 		auto plain_data = var_unsigned::from_bytes(plain_text);
 		auto auth_data = var_unsigned::from_bytes(auth);
 		auto [ciphered, tag] = gcm::encrypt(nonce_data, plain_data, auth_data);
-		return ciphered.to_bytes() + tag.to_bytes();
+		return ciphered.to_bytestring(std::endian::big) + tag.to_bytestring(std::endian::big);
 	}
 
 	std::string gcm_cipher::decrypt(std::string_view nonce, std::string_view data, std::string_view cipher_text) const {
@@ -23,7 +23,7 @@ namespace leaf::network::tls {
 		auto auth_data = var_unsigned::from_bytes(data);
 		auto tag_data = var_unsigned::from_bytes({cipher_text.end() - 16, cipher_text.end()});
 		try {
-			return gcm::decrypt(nonce_data, cipher_data, auth_data, tag_data).to_bytes();
+			return gcm::decrypt(nonce_data, cipher_data, auth_data, tag_data).to_bytestring(std::endian::big);
 		} catch (const std::exception&) {
 			throw alert::bad_record_mac();
 		}

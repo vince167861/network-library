@@ -6,6 +6,7 @@
 namespace leaf {
 
 	class var_unsigned: public number_base {
+
 		std::size_t bits_;
 
 	public:
@@ -18,6 +19,7 @@ namespace leaf {
 		static_assert(std::is_unsigned_v<unit_t>);
 
 		std::vector<unit_t> data;
+
 	protected:
 		bool unsigned_add_(std::size_t pos, unit_t val, bool carry = false);
 
@@ -75,8 +77,6 @@ namespace leaf {
 		const unit_t& operator[](std::size_t size) const override;
 
 		unit_t& operator[](std::size_t size) override;
-
-		friend std::ostream& operator<<(std::ostream&, const var_unsigned&);
 
 		template<class V> requires std::is_integral_v<V>
 		V value(std::size_t pos) const {

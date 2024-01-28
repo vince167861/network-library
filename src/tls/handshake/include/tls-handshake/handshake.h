@@ -36,7 +36,7 @@ namespace leaf::network::tls {
 
 		client_hello(std::string_view);
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		void format(std::format_context::iterator&) const override;
 	};
@@ -60,7 +60,7 @@ namespace leaf::network::tls {
 
 		server_hello(std::string_view);
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		void format(std::format_context::iterator&) const override;
 
@@ -77,7 +77,7 @@ namespace leaf::network::tls {
 
 		encrypted_extension(std::string_view);
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		void format(std::format_context::iterator&) const override;
 	};
@@ -99,7 +99,7 @@ namespace leaf::network::tls {
 
 		certificate(std::string_view);
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		void format(std::format_context::iterator&) const override;
 	};
@@ -117,7 +117,7 @@ namespace leaf::network::tls {
 
 		certificate_request(std::string_view);
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		void format(std::format_context::iterator&) const override;
 	};
@@ -135,7 +135,7 @@ namespace leaf::network::tls {
 
 		certificate_verify(std::string_view);
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		void format(std::format_context::iterator&) const override;
 	};
@@ -153,7 +153,7 @@ namespace leaf::network::tls {
 
 		finished(std::string_view source, context&);
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		void format(std::format_context::iterator&) const override;
 	};
@@ -173,7 +173,7 @@ namespace leaf::network::tls {
 
 		new_session_ticket(std::string_view);
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		void format(std::format_context::iterator&) const override;
 	};
@@ -189,7 +189,7 @@ namespace leaf::network::tls {
 
 		key_update(bool request);
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		void format(std::format_context::iterator&) const override;
 	};

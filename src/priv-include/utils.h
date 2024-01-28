@@ -2,11 +2,24 @@
 
 #include "basic_stream.h"
 
+#include <bit>
 #include <list>
 #include <string>
 #include <algorithm>
 
 namespace leaf {
+
+	template<typename T>
+	void write(std::endian endian, std::string& dest, const T& src, const std::size_t count = sizeof(T)) {
+		bool big_endian = endian == std::endian::big;
+		const uint8_t* src_ptr = reinterpret_cast<const uint8_t*>(&src), * src_end = src_ptr + count;
+		if (big_endian) {
+			std::swap(--src_ptr, --src_end);
+			for (; src_ptr != src_end; --src_ptr)
+				dest.push_back(*src_ptr);
+		} else
+			dest.append(src_ptr, src_end);
+	}
 
 	template<class Iter>
 	void forward_read(Iter& source, char* begin, const char* end) {

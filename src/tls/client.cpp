@@ -11,8 +11,8 @@
 
 namespace leaf::network::tls {
 
-	client::client(network::client& client, std::shared_ptr<random_number_generator> generator)
-			: context(protocol_version_t::TLS1_3, client, endpoint_type_t::client), random_generator(std::move(generator)) {
+	client::client(network::client& client, std::unique_ptr<random_number_generator> generator)
+		: context(protocol_version_t::TLS1_3, client, endpoint_type_t::client), random_generator(std::move(generator)) {
 	}
 
 	void client::reset() {
@@ -22,7 +22,7 @@ namespace leaf::network::tls {
 		if (init_session_id)
 			session_id = init_session_id.value();
 		else if (compatibility_mode)
-			session_id = random_generator->number(32).to_bytes();
+			session_id = random_generator->number(32).to_bytestring(std::endian::big);
 		else
 			session_id.clear();
 	}

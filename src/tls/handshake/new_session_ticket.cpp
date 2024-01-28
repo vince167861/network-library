@@ -34,11 +34,11 @@ namespace leaf::network::tls {
 			it = std::format_to(it, "\n{}", ext);
 	}
 
-	std::string new_session_ticket::to_bytestring() const {
 		std::string data, exts;
 		reverse_write(data, ticket_lifetime);
 		reverse_write(data, ticket_age_add);
 		reverse_write(data, ticket_nonce.size(), 1);
+	std::string new_session_ticket::to_bytestring(std::endian) const {
 		data += ticket_nonce;
 		reverse_write(data, ticket.size(), 2);
 		data += ticket;

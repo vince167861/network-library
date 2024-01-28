@@ -44,7 +44,7 @@ namespace leaf::network::tls {
 		}
 	}
 
-	std::string client_hello::to_bytestring() const {
+	std::string client_hello::to_bytestring(std::endian) const {
 		if (cipher_suites.empty())
 			throw std::runtime_error{"at least one cipher suite is required to generate valid ClientHello."};
 		std::string data;

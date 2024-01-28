@@ -1,4 +1,4 @@
-if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL Generic)
 
 	add_executable(example-http_client
 			http_client.cpp)

@@ -9,6 +9,7 @@ namespace leaf::network {
 
 	class client: public stream {
 	public:
+
 		virtual bool connect(std::string_view host, uint16_t port) = 0;
 
 		virtual bool connected() const = 0;

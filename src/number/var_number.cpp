@@ -1,4 +1,4 @@
-#include "include\number\flexible.h"
+#include "number/flexible.h"
 
 #include <ranges>
 
@@ -233,23 +233,6 @@ namespace leaf {
 			: var_unsigned(ref.bits()) {
 		for (std::size_t i = 0; i < data.size(); ++i)
 			data[i] = i < ref.data_units() ? ref[i] : 0;
-	}
-
-	std::ostream& operator<<(std::ostream& s, const var_unsigned& n) {
-		bool first = true;
-		for (std::size_t i = 0; i < n.data_units(); ++i) {
-			const auto val = n.data[n.data_units() - i - 1];
-			if (first) {
-				if (val > 0) {
-					first = false;
-					s << "0x" << std::hex << val;
-				}
-			} else
-				s << std::hex << std::setw(var_unsigned::unit_bytes * 2) << std::setfill('0') << val;
-		}
-		if (first)
-			s << "0";
-		return s;
 	}
 
 	void var_unsigned::set(const bool val, const std::size_t pos) {

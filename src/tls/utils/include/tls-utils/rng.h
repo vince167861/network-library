@@ -2,7 +2,7 @@
 
 #include "number/flexible.h"
 
-#include <string>
+#include <functional>
 #include <random>
 
 
@@ -25,7 +25,7 @@ namespace leaf {
 		std::uniform_int_distribution<var_unsigned::unit_t> int_distributor;
 
 	public:
-		mt19937_uniform();
+		mt19937_uniform(std::uint_fast32_t seed = std::random_device()());
 
 		var_unsigned number(std::size_t bytes) override;
 

@@ -1,13 +1,14 @@
 #pragma once
 
-#include <iomanip>
+#include "binary_object.h"
+
 #include <cstdint>
 
 namespace leaf {
 
-	class number_base {
+	class number_base: public binary_object {
 	public:
-		using unit_t = uint32_t;
+		using unit_t = std::uint32_t;
 
 		static constexpr std::size_t unit_bytes = sizeof(unit_t);
 
@@ -33,13 +34,9 @@ namespace leaf {
 		 * Construct byte string in big-endian.
 		 * @return byte string
 		 */
-		std::string to_bytes() const;
-
-		std::string to_little_endian_bytes() const;
+		std::string to_bytestring(std::endian) const override;
 
 		std::string to_string() const;
-
-		friend std::ostream& operator<<(std::ostream& s, const number_base& number);
 
 		virtual ~number_base() = default;
 	};

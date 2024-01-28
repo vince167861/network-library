@@ -64,10 +64,10 @@ namespace leaf::network::tls {
 		}
 	}
 
-	std::string certificate_request::to_bytestring() const {
 		std::string data, exts;
 		reverse_write(data, certificate_request_context.size(), 1);
 		data += certificate_request_context;
+	std::string certificate_request::to_bytestring(std::endian) const {
 		for (auto& ext: extensions)
 			exts += ext.to_bytestring();
 		reverse_write(data, exts.size(), 2);

@@ -33,9 +33,9 @@ namespace leaf::network::tls {
 		void send(const record&) const;
 
 	public:
-		const std::shared_ptr<random_number_generator> random_generator;
+		const std::unique_ptr<random_number_generator> random_generator;
 
-		explicit client(network::client& client, std::shared_ptr<random_number_generator> generator = std::make_shared<mt19937_uniform>());
+		explicit client(network::client& client, std::unique_ptr<random_number_generator> generator = std::make_unique<mt19937_uniform>());
 
 		void reset();
 

@@ -1,64 +1,32 @@
-#include "include\number\fixed.h"
+#include "number/fixed.h"
+#include "utils.h"
+
+#include <format>
 
 namespace leaf {
 
-	std::string number_base::to_bytes() const {
-		std::string ret;
-		auto top_bytes = (bits() / 8 + (bits() % 8 ? 1 : 0)) % unit_bytes;
-		if (!top_bytes) top_bytes = unit_bytes;
-		for (std::size_t i = 0; i < data_units(); ++i) {
-			auto bytes = i == 0 ? top_bytes : unit_bytes;
-			for (std::size_t j = 0; j < bytes; ++j)
-				ret.push_back(static_cast<char>((*this)[data_units() - i - 1] >> (bytes - j - 1) * 8));
-		}
-		return ret;
-	}
-
-	std::string number_base::to_little_endian_bytes() const {
-		std::string ret;
-		auto top_bytes = (bits() / 8 + (bits() % 8 ? 1 : 0)) % unit_bytes;
-		auto units = data_units();
-		if (!top_bytes) top_bytes = unit_bytes;
-		for (std::size_t i = 0; i < units; ++i) {
-			auto bytes = i == units - 1 ? top_bytes : unit_bytes;
-			for (std::size_t j = 0; j < bytes; ++j)
-				ret.push_back(static_cast<char>((*this)[i] >> j * 8));
-		}
-		return ret;
+	std::string number_base::to_bytestring(std::endian endian) const {
+		std::string str;
+		bool big_endian = endian == std::endian::big;
+		const auto top_bytes = (bits() / 8 + (bits() % 8 ? 1 : 0)) % unit_bytes;
+		if (big_endian)
+			write(std::endian::big, str, operator[](data_units() - 1), top_bytes);
+		for (std::size_t i = data_units() - 1; i > 0; --i)
+			write(endian, str, operator[](big_endian ? i - 1 : data_units() - 1 - i));
+		if (!big_endian)
+			write(std::endian::little, str, operator[](data_units() - 1), top_bytes);
+		return str;
 	}
 
 	std::string number_base::to_string() const {
-		std::stringstream s;
-		bool first = true;
-		for (std::size_t i = 0; i < data_units(); ++i) {
-			auto val = (*this)[data_units() - i - 1];
-			if (first) {
-				if (val > 0) {
-					first = false;
-					s << std::hex << val;
-				}
-			} else
-				s << std::hex << std::setw(unit_bytes * 2) << std::setfill('0') << val;
+		std::string str;
+		for (std::size_t i = data_units() - 1; i > 0; --i) {
+			const auto val = operator[](i);
+			if (str.empty() && val)
+				str = std::format("{:x}", val);
+			else
+				str += std::format("{:02x}", val);
 		}
-		if (first)
-			s << "0";
-		return s.str();
-	}
-
-	std::ostream& operator<<(std::ostream& s, const number_base& number) {
-		bool first = true;
-		for (std::size_t i = 0; i < number.data_units(); ++i) {
-			auto val = number[number.data_units() - i - 1];
-			if (first) {
-				if (val > 0) {
-					first = false;
-					s << "0x" << std::hex << val;
-				}
-			} else
-				s << std::hex << std::setw(number_base::unit_bytes * 2) << std::setfill('0') << val;
-		}
-		if (first)
-			s << "0";
-		return s;
+		return str.empty() ? "0" : str;
 	}
 }

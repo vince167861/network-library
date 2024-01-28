@@ -2,7 +2,7 @@
 
 #include "tls-utils/type.h"
 #include "tls-context/context.h"
-#include "tls-utils/binary_object.h"
+#include "binary_object.h"
 
 #include <string>
 #include <format>
@@ -30,7 +30,7 @@ namespace leaf::network::tls {
 
 		std::string messages;
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		static record extract(context&);
 

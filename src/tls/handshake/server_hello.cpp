@@ -40,7 +40,11 @@ namespace leaf::network::tls {
 		}
 	}
 
-	std::string server_hello::to_bytestring() const {
+	std::string server_hello::to_bytestring(std::endian) const {
+		std::string ext_fragment;
+		for (auto& ext: extensions)
+			ext_fragment += ext.to_bytestring();
+
 		std::string data;
 		reverse_write(data, legacy_version);
 		forward_write(data, random);

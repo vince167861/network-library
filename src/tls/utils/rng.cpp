@@ -2,8 +2,8 @@
 
 namespace leaf {
 
-	mt19937_uniform::mt19937_uniform()
-			: random_engine(std::random_device{}()) {
+	mt19937_uniform::mt19937_uniform(const std::uint_fast32_t seed)
+		: random_engine(seed) {
 	}
 
 	var_unsigned mt19937_uniform::number(std::size_t bytes) {

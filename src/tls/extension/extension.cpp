@@ -1,7 +1,5 @@
 #include "tls-extension/extension.h"
 
-#include "tls-record/alert.h"
-#include "tls-handshake/handshake.h"
 #include "utils.h"
 
 namespace leaf::network::tls {
@@ -22,14 +20,14 @@ namespace leaf::network::tls {
 		: type(type), data(data) {
 	}
 
-	std::string raw_extension::to_bytestring() const {
+	std::string raw_extension::to_bytestring(std::endian) const {
 		std::string str;
 		reverse_write(str, type);
 		reverse_write(str, data.size(), 2);
 		return str + data;
 	}
 
-	std::string extension_base::to_bytestring() const {
-		return raw_extension{*this}.to_bytestring();
+	std::string extension_base::to_bytestring(std::endian endian) const {
+		return raw_extension{*this}.to_bytestring(endian);
 	}
 }

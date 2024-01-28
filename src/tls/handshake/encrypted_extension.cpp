@@ -17,7 +17,7 @@ namespace leaf::network::tls {
 		}
 	}
 
-	std::string encrypted_extension::to_bytestring() const {
+	std::string encrypted_extension::to_bytestring(std::endian) const {
 		std::string data, exts;
 		for (auto& ext: extensions)
 			exts += ext.to_bytestring();

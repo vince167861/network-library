@@ -13,7 +13,7 @@ namespace leaf::network::tls {
 	}
 
 	std::string ffdhe2048_manager::public_key() {
-		return public_key_.to_bytes();
+		return public_key_.to_bytestring(std::endian::big);
 	}
 
 	void ffdhe2048_manager::exchange_key(std::string_view remote_public_key) {
@@ -21,7 +21,7 @@ namespace leaf::network::tls {
 	}
 
 	std::string ffdhe2048_manager::shared_key() const {
-		return shared_key_.to_bytes();
+		return shared_key_.to_bytestring(std::endian::big);
 	}
 
 	bool ffdhe2048_manager::key_ready() const {

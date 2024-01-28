@@ -12,7 +12,7 @@ namespace leaf::network::tls {
 		ptr += size;
 	}
 
-	std::string certificate_verify::to_bytestring() const {
+	std::string certificate_verify::to_bytestring(std::endian) const {
 		std::string data;
 		reverse_write(data, signature_scheme);
 		reverse_write(data, signature.size(), 2);

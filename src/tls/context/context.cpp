@@ -38,26 +38,29 @@ namespace leaf::network::tls {
 		switch (endpoint_type) {
 			case endpoint_type_t::client:
 				if (client_state_t::start <= client_state && client_state <= client_state_t::wait_server_hello) {
-					client_write_secret = client_early_traffic_secret.to_bytes();
+					client_write_secret = client_early_traffic_secret.to_bytestring(std::endian::big);
 				}
 				if (client_state_t::wait_encrypted_extensions <= client_state && client_state <= client_state_t::wait_cert_verify) {
-					server_write_secret = server_handshake_traffic_secret.to_bytes();
+					server_write_secret = server_handshake_traffic_secret.to_bytestring(std::endian::big);
 				}
 				if (client_state_t::wait_encrypted_extensions <= client_state && client_state <= client_state_t::wait_finish) {
-					client_write_secret = client_handshake_traffic_secret.to_bytes();
+					client_write_secret = client_handshake_traffic_secret.to_bytestring(std::endian::big);
 				}
 				if (client_state_t::connected == client_state) {
-					server_write_secret = server_application_traffic_secret.to_bytes();
-					client_write_secret = client_application_traffic_secret.to_bytes();
+					server_write_secret = server_application_traffic_secret.to_bytestring(std::endian::big);
+					client_write_secret = client_application_traffic_secret.to_bytestring(std::endian::big);
 				}
 				break;
 			case endpoint_type_t::server:
 				switch (server_state) {
 					case server_state_t::recvd_client_hello:
 					case server_state_t::negotiated:
-						server_write_secret = server_handshake_traffic_secret.to_bytes();
+						server_write_secret = server_handshake_traffic_secret.to_bytestring(std::endian::big);
 						break;
 				}
+				break;
+			default:
+				throw std::runtime_error{"unexpected"};
 		}
 		server_write_key = var_unsigned::from_bytes(active_cipher_->HKDF_expand_label(server_write_secret, "key", "", active_cipher_->key_length));
 		server_write_iv = var_unsigned::from_bytes(active_cipher_->HKDF_expand_label(server_write_secret, "iv", "", active_cipher_->iv_length));
@@ -86,7 +89,7 @@ namespace leaf::network::tls {
 			record_nonce ^= *sender_write_iv;
 			active_cipher_->set_key(*sender_write_key);
 		}
-		return active_cipher_->encrypt(record_nonce.to_bytes(), header, fragment);
+		return active_cipher_->encrypt(record_nonce.to_bytestring(std::endian::big), header, fragment);
 	}
 
 	std::string context::decrypt(const std::string_view header, const std::string_view fragment) {
@@ -109,6 +112,6 @@ namespace leaf::network::tls {
 			record_nonce ^= *sender_write_iv;
 			active_cipher_->set_key(*sender_write_key);
 		}
-		return active_cipher_->decrypt(record_nonce.to_bytes(), header, fragment);
+		return active_cipher_->decrypt(record_nonce.to_bytestring(std::endian::big), header, fragment);
 	}
 }

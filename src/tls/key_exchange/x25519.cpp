@@ -13,7 +13,7 @@ namespace leaf::network::tls {
 	}
 
 	std::string x25519_manager::public_key() {
-		return public_key_.to_little_endian_bytes();
+		return public_key_.to_bytestring(std::endian::little);
 	}
 
 	void x25519_manager::exchange_key(std::string_view remote_public_key) {
@@ -26,7 +26,7 @@ namespace leaf::network::tls {
 	}
 
 	std::string x25519_manager::shared_key() const {
-		return shared_key_.to_little_endian_bytes();
+		return shared_key_.to_bytestring(std::endian::little);
 	}
 
 	bool x25519_manager::key_ready() const {

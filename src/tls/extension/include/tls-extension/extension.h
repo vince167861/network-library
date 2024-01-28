@@ -1,7 +1,7 @@
 #pragma once
 
+#include "binary_object.h"
 #include "tls-utils/type.h"
-#include "tls-utils/binary_object.h"
 #include "tls-context/context.h"
 
 #include <list>
@@ -18,7 +18,7 @@ namespace leaf::network::tls {
 
 		raw_extension(ext_type_t, std::string);
 
-		std::string to_bytestring() const override;
+		std::string to_bytestring(std::endian = std::endian::big) const override;
 	};
 
 
@@ -31,7 +31,7 @@ namespace leaf::network::tls {
 
 		virtual operator raw_extension() const = 0;
 
-		std::string to_bytestring() const final;
+		std::string to_bytestring(std::endian = std::endian::big) const final;
 	};
 
 
