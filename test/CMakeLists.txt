@@ -31,4 +31,8 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 	add_executable(test-http2 http2.cpp)
 	target_link_libraries(test-http2 http2)
 	gtest_discover_tests(test-http2)
+
+	add_executable(test-tcp tcp.cpp)
+	target_link_libraries(test-tcp tcp)
+	gtest_discover_tests(test-tcp)
 endif ()

@@ -15,10 +15,11 @@ namespace leaf {
 			std::string str;
 			while (true) {
 				auto ch = read(1);
-				if (!ch.empty())
+				if (!ch.empty()) {
 					str += ch;
-				if (terminator.contains(ch[0]))
-					break;
+					if (terminator.contains(ch[0]))
+						break;
+				}
 			}
 			return str;
 		}
