@@ -7,11 +7,8 @@ namespace leaf::network::tls {
 	std::optional<handshake> parse_handshake(context& context, std::string_view& source, const bool encrypted) {
 		auto ptr = source.begin();
 
-		handshake_type_t type;
-		std::uint32_t length = 0;
-
-		reverse_read(ptr, type);
-		reverse_read<3>(ptr, length);
+		const auto type = read<handshake_type_t>(std::endian::big, ptr);
+		const auto length = read<std::uint32_t>(std::endian::big, ptr, 3);
 
 		if (length > source.size() - sizeof(handshake_type_t) - 3)
 			return {};
@@ -49,11 +46,8 @@ namespace leaf::network::tls {
 
 	certificate_request::certificate_request(std::string_view source) {
 		auto ptr = source.begin();
-		uint8_t c_size;
-		reverse_read(ptr, c_size);
-		certificate_request_context = {ptr, ptr + c_size};
-		uint16_t ext_size;
-		reverse_read(ptr, ext_size);
+		certificate_request_context = read_bytestring(ptr, read<std::uint8_t>(std::endian::big, ptr));
+		const auto ext_size = read<std::uint16_t>(std::endian::big, ptr);
 		if (const auto available = std::distance(ptr, source.end()); available < ext_size)
 			throw alert::decode_error_early_end_of_data("certificate_list.size", available, ext_size);
 		std::string_view ext_fragments{ptr, std::next(ptr, ext_size)};
@@ -64,17 +58,20 @@ namespace leaf::network::tls {
 		}
 	}
 
-		std::string data, exts;
-		reverse_write(data, certificate_request_context.size(), 1);
-		data += certificate_request_context;
 	std::string certificate_request::to_bytestring(std::endian) const {
+		std::string exts;
 		for (auto& ext: extensions)
 			exts += ext.to_bytestring();
-		reverse_write(data, exts.size(), 2);
+
+		std::string data;
+		write(std::endian::big, data, certificate_request_context.size(), 1);
+		data += certificate_request_context;
+		write(std::endian::big, data, exts.size(), 2);
 		data += exts;
+
 		std::string str;
-		reverse_write(str, handshake_type_t::certificate_request);
-		reverse_write(str, data.size(), 3);
+		write(std::endian::big, str, handshake_type_t::certificate_request);
+		write(std::endian::big, str, data.size(), 3);
 		return str + data;
 	}
 
@@ -84,9 +81,9 @@ namespace leaf::network::tls {
 
 	std::string message_hash(const cipher_suite& cipher, const std::string_view data) {
 		std::string msg;
-		reverse_write(msg, handshake_type_t::message_hash);
+		write(std::endian::big, msg, handshake_type_t::message_hash);
 		msg.append({0, 0});
-		reverse_write(msg, cipher.digest_length, 1);
+		write(std::endian::big, msg, cipher.digest_length, 1);
 		msg += cipher.hash(data);
 		return msg;
 	}

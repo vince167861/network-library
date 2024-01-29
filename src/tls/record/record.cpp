@@ -1,6 +1,5 @@
 #include "tls-record/record.h"
 
-#include "tls-handshake/handshake.h"
 #include "tls-context/context.h"
 #include "tls-record/alert.h"
 
@@ -19,15 +18,15 @@ namespace leaf::network::tls {
 		for (auto it = messages.begin(), end = messages.end(); it != end; ) {
 			const std::uint16_t length = std::min<std::ptrdiff_t>(std::distance(it, end), 1 << 14);
 			std::string record;
-			reverse_write(record, encrypted ? content_type_t::application_data : type);
-			reverse_write(record, legacy_record_version);
+			write(std::endian::big, record, encrypted ? content_type_t::application_data : type);
+			write(std::endian::big, record, legacy_record_version);
 			std::string plain_text{it, std::next(it, length)};
 			if (encrypted) {
-				reverse_write(plain_text, type);
-				reverse_write(record, plain_text.size() + 16, 2);
+				write(std::endian::big, plain_text, type);
+				write(std::endian::big, record, plain_text.size() + 16, 2);
 				record += context_.encrypt(record, plain_text);
 			} else {
-				reverse_write(record, length, 2);
+				write(std::endian::big, record, length, 2);
 				record.append(it, std::next(it, length));
 			}
 			str += record;
@@ -40,12 +39,9 @@ namespace leaf::network::tls {
 		const auto header = context.client_.read(
 			sizeof(content_type_t) + sizeof(protocol_version_t) + sizeof(std::uint16_t));
 		auto ptr = header.begin();
-		content_type_t type;
-		protocol_version_t version;
-		std::uint16_t length;
-		reverse_read(ptr, type);
-		reverse_read(ptr, version);
-		reverse_read(ptr, length);
+		auto type = read<content_type_t>(std::endian::big, ptr);
+		const auto version = read<protocol_version_t>(std::endian::big, ptr);
+		const auto length = read<std::uint16_t>(std::endian::big, ptr);
 		bool encrypted = false;
 
 		auto fragment = context.client_.read(length);

@@ -30,9 +30,9 @@ namespace leaf::network::http2 {
 		/**
 		 * \brief Send connection frames.
 		 *
-		 * \details Blocking `write` to write_to_ critical frames of HTTP/2 connections.
+		 * \details Blocking `write_` to write_to_ critical frames of HTTP/2 connections.
 		 */
-		void write(const frame&) const;
+		void write_(const frame& frame) const;
 
 	public:
 		explicit client(network::client&);

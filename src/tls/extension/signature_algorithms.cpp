@@ -23,9 +23,9 @@ namespace leaf::network::tls {
 		if (list.empty())
 			throw std::runtime_error{"SignatureAlgorithms requires at least one signature scheme."};
 		std::string data;
-		reverse_write(data, list.size() * sizeof(signature_scheme_t), 2);
+		write(std::endian::big, data, list.size() * sizeof(signature_scheme_t), 2);
 		for (auto& s: list)
-			reverse_write(data, s);
+			write(std::endian::big, data, s);
 		return {ext_type_t::signature_algorithms, std::move(data)};
 	}
 }

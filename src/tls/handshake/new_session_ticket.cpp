@@ -5,18 +5,11 @@ namespace leaf::network::tls {
 
 	new_session_ticket::new_session_ticket(std::string_view source) {
 		auto ptr = source.begin();
-		reverse_read(ptr, ticket_lifetime);
-		reverse_read(ptr, ticket_age_add);
-		uint8_t n_size;
-		reverse_read(ptr, n_size);
-		ticket_nonce = {ptr, ptr + n_size};
-		ptr += n_size;
-		uint16_t t_size;
-		reverse_read(ptr, t_size);
-		ticket = {ptr, ptr + t_size};
-		ptr += t_size;
-		uint16_t ext_size;
-		reverse_read(ptr, ext_size);
+		read(std::endian::big, ticket_lifetime, ptr);
+		read(std::endian::big, ticket_age_add, ptr);
+		ticket_nonce = read_bytestring(ptr, read<std::uint8_t>(std::endian::big, ptr));
+		ticket = read_bytestring(ptr, read<std::uint16_t>(std::endian::big, ptr));
+		const auto ext_size = read<extension_size_t>(std::endian::big, ptr);
 		for (std::string_view ext_data{ptr, std::next(ptr, ext_size)}; !ext_data.empty(); ) {
 			auto ext = parse_extension(ext_data);
 			if (!ext) break;
@@ -34,21 +27,24 @@ namespace leaf::network::tls {
 			it = std::format_to(it, "\n{}", ext);
 	}
 
-		std::string data, exts;
-		reverse_write(data, ticket_lifetime);
-		reverse_write(data, ticket_age_add);
-		reverse_write(data, ticket_nonce.size(), 1);
 	std::string new_session_ticket::to_bytestring(std::endian) const {
-		data += ticket_nonce;
-		reverse_write(data, ticket.size(), 2);
-		data += ticket;
+		std::string exts;
 		for (auto& ext: extensions)
 			exts += ext.to_bytestring();
-		reverse_write(data, exts.size(), 2);
+
+		std::string data;
+		write(std::endian::big, data, ticket_lifetime);
+		write(std::endian::big, data, ticket_age_add);
+		write(std::endian::big, data, ticket_nonce.size(), 1);
+		data += ticket_nonce;
+		write(std::endian::big, data, ticket.size(), 2);
+		data += ticket;
+		write(std::endian::big, data, exts.size(), 2);
 		data += exts;
+
 		std::string str;
-		reverse_write(str, handshake_type_t::new_session_ticket);
-		reverse_write(str, data.size(), 3);
+		write(std::endian::big, str, handshake_type_t::new_session_ticket);
+		write(std::endian::big, str, data.size(), 3);
 		return str + data;
 	}
 }

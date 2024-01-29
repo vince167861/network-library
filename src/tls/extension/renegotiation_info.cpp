@@ -15,7 +15,7 @@ namespace leaf::network::tls {
 
 	renegotiation_info::operator raw_extension() const {
 		std::string data;
-		reverse_write(data, renegotiated_connection.size(), 1);
+		write(std::endian::big, data, renegotiated_connection.size(), 1);
 		return {ext_type_t::renegotiation_info, std::move(data) + renegotiated_connection};
 	}
 }

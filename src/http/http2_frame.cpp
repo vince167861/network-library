@@ -11,15 +11,10 @@ namespace leaf::network::http2 {
 			auto header = source.read(9);
 			auto h_ptr = header.begin();
 
-			uint32_t content_length;
-			frame_type_t frame_type;
-			uint8_t flags;
-			stream_id_t stream_id;
-
-			reverse_read<3>(h_ptr, content_length);
-			reverse_read(h_ptr, frame_type);
-			reverse_read(h_ptr, flags);
-			reverse_read(h_ptr, stream_id);
+			const auto content_length = read<std::uint32_t>(std::endian::big, h_ptr, 3);
+			const auto frame_type = read<frame_type_t>(std::endian::big, h_ptr);
+			const auto flags = read<std::uint8_t>(std::endian::big, h_ptr);
+			const auto stream_id = read<stream_id_t>(std::endian::big, h_ptr);
 
 			const auto content = source.read(content_length);
 			switch (frame_type) {
@@ -35,8 +30,8 @@ namespace leaf::network::http2 {
 						throw std::runtime_error{"SETTINGS frame with ACK flag must contains no settings."};
 					while (ptr != content.end()) {
 						auto& [s, v] = s_f.values.emplace_back();
-						reverse_read(ptr, s);
-						reverse_read(ptr, v);
+						read(std::endian::big, s, ptr);
+						read(std::endian::big, v, ptr);
 					}
 					return s_f;
 				}
@@ -49,11 +44,8 @@ namespace leaf::network::http2 {
 					const bool padded = flags & 1 << 3;
 					d_f.end_stream = flags & 1;
 					auto ptr = content.begin(), end = content.end();
-					if (padded) {
-						uint8_t pl;
-						reverse_read(ptr, pl);
-						end -= pl;
-					}
+					if (padded)
+						std::advance(end, - read<std::uint8_t>(std::endian::big, ptr));
 					d_f.data = {ptr, end};
 					return d_f;
 				}
@@ -64,7 +56,7 @@ namespace leaf::network::http2 {
 						throw std::runtime_error("RST_STREAM frame size must always be 4.");
 					window_update_frame wu_f{stream_id};
 					auto ptr = content.begin();
-					reverse_read(ptr, wu_f.window_size_increment);
+					read(std::endian::big, wu_f.window_size_increment, ptr);
 					return wu_f;
 				}
 				case frame_type_t::rst_stream: {
@@ -74,7 +66,7 @@ namespace leaf::network::http2 {
 					if (!stream_id)
 						throw std::runtime_error("RST_STREAM frame must associate with a stream.");
 					rst_stream r_f{stream_id};
-					reverse_read(ptr, r_f.error_code);
+					read(std::endian::big, r_f.error_code, ptr);
 					return r_f;
 				}
 				case frame_type_t::headers: {
@@ -86,16 +78,11 @@ namespace leaf::network::http2 {
 					const bool has_priority = flags & 1 << 5, has_padding = flags & 1 << 3, last_frame = flags & 1 << 2;
 					frame.end_stream = flags & 1;
 					auto ptr = content.begin(), end = content.end();
-					if (has_padding) {
-						std::uint8_t pad_length;
-						reverse_read(ptr, pad_length);
-						end -= pad_length;
-					}
+					if (has_padding)
+						std::advance(end, -read<std::uint8_t>(std::endian::big, ptr));
 					if (has_priority) {
-						std::uint32_t dependency;
-						std::uint8_t weight;
-						reverse_read(ptr, dependency);
-						reverse_read(ptr, weight);
+						const auto dependency = read<std::uint32_t>(std::endian::big, ptr);
+						const auto weight = read<std::uint8_t>(std::endian::big, ptr);
 					}
 					frame.add_fragment({ptr, end}, last_frame);
 					if (last_frame)
@@ -110,12 +97,9 @@ namespace leaf::network::http2 {
 						throw std::runtime_error("PUSH_PROMISE frame must associate with a stream.");
 					push_promise_frame push_promise_f{stream_id};
 					auto ptr = content.begin(), end = content.end();
-					if (flags & 1 << 3) {
-						uint8_t padding_length;
-						reverse_read(ptr, padding_length);
-						end -= padding_length;
-					}
-					reverse_read(ptr, push_promise_f.promised_stream_id);
+					if (flags & 1 << 3)
+						std::advance(end, -read<std::uint8_t>(std::endian::big, ptr));
+					read(std::endian::big, push_promise_f.promised_stream_id, ptr);
 					push_promise_f.add_fragment({ptr, end}, flags & 1 << 2);
 					return push_promise_f;
 				}
@@ -140,8 +124,8 @@ namespace leaf::network::http2 {
 						throw std::runtime_error("GOAWAY frame must not be associated with a stream.");
 					go_away g_frame;
 					auto ptr = content.begin();
-					reverse_read(ptr, g_frame.last_stream_id);
-					reverse_read(ptr, g_frame.error_code);
+					read(std::endian::big, g_frame.last_stream_id, ptr);
+					read(std::endian::big, g_frame.error_code, ptr);
 					g_frame.additional_data = {ptr, content.end()};
 					return g_frame;
 				}

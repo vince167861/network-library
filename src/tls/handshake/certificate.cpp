@@ -7,23 +7,15 @@ namespace leaf::network::tls {
 
 	certificate::certificate(std::string_view source) {
 		auto ptr = source.begin();
-		uint8_t c_size;
-		reverse_read(ptr, c_size);
-		certificate_request_context = {ptr, ptr + c_size};
-		ptr += c_size;
-		uint32_t cl_size = 0;
-		reverse_read<3>(ptr, cl_size);
+		certificate_request_context = read_bytestring(ptr, read<std::uint8_t>(std::endian::big, ptr));
+		const auto cl_size = read<std::uint32_t>(std::endian::big, ptr, 3);
 		auto available = std::distance(ptr, source.end());
 		if (available < cl_size)
 			throw alert::decode_error_early_end_of_data("certificate_list.size", available, cl_size);
 		while (ptr != source.end()) {
 			certificate_entry entry;
-			uint32_t d_size = 0;
-			reverse_read<3>(ptr, d_size);
-			entry.data = {ptr, ptr + d_size};
-			ptr += d_size;
-			uint16_t ext_size;
-			reverse_read(ptr, ext_size);
+			entry.data = read_bytestring(ptr, read<std::uint32_t>(std::endian::big, ptr, 3));
+			const auto ext_size = read<std::uint16_t>(std::endian::big, ptr);
 			std::string_view ext_data{ptr, ptr + ext_size};
 			while (!ext_data.empty()) {
 				auto ext = parse_extension(ext_data);
@@ -34,25 +26,27 @@ namespace leaf::network::tls {
 		}
 	}
 
-	std::string certificate::to_bytestring() const {
+	std::string certificate::to_bytestring(std::endian) const {
 		std::string data;
-		reverse_write(data, certificate_request_context.size(), 1);
+		write(std::endian::big, data, certificate_request_context.size(), 1);
 		data += certificate_request_context;
 		std::string cert_list;
 		for (const auto& [data, extensions]: certificate_list) {
-			reverse_write(cert_list, data.size(), 3);
-			cert_list += data;
 			std::string ext;
 			for (auto& e: extensions)
 				ext += e.to_bytestring();
-			reverse_write(cert_list, ext.size(), 2);
+
+			write(std::endian::big, cert_list, data.size(), 3);
+			cert_list += data;
+			write(std::endian::big, cert_list, ext.size(), 2);
 			cert_list += ext;
 		}
-		reverse_write(data, cert_list.size(), 3);
+		write(std::endian::big, data, cert_list.size(), 3);
 		data += cert_list;
+
 		std::string str;
-		reverse_write(str, handshake_type_t::certificate);
-		reverse_write(str, data.size(), 3);
+		write(std::endian::big, str, handshake_type_t::certificate);
+		write(std::endian::big, str, data.size(), 3);
 		return str + data;
 	}
 

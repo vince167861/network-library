@@ -12,10 +12,10 @@ namespace leaf::network::tls {
 			it = std::format_to(it, "\n\tDebug: {}", debug_string);
 	}
 
-	std::string alert::to_bytestring() const {
+	std::string alert::to_bytestring(std::endian endian) const {
 		std::string str;
-		reverse_write(str, level);
-		reverse_write(str, description);
+		write(endian, str, level);
+		write(endian, str, description);
 		return str;
 	}
 
@@ -29,8 +29,8 @@ namespace leaf::network::tls {
 
 	alert::alert(const std::string_view source) {
 		auto ptr = source.begin();
-		reverse_read(ptr, level);
-		reverse_read(ptr, description);
+		read(std::endian::big, level, ptr);
+		read(std::endian::big, description, ptr);
 	}
 
 	alert alert::bad_record_mac() {
@@ -55,9 +55,9 @@ namespace leaf::network::tls {
 
 	alert alert::decode_error_early_end_of_data(
 			std::string_view field_name, std::size_t actual_size, std::size_t expected_size) {
-		std::stringstream msg;
-		msg << field_name << " expect " << expected_size << ", but only " << actual_size << " left (early end of message)";
-		return decode_error(msg.str());
+		return decode_error(
+				std::format("{} expect {}, but only {} left (early end of message)",
+							field_name, expected_size, actual_size));
 	}
 
 	alert alert::illegal_parameter() {

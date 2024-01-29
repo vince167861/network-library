@@ -28,18 +28,11 @@ namespace leaf::network::tls {
 			break;
 		}
 		auto ptr = source.begin();
-		//	named_group_list
-		//		.size
-		uint16_t ngl_size;
-		reverse_read(ptr, ngl_size);
+		const auto ngl_size = read<std::uint16_t>(std::endian::big, ptr);
 		if (std::distance(ptr, source.end()) < ngl_size)
 			throw alert::decode_error_early_end_of_data("named_group_list.size", std::distance(ptr, source.end()), ngl_size);
-		//		.payload
-		while (ptr != source.end()) {
-			named_group_t ng;
-			reverse_read(ptr, ng);
-			named_group_list.push_back(ng);
-		}
+		while (ptr != source.end())
+			named_group_list.push_back(read<named_group_t>(std::endian::big, ptr));
 	}
 
 	void supported_groups::format(std::format_context::iterator& it, std::size_t level) const {
@@ -56,9 +49,9 @@ namespace leaf::network::tls {
 
 	supported_groups::operator raw_extension() const {
 		std::string data;
-		reverse_write(data, named_group_list.size() * sizeof(named_group_t), 2);
+		write(std::endian::big, data, named_group_list.size() * sizeof(named_group_t), 2);
 		for (auto g: named_group_list)
-			reverse_write(data, g);
+			write(std::endian::big, data, g);
 		return {ext_type_t::supported_groups, std::move(data)};
 	}
 }

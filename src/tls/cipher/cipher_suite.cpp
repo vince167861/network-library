@@ -26,16 +26,15 @@ namespace leaf::network::tls {
 		return HKDF_expand(key, HKDF_info(label, context, length), length);
 	}
 
-	std::string cipher_suite::HKDF_info(std::string_view label, std::string_view context, uint16_t length) {
+	std::string cipher_suite::HKDF_info(std::string_view label, std::string_view context, std::uint16_t length) {
 		std::string info;
-		uint8_t label_length = 6 + label.size();
-		uint8_t context_length = context.size();
+		std::uint8_t label_length = 6 + label.size(), context_length = context.size();
 		info.reserve(sizeof length + sizeof label_length + label_length + sizeof context_length + context_length);
-		reverse_write(info, length);
-		reverse_write(info, label_length);
+		write(std::endian::big, info, length);
+		write(std::endian::big, info, label_length);
 		info += "tls13 ";
 		info += label;
-		reverse_write(info, context_length);
+		write(std::endian::big, info, context_length);
 		info += context;
 		return info;
 	}

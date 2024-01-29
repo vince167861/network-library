@@ -20,15 +20,15 @@ namespace leaf::network::http2 {
 			for (bool first_frame = true; !fragments.empty(); first_frame = false) {
 				auto fragment = fragments.substr(0, window_bytes_);
 				fragments.remove_prefix(fragment.size());
-				reverse_write(s, fragment.size(), 3);
-				reverse_write(s, first_frame ? frame_type_t::headers : frame_type_t::continuation);
-				reverse_write(s, (fragments.empty() ? 1 << 2 : 0) |
+				write(std::endian::big, s, fragment.size(), 3);
+				write(std::endian::big, s, first_frame ? frame_type_t::headers : frame_type_t::continuation);
+				write(std::endian::big, s, (fragments.empty() ? 1 << 2 : 0) |
 					(first_frame ? (casted.priority ? 1 << 5 : 0) | (casted.padding ? 1 << 3 : 0) | casted.end_stream : 0), 1);
-				reverse_write(s, stream_id_);
+				write(std::endian::big, s, stream_id_);
 				if (casted.priority) {
 					const auto& [exclusive, dependency, weight] = casted.priority.value();
-					reverse_write(s, exclusive << 31 | dependency, 4);
-					reverse_write(s, weight);
+					write(std::endian::big, s, exclusive << 31 | dependency, 4);
+					write(std::endian::big, s, weight);
 				}
 				s.write(fragment);
 			}
@@ -41,10 +41,10 @@ namespace leaf::network::http2 {
 				if (const auto available = get_available_window()) {
 					auto fragment = fragments.substr(available);
 					fragments.remove_prefix(fragment.size());
-					reverse_write(s, fragment.length(), 3);
-					reverse_write(s, frame_type_t::data);
-					reverse_write(s, casted.end_stream && fragments.empty() ? 1 : 0, 1);
-					reverse_write(s, stream_id_);
+					write(std::endian::big, s, fragment.length(), 3);
+					write(std::endian::big, s, frame_type_t::data);
+					write(std::endian::big, s, casted.end_stream && fragments.empty() ? 1 : 0, 1);
+					write(std::endian::big, s, stream_id_);
 					s.write(fragments);
 				}
 				else
@@ -54,21 +54,21 @@ namespace leaf::network::http2 {
 		}
 		if (std::holds_alternative<rst_stream>(frame)) {
 			auto& casted = std::get<rst_stream>(frame);
-			reverse_write(s, 4, 3);
-			reverse_write(s, frame_type_t::rst_stream);
-			reverse_write(s, 0, 1);
-			reverse_write(s, stream_id_);
-			reverse_write(s, casted.error_code);
+			write(std::endian::big, s, 4, 3);
+			write(std::endian::big, s, frame_type_t::rst_stream);
+			write(std::endian::big, s, 0, 1);
+			write(std::endian::big, s, stream_id_);
+			write(std::endian::big, s, casted.error_code);
 			co_return;
 		}
 		if (std::holds_alternative<priority_frame>(frame)) {
 			auto& casted = std::get<priority_frame>(frame);
-			reverse_write(s, 5, 3);
-			reverse_write(s, frame_type_t::priority);
-			reverse_write(s, 0, 1);
-			reverse_write(s, stream_id_);
-			reverse_write(s, casted.stream_dependence | (casted.exclusive ? 1 << 31 : 0), 4);
-			reverse_write(s, casted.weight);
+			write(std::endian::big, s, 5, 3);
+			write(std::endian::big, s, frame_type_t::priority);
+			write(std::endian::big, s, 0, 1);
+			write(std::endian::big, s, stream_id_);
+			write(std::endian::big, s, casted.stream_dependence | (casted.exclusive ? 1 << 31 : 0), 4);
+			write(std::endian::big, s, casted.weight);
 			co_return;
 		}
 		if (std::holds_alternative<push_promise_frame>(frame)) {
@@ -77,11 +77,11 @@ namespace leaf::network::http2 {
 			for (bool first_frame = true; !fragments.empty(); first_frame = false) {
 				auto fragment = fragments.substr(0, window_bytes_);
 				fragments.remove_prefix(fragment.size());
-				reverse_write(s, fragment.size(), 3);
-				reverse_write(s, first_frame ? frame_type_t::push_promise : frame_type_t::continuation);
-				reverse_write(s, fragments.empty() ? 1 << 2 : 0, 1);
-				reverse_write(s, stream_id_);
-				reverse_write(s, casted.promised_stream_id);
+				write(std::endian::big, s, fragment.size(), 3);
+				write(std::endian::big, s, first_frame ? frame_type_t::push_promise : frame_type_t::continuation);
+				write(std::endian::big, s, fragments.empty() ? 1 << 2 : 0, 1);
+				write(std::endian::big, s, stream_id_);
+				write(std::endian::big, s, casted.promised_stream_id);
 				s.write(fragment);
 			}
 			co_return;

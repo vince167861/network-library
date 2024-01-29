@@ -5,29 +5,19 @@
 namespace leaf::network::tls {
 
 	supported_versions::supported_versions(std::string_view source, context& context) {
-		protocol_version_t ver;
 		auto ptr = source.begin();
 		switch (context.endpoint_type) {
 			case context::endpoint_type_t::client: {
 				message_type = msg_type_t::server_hello;
-				//	selected_version
-				reverse_read(ptr, ver);
-				versions.push_back(ver);
-				break;
+				versions.push_back(read<protocol_version_t>(std::endian::big, ptr));
+				return;
 			}
 			case context::endpoint_type_t::server: {
 				message_type = msg_type_t::client_hello;
-				//	versions
-				//		.size
-				uint8_t versions_size;
-				reverse_read(ptr, versions_size);
-				//		.data
-				while (versions_size) {
-					reverse_read(ptr, ver);
-					versions.push_back(ver);
-					versions_size -= sizeof ver;
-				}
-				break;
+				read<std::uint8_t>(std::endian::big, ptr); // size of versions
+				while (ptr != source.end())
+					versions.push_back(read<protocol_version_t>(std::endian::big, ptr));
+				return;
 			}
 		}
 	}
@@ -66,12 +56,12 @@ namespace leaf::network::tls {
 				data.reserve(ver_size + 1);
 				data.push_back(static_cast<char>(ver_size));
 				for (auto& ver: versions)
-					reverse_write(data, ver);
+					write(std::endian::big, data, ver);
 				break;
 			}
 			case msg_type_t::server_hello:
-				reverse_write(data, versions.front());
-			break;
+				write(std::endian::big, data, versions.front());
+				break;
 		}
 		return {ext_type_t::supported_versions, std::move(data)};
 	}

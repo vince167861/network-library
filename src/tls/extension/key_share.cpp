@@ -19,55 +19,34 @@ namespace leaf::network::tls {
 	}
 
 	key_share::key_share(std::string_view source, bool is_hello_retry_request, context& context) {
-		auto ptr = source.begin();
-		switch (context.endpoint_type) {
+		switch (auto ptr = source.begin(); context.endpoint_type) {
 			case context::endpoint_type_t::server: {
 				message_type = msg_type_t::client_hello;
-				//	client_shares
-				uint16_t cs_size;
-				reverse_read(ptr, cs_size);
+				const auto cs_size = read<std::uint16_t>(std::endian::big, ptr);
 				if (std::distance(ptr, source.end()) < cs_size)
 					throw alert::decode_error_early_end_of_data("client_shares.size", std::distance(ptr, source.end()), cs_size);
-				//		.payload
-				while (cs_size) {
-					named_group_t ng;
-					//	key_share_entry
-					//		.group
-					reverse_read(ptr, ng);
-					//		.public_key
-					uint16_t ke_size;
-					//			.size
-					reverse_read(ptr, ke_size);
-					//			.payload
-					shares.emplace_back(ng, std::string{ptr, ptr + ke_size});
-					ptr += ke_size;
-					cs_size -= ke_size;
+				while (ptr != source.end()) {
+					const auto ng = read<named_group_t>(std::endian::big, ptr);
+					shares.emplace_back(ng, read_bytestring(ptr, read<std::uint16_t>(std::endian::big, ptr)));
 				}
-				break;
+				return;
 			}
 			case context::endpoint_type_t::client: {
 				if (is_hello_retry_request) {
 					message_type = msg_type_t::hello_retry_request;
-					named_group_t selected;
-					reverse_read(ptr, selected);
-					shares.emplace_back(selected, "");
+					shares.emplace_back(read<named_group_t>(std::endian::big, ptr), "");
 				} else {
 					message_type = msg_type_t::server_hello;
-					named_group_t ng;
-					//	server_share
-					//		.group
-					reverse_read(ptr, ng);
-					//		.public_key
-					uint16_t ke_size;
-					//			.size
-					reverse_read(ptr, ke_size);
+					const auto ng = read<named_group_t>(std::endian::big, ptr);
+					const auto ke_size = read<std::uint16_t>(std::endian::big, ptr);
 					if (std::distance(ptr, source.end()) < ke_size)
 						throw alert::decode_error_early_end_of_data("server_share.public_key.size", std::distance(ptr, source.end()), ke_size);
-					//			.payload
-					shares.emplace_back(ng, std::string{ptr, ptr + ke_size});
+					shares.emplace_back(ng, std::string{ptr, std::next(ptr, ke_size)});
 				}
-				break;
+				return;
 			}
+			default:
+				throw std::runtime_error{"unimplemented"};
 		}
 	}
 
@@ -91,20 +70,20 @@ namespace leaf::network::tls {
 			case msg_type_t::client_hello: {
 				std::string client_shares;
 				for (auto& [group, key]: shares) {
-					reverse_write(client_shares, group);
-					reverse_write(client_shares, key.size(), 2);
+					write(std::endian::big, client_shares, group);
+					write(std::endian::big, client_shares, key.size(), 2);
 					client_shares += key;
 				}
-				reverse_write(data, client_shares.size(), 2);
+				write(std::endian::big, data, client_shares.size(), 2);
 				data += client_shares;
 				break;
 			}
 			case msg_type_t::hello_retry_request:
-				reverse_write(data, shares.front().first);
+				write(std::endian::big, data, shares.front().first);
 				break;
 			case msg_type_t::server_hello:
-				reverse_write(data, shares.front().first);
-				reverse_write(data, shares.front().second.size(), 2);
+				write(std::endian::big, data, shares.front().first);
+				write(std::endian::big, data, shares.front().second.size(), 2);
 				data += shares.front().second;
 				break;
 		}

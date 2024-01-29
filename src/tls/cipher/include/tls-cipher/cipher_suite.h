@@ -4,6 +4,7 @@
 #include "tls-utils/type.h"
 
 #include <string>
+#include <ostream>
 
 namespace leaf::network::tls {
 
@@ -62,7 +63,7 @@ namespace leaf::network::tls {
 		HKDF_expand_label(std::string_view key, std::string_view label, std::string_view context, uint16_t length) const;
 
 		static std::string
-		HKDF_info(std::string_view label, std::string_view context, uint16_t length);
+		HKDF_info(std::string_view label, std::string_view context, std::uint16_t length);
 
 		/**
 		 * Key schedule function.

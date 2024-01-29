@@ -6,8 +6,7 @@ namespace leaf::network::tls {
 
 	encrypted_extension::encrypted_extension(std::string_view source) {
 		auto ptr = source.begin();
-		uint16_t size;
-		reverse_read(ptr, size);
+		const auto size = read<std::uint16_t>(std::endian::big, ptr);
 		if (const auto available = std::distance(ptr, source.end()); size > available)
 			throw alert::decode_error_early_end_of_data("extensions.size", available, size);
 		for (std::string_view ext_fragments{ptr, std::next(ptr, size)}; !ext_fragments.empty(); ) {
@@ -21,11 +20,12 @@ namespace leaf::network::tls {
 		std::string data, exts;
 		for (auto& ext: extensions)
 			exts += ext.to_bytestring();
-		reverse_write(data, exts.size(), 2);
+		write(std::endian::big, data, exts.size(), 2);
 		data += exts;
+
 		std::string str;
-		reverse_write(str, handshake_type_t::encrypted_extensions);
-		reverse_write(str, data.size(), 3);
+		write(std::endian::big, str, handshake_type_t::encrypted_extensions);
+		write(std::endian::big, str, data.size(), 3);
 		return str + data;
 	}
 

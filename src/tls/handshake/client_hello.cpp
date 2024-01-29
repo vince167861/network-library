@@ -4,36 +4,25 @@
 
 namespace leaf::network::tls {
 
-	client_hello::client_hello(const context& context) {
+	client_hello::client_hello(const context& context)
+		: legacy_compression_methods{"\0"} {
 		for (auto& cs: context.cipher_suites)
 			cipher_suites.push_back(cs->value);
 	}
 
 	client_hello::client_hello(std::string_view source) {
 		auto ptr = source.begin();
-		reverse_read(ptr, legacy_version);
-		reverse_read(ptr, random);
-		//	legacy_session_id
-		uint8_t echo_size;
-		reverse_read(ptr, echo_size);
-		legacy_session_id = {ptr, ptr + echo_size};
-		ptr += echo_size;
-		//	cipher_suites
-		uint16_t c_size;
-		reverse_read(ptr, c_size);
-		for (uint16_t i = 0; i < c_size / 2; ++i) {
-			cipher_suite_t cs;
-			reverse_read(ptr, cs);
-			cipher_suites.push_back(cs);
-		}
-		//	legacy_compression_methods
-		uint8_t lcm_size;
-		reverse_read(ptr, lcm_size);
-		legacy_compression_methods = {ptr, ptr += lcm_size};
-		ptr += lcm_size;
-		//	extensions
-		extension_size_t ext_size;
-		reverse_read(ptr, ext_size);
+		read(std::endian::big, legacy_version, ptr);
+		read(std::endian::little, random, ptr);
+		legacy_session_id
+			= read_bytestring(ptr, read<std::uint8_t>(std::endian::big, ptr));
+		const auto c_size = read<std::uint16_t>(std::endian::big, ptr);
+		for (std::uint16_t i = 0; i < c_size / 2; ++i)
+			cipher_suites.push_back(read<cipher_suite_t>(std::endian::big, ptr));
+		legacy_compression_methods
+			= read_bytestring(ptr, read<std::uint8_t>(std::endian::big, ptr));
+
+		const auto ext_size = read<extension_size_t>(std::endian::big, ptr);
 		if (const auto available = std::distance(ptr, source.end()); available != ext_size)
 			throw alert::decode_error_early_end_of_data("ClientHello.extensions", available, ext_size);
 		std::string_view ext_fragments{ptr, std::next(ptr, ext_size)};
@@ -48,22 +37,25 @@ namespace leaf::network::tls {
 		if (cipher_suites.empty())
 			throw std::runtime_error{"at least one cipher suite is required to generate valid ClientHello."};
 		std::string data;
-		reverse_write(data, legacy_version);
-		forward_write(data, random);
-		data.push_back(static_cast<char>(legacy_session_id.size()));
+		write(std::endian::big, data, legacy_version);
+		write(std::endian::little, data, random);
+		write(std::endian::big, data, legacy_session_id.size(), 1);
 		data += legacy_session_id;
-		reverse_write(data, cipher_suites.size() * sizeof(cipher_suite_t), 2);
+		write(std::endian::big, data, cipher_suites.size() * sizeof(cipher_suite_t), 2);
 		for (auto& suite: cipher_suites)
-			reverse_write(data, suite);
-		data.append({1, 0}); // legacy_compression_method
+			write(std::endian::big, data, suite);
+		write(std::endian::big, data, legacy_compression_methods.size(), 1);
+		data += legacy_compression_methods;
+
 		std::string ext_data;
 		for (auto& ext: extensions)
 			ext_data += ext.to_bytestring();
-		reverse_write(data, ext_data.length(), 2);
+		write(std::endian::big, data, ext_data.length(), 2);
 		data += ext_data;
+
 		std::string str;
-		reverse_write(str, handshake_type_t::client_hello);
-		reverse_write(str, data.size(), 3);
+		write(std::endian::big, str, handshake_type_t::client_hello);
+		write(std::endian::big, str, data.size(), 3);
 		return str + data;
 	}
 

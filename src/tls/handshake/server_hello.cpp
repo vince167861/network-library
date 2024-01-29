@@ -11,25 +11,14 @@ namespace leaf::network::tls {
 
 	server_hello::server_hello(std::string_view source) {
 		auto ptr = source.begin();
-		//	legacy_version
-		reverse_read(ptr, legacy_version);
-		//	random
-		forward_read(ptr, random);
-		is_hello_retry_request = std::equal(random, random + 32, retry_magic);
-		//	legacy_session_id_echo
-		uint8_t e_size;
-		reverse_read(ptr, e_size);
-		legacy_session_id_echo = {ptr, ptr + e_size};
-		ptr += e_size;
-		//	cipher_suite
-		reverse_read(ptr, cipher_suite);
-		//	legacy_compression_method == 0
-		reverse_read(ptr, legacy_compression_method);
-		if (legacy_compression_method)
-			throw std::exception{};
-		extension_size_t size;
-		//	extensions
-		reverse_read(ptr, size);
+		read(std::endian::big, legacy_version, ptr);
+		read(std::endian::little, random, ptr);
+		is_hello_retry_request = std::ranges::equal(random, retry_magic);
+		legacy_session_id_echo = read_bytestring(ptr, read<std::uint8_t>(std::endian::big, ptr));
+		read(std::endian::big, cipher_suite, ptr);
+		read(std::endian::big, legacy_compression_method, ptr);
+
+		const auto size = read<extension_size_t>(std::endian::big, ptr);
 		if (const auto available = std::distance(ptr, source.end()); available != size)
 			throw alert::decode_error_early_end_of_data("ServerHello.extension", available, size);
 		std::string_view ext_fragments{ptr, std::next(ptr, size)};
@@ -46,21 +35,19 @@ namespace leaf::network::tls {
 			ext_fragment += ext.to_bytestring();
 
 		std::string data;
-		reverse_write(data, legacy_version);
-		forward_write(data, random);
-		reverse_write(data, legacy_session_id_echo.size(), 1);
+		write(std::endian::big, data, legacy_version);
+		write(std::endian::big, data, legacy_version);
+		write(std::endian::little, data, random);
+		write(std::endian::big, data, legacy_session_id_echo.size(), 1);
 		data += legacy_session_id_echo;
-		reverse_write(data, cipher_suite);
-		data.push_back(static_cast<char>(legacy_compression_method));  // legacy_compression_method == 0
-		//	extensions
-		std::string ext;
-		for (auto& e: extensions)
-			ext += e.to_bytestring();
-		reverse_write(data, ext.size(), 2);
-		data += ext;
+		write(std::endian::big, data, cipher_suite);
+		write(std::endian::big, data, legacy_compression_method);
+		write(std::endian::big, data, ext_fragment.size(), 2);
+		data += ext_fragment;
+
 		std::string str;
-		reverse_write(str, handshake_type_t::server_hello);
-		reverse_write(str, data.size(), 3);
+		write(std::endian::big, str, handshake_type_t::server_hello);
+		write(std::endian::big, str, data.size(), 3);
 		return str + data;
 	}
 

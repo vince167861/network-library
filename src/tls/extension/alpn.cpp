@@ -12,15 +12,9 @@ namespace leaf::network::tls {
 
 	alpn::alpn(const std::string_view source) {
 		auto ptr = source.begin();
-		uint16_t size;
-		reverse_read(ptr, size);
-		while (ptr != source.end()) {
-			uint8_t name_size;
-			reverse_read(ptr, name_size);
-			auto begin = ptr;
-			std::advance(ptr, name_size);
-			protocol_name_list.emplace_back(begin, ptr);
-		}
+		read<std::uint16_t>(std::endian::big, ptr);
+		while (ptr != source.end())
+			protocol_name_list.push_back(read_bytestring(ptr, read<std::uint8_t>(std::endian::big, ptr)));
 	}
 
 	void alpn::format(std::format_context::iterator& it, std::size_t level) const {
@@ -38,11 +32,11 @@ namespace leaf::network::tls {
 	alpn::operator raw_extension() const {
 		std::string list_str;
 		for (auto& p: protocol_name_list) {
-			reverse_write(list_str, p.size(), 1);
+			write(std::endian::big, list_str, p.size(), 1);
 			list_str += p;
 		}
 		std::string data;
-		reverse_write(data, list_str.size(), 2);
+		write(std::endian::big, data, list_str.size(), 2);
 		data += list_str;
 		return {ext_type_t::alpn, std::move(data)};
 	}

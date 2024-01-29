@@ -15,7 +15,7 @@ namespace leaf::network::tls {
 
 	record_size_limit::operator raw_extension() const {
 		std::string data;
-		reverse_write(data, limit);
+		write(std::endian::big, data, limit);
 		return {ext_type_t::record_size_limit, std::move(data)};
 	}
 }

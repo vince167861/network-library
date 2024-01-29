@@ -5,7 +5,7 @@ namespace leaf::network::tls {
 
 	key_update::key_update(std::string_view source) {
 		auto ptr = source.begin();
-		reverse_read(ptr, request_update);
+		read(std::endian::big, request_update, ptr);
 	}
 
 	key_update::key_update(bool request)
@@ -26,8 +26,8 @@ namespace leaf::network::tls {
 
 	std::string key_update::to_bytestring(std::endian) const {
 		std::string str;
-		reverse_write(str, handshake_type_t::key_update);
-		reverse_write(str, 1);
+		write(std::endian::big, str, handshake_type_t::key_update);
+		write(std::endian::big, str, 1, 3);
 		return str + static_cast<char>(request_update);
 	}
 }

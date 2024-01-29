@@ -16,7 +16,7 @@ namespace leaf::network::http2 {
 			return false;
 		connected_remote_.emplace(host, port);
 		client_.write("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
-		write(settings_frame{pack_settings()});
+		write_(settings_frame{pack_settings()});
 		const auto first_frame = parse_frame(client_);
 		if (!std::holds_alternative<settings_frame>(first_frame)) {
 			close(error_t::protocol_error);
@@ -32,14 +32,14 @@ namespace leaf::network::http2 {
 
 	void client::close(const error_t error_code, const std::string_view add) {
 		if (connected())
-			write(go_away{remote_config.last_open_stream, error_code, add});
+			write_(go_away{remote_config.last_open_stream, error_code, add});
 		client_.close();
 		connected_remote_.reset();
 	}
 
 	void client::process_settings(const setting_values_t& settings_f) {
 		update_remote_config(settings_f);
-		write(settings_frame{});
+		write_(settings_frame{});
 	}
 
 	client::client(network::client& client_)
@@ -82,7 +82,7 @@ namespace leaf::network::http2 {
 		return source;
 	}
 
-	void client::write(const frame& frame) const {
+	void client::write_(const frame& frame) const {
 		if (!connected())
 			throw std::runtime_error("Client is not connected.");
 		std::cout << std::format("[HTTP/2 client] Sending {}\n", frame);
@@ -90,33 +90,33 @@ namespace leaf::network::http2 {
 			auto& casted = std::get<settings_frame>(frame);
 			std::string data;
 			for (auto& [s, v]: casted.values) {
-				reverse_write(data, s);
-				reverse_write(data, v);
+				write(std::endian::big, data, s);
+				write(std::endian::big, data, v);
 			}
-			reverse_write(client_, data.size(), 3);
-			reverse_write(client_, frame_type_t::settings);
-			reverse_write<std::uint8_t>(client_, casted.ack ? 1 : 0);
-			reverse_write<std::uint32_t>(client_, 0);
+			write(std::endian::big, client_, data.size(), 3);
+			write(std::endian::big, client_, frame_type_t::settings);
+			write(std::endian::big, client_, casted.ack ? 1 : 0, 1);
+			write(std::endian::big, client_, 0, 4);
 			client_.write(data);
 			return;
 		}
 		if (std::holds_alternative<ping_frame>(frame)) {
 			auto& casted = std::get<ping_frame>(frame);
-			reverse_write<uint32_t>(client_, 8, 3);
-			reverse_write(client_, frame_type_t::ping);
-			reverse_write<uint8_t>(client_, casted.ack ? 1 : 0);
-			reverse_write<uint32_t>(client_, 0);
-			reverse_write(client_, casted.data);
+			write(std::endian::big, client_, 8, 3);
+			write(std::endian::big, client_, frame_type_t::ping);
+			write(std::endian::big, client_, casted.ack ? 1 : 0, 1);
+			write(std::endian::big, client_, 0, 4);
+			write(std::endian::big, client_, casted.data);
 			return;
 		}
 		if (std::holds_alternative<go_away>(frame)) {
 			auto& casted = std::get<go_away>(frame);
-			reverse_write(client_, 8 + casted.additional_data.length(), 3);
-			reverse_write(client_, frame_type_t::go_away);
-			reverse_write<uint8_t>(client_, 0);
-			reverse_write<uint32_t>(client_, 0);
-			reverse_write(client_, casted.last_stream_id);
-			reverse_write(client_, casted.error_code);
+			write(std::endian::big, client_, 8 + casted.additional_data.length(), 3);
+			write(std::endian::big, client_, frame_type_t::go_away);
+			write(std::endian::big, client_, 0, 1);
+			write(std::endian::big, client_, 0, 4);
+			write(std::endian::big, client_, casted.last_stream_id);
+			write(std::endian::big, client_, casted.error_code);
 			client_.write(casted.additional_data);
 			return;
 		}
@@ -146,7 +146,7 @@ namespace leaf::network::http2 {
 				ping_frame ack;
 				ack.ack = true;
 				ack.data = casted.data;
-				write(ack);
+				write_(ack);
 			} else if (std::holds_alternative<headers_frame>(frame)) {
 				auto& casted = std::get<headers_frame>(frame);
 				get_stream(casted.stream_id).notify(casted.get_headers(remote_packer), casted.end_stream);
