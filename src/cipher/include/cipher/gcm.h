@@ -4,11 +4,11 @@
 
 namespace leaf {
 
-	inline fixed_unsigned<128> multiply(const fixed_unsigned<128>& X, fixed_unsigned<128> Y) {
-		fixed_unsigned<128> R(0xe1);
+	inline var_unsigned multiply(const var_unsigned& X, var_unsigned Y) {
+        auto R = var_unsigned::from_hex("e1").resize(128);
 		R <<= 120;
-		fixed_unsigned<128> Z;
-		for (size_t i = 0; i < 128; ++i) {
+        var_unsigned Z(128);
+		for (std::size_t i = 0; i < 128; ++i) {
 			if (X.bit(127 - i))
 				Z ^= Y;
 			bool bit = Y.bit(0);
@@ -17,19 +17,6 @@ namespace leaf {
 				Y ^= R;
 		}
 		return Z;
-	}
-
-	template<std::size_t S, std::size_t D>
-	void inplace_increase(fixed_unsigned<D>& val) {
-		fixed_unsigned<S> val_new = val + fixed_unsigned(1);
-		val.set(val_new);
-	}
-
-	template<std::size_t S, std::size_t D>
-	fixed_unsigned<D> increase(fixed_unsigned<D> val) {
-		fixed_unsigned<S> val_new = val + fixed_unsigned(1);
-		val.set(val_new);
-		return val;
 	}
 
 	inline var_unsigned increase(const std::size_t bits, var_unsigned val) {
@@ -89,7 +76,7 @@ namespace leaf {
 				auto J_p
 					= iv.resize(128 * (1 + iv_size / 128 + (iv_size % 128 ? 0 : 1)))
 						<< (iv_size % 128 ? 128 - iv_size % 128 : 0) + 64;
-				J_p.set(var_unsigned{64, iv_size});
+				J_p.set(var_unsigned::from_number(iv_size), 64);
 				J = ghash(J_p);
 			}
 			auto&& C = gctr(increase(32, J), plain);
@@ -98,9 +85,9 @@ namespace leaf {
 			S_p <<= data.padding_needed(128) + plain.bits();
 			S_p.set(C);
 			S_p <<= plain.padding_needed(128) + 64;
-			S_p.set(fixed_unsigned(data.bits()), 64);
+			S_p.set(var_unsigned::from_number(data.bits()), 64);
 			S_p <<= 64;
-			S_p.set(fixed_unsigned(plain.bits()), 64);
+			S_p.set(var_unsigned::from_number(plain.bits()), 64);
 			auto&& T = gctr(J, ghash(S_p));
 			T >>= T.bits() - tag_size;
 			return {std::move(C), std::move(T)};
@@ -123,9 +110,9 @@ namespace leaf {
 			S_p <<= data.padding_needed(128) + cipher.bits();
 			S_p.set(cipher);
 			S_p <<= cipher.padding_needed(128) + 64;
-			S_p.set(fixed_unsigned(data.bits()), 64);
+			S_p.set(var_unsigned::from_number(data.bits()), 64);
 			S_p <<= 64;
-			S_p.set(fixed_unsigned(cipher.bits()), 64);
+			S_p.set(var_unsigned::from_number(cipher.bits()), 64);
 			auto&& T = gctr(J, ghash(S_p));
 			T >>= T.bits() - tag_size;
 			if (T != tag)

@@ -11,7 +11,7 @@ using namespace leaf::network;
 TEST(key_exchange, ffdhe2048) {
 	tls::ffdhe2048_manager manager(fixed_unsigned("19709ee6c09fa02bcc297a362f283c4f2055b7047e90280ca94a47c0b"));
 	auto public_bytes = var_unsigned::from_bytes(manager.public_key());
-	constexpr fixed_unsigned real_public_bytes("2510ad5cdddbd8176d4f4f6291c927a077770a2f274a49cee3b32da10c1b4f2e6067d1e4bae6c04358b789bbcbb98f7bca816e991ece7ddc584f85433254f2b24c0490fe9b1315d84fc320aea02b1ed87416ca31aed95220d07ca9e74aab5325e972fb5fc6594954f42d70f227855e853112c53e6af3b63f79e8666346ee7e4f3635843ade484ff927e495093f97956f95d3b8b5f938b956f8dbefbf37c85a21bb7d94bca78855e1fd90dda9b20a6d132dcef12be4a777800e48d6d2f8820f3963031e770a59ed097c0c1cdebd7a76bdea1c1d9dc8165fbf0365e7c755484a88d4379a57846cad78217f35f113e0f744b5754172354125e4126d227de637eb32");
+	fixed_unsigned real_public_bytes("2510ad5cdddbd8176d4f4f6291c927a077770a2f274a49cee3b32da10c1b4f2e6067d1e4bae6c04358b789bbcbb98f7bca816e991ece7ddc584f85433254f2b24c0490fe9b1315d84fc320aea02b1ed87416ca31aed95220d07ca9e74aab5325e972fb5fc6594954f42d70f227855e853112c53e6af3b63f79e8666346ee7e4f3635843ade484ff927e495093f97956f95d3b8b5f938b956f8dbefbf37c85a21bb7d94bca78855e1fd90dda9b20a6d132dcef12be4a777800e48d6d2f8820f3963031e770a59ed097c0c1cdebd7a76bdea1c1d9dc8165fbf0365e7c755484a88d4379a57846cad78217f35f113e0f744b5754172354125e4126d227de637eb32");
 	EXPECT_EQ(public_bytes, real_public_bytes);
 
 	manager.exchange_key(manager.public_key());
@@ -22,8 +22,14 @@ TEST(key_exchange, ffdhe2048) {
 }
 
 TEST(gcm, increase) {
-	constexpr fixed_unsigned first("abcf");
-	EXPECT_EQ(increase<4>(first), fixed_unsigned("abc0"));
+    auto value1 = var_unsigned::from_hex("abcf");
+    EXPECT_EQ(increase(4, value1), var_unsigned::from_hex("abc0"));
+
+    auto value2 = var_unsigned::from_hex("cdef");
+    EXPECT_EQ(increase(8, value2), var_unsigned::from_hex("cdf0"));
+
+    auto value3 = var_unsigned::from_hex("cdff");
+    EXPECT_EQ(increase(8, value3), var_unsigned::from_hex("cd00"));
 }
 
 TEST(key_exchange, x25519_functions) {
@@ -72,7 +78,7 @@ TEST(cipher, aes_128_gcm_sha256) {
 	cipher.set_key(var_unsigned::from_hex("00000000000000000000000000000000"));
 	EXPECT_EQ(
 			var_unsigned::from_bytes(cipher.encrypt(var_unsigned::from_hex("000000000000000000000000").to_bytes(), "", "")),
-			fixed_unsigned("58e2fccefa7e3061367f1d57a4e7455a"));
+			var_unsigned::from_hex("58e2fccefa7e3061367f1d57a4e7455a"));
 
 	auto plain_1 = var_unsigned::from_hex("00000000000000000000000000000000");
 	auto iv_1 = var_unsigned::from_hex("000000000000000000000000").to_bytes();

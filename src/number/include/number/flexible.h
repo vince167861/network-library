@@ -1,6 +1,6 @@
 #pragma once
 
-#include "fixed.h"
+#include "number_base.h"
 #include <vector>
 
 namespace leaf {
@@ -33,6 +33,14 @@ namespace leaf {
 		static var_unsigned from_hex(std::string_view hex);
 
 		static var_unsigned from_little_endian_hex(std::string_view hex);
+
+        template<class T> requires std::is_integral_v<T>
+        static var_unsigned from_number(T val) {
+            var_unsigned ret(sizeof(T) * 8);
+            for (std::size_t i = 0; i < ret.data_units(); ++i)
+                ret[i] = i * unit_bytes < sizeof(T) ? val >> (unit_bits * i) : 0;
+            return ret;
+        }
 
 		var_unsigned operator+(const var_unsigned&) const;
 
@@ -76,6 +84,10 @@ namespace leaf {
 
 		unit_t& operator[](std::size_t size) override;
 
+        bool bit(std::size_t pos) const {
+            return (data[pos / unit_bits] >> pos % unit_bits) & 1;
+        }
+
 		friend std::ostream& operator<<(std::ostream&, const var_unsigned&);
 
 		template<class V> requires std::is_integral_v<V>
@@ -91,5 +103,34 @@ namespace leaf {
 				return data[unit_pos] >> pos % (unit_bytes / sizeof(V)) * 8;
 			}
 		}
+
+        var_unsigned operator%(const var_unsigned& modulus) const {
+            var_unsigned ret{*this};
+            std::size_t msb_at = data_units() - 1, processed_bits = 0, start_shift = modulus.data_units() - 1;
+            var_unsigned expanded_modulus{modulus};
+            while (start_shift && expanded_modulus.data[start_shift] == 0)
+                --start_shift;
+            expanded_modulus <<= (data_units() - start_shift - 1) * unit_bits;
+            while (ret >= modulus) {
+                while (ret >= expanded_modulus)
+                    ret -= expanded_modulus;
+                expanded_modulus >>= 1;
+                if (++processed_bits % (unit_bytes * 8) == 0)
+                    --msb_at;
+            }
+            return ret;
+        }
+
+        friend var_unsigned exp_mod(const var_unsigned& base, var_unsigned exp, const var_unsigned& modulus) {
+            var_unsigned ret{1};
+            auto new_base = base % modulus;
+            while (exp > var_unsigned::from_number(0) && ret > var_unsigned::from_number(0)) {
+                if (exp.data[0] % 2 == 1)
+                    ret = ret * new_base % modulus;
+                exp >>= 1;
+                new_base = new_base * new_base % modulus;
+            }
+            return ret;
+        }
 	};
 }
