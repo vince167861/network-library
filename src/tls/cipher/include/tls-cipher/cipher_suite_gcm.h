@@ -7,9 +7,9 @@
 namespace leaf::network::tls {
 
 
-	class gcm_cipher: public gcm, virtual public cipher_suite {
+	class cipher_suite_gcm: public gcm, virtual public cipher_suite {
 	protected:
-		gcm_cipher(std::size_t key_bytes, std::size_t iv_bytes, std::size_t tag_bytes);
+		cipher_suite_gcm(std::size_t key_bytes, std::size_t iv_bytes, std::size_t tag_bytes);
 
 	public:
 		[[nodiscard]] std::string
@@ -17,6 +17,5 @@ namespace leaf::network::tls {
 
 		std::string
 		decrypt(std::string_view nonce, std::string_view data, std::string_view cipher_text) const override;
-
 	};
 }

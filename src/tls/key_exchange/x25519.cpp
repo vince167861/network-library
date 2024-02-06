@@ -1,6 +1,5 @@
 #include "tls-key/x25519.h"
-
-#include "tls-key/ecc.h"
+#include "cipher/ecc.h"
 
 namespace leaf::network::tls {
 
@@ -39,5 +38,4 @@ namespace leaf::network::tls {
 		public_key_ = ecc::x25519(secret_key, 9);
 		has_key = true;
 	}
-
 }

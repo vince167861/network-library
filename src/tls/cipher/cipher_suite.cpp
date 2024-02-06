@@ -1,6 +1,6 @@
 #include "tls-cipher/cipher_suite.h"
 
-#include "tls-cipher/aes_gcm.h"
+#include "tls-cipher/cipher_suite_aes_gcm.h"
 #include "utils.h"
 
 namespace leaf::network::tls {
@@ -18,11 +18,6 @@ namespace leaf::network::tls {
 			default:
 				return std::make_unique<unimplemented_cipher_suite>(suite);
 		}
-	}
-
-	std::ostream& operator<<(std::ostream& s, const cipher_suite& c) {
-		c.print(s);
-		return s;
 	}
 
 	std::string cipher_suite::HKDF_expand_label(std::string_view key, std::string_view label, std::string_view context, uint16_t length) const {

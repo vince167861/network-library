@@ -21,6 +21,8 @@ namespace leaf {
 	}
 
 	std::string number_base::to_string() const {
+		if (!bits())
+			return "0";
 		std::string str;
 		for (std::size_t i = data_units() - 1; i > 0; --i) {
 			const auto val = operator[](i);

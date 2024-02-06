@@ -41,7 +41,8 @@ namespace leaf {
 			var_unsigned ret(sizeof(T) * 8);
 			for (std::size_t i = 0; i < ret.data_units(); ++i)
 				ret[i] = i * unit_bytes < sizeof(T) ? val >> (unit_bits * i) : 0;
-		return ret;
+			ret.shrink();
+			return ret;
 		}
 
 		var_unsigned operator+(const var_unsigned&) const;

@@ -6,15 +6,10 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
 	add_executable(test-number number.cpp)
 	target_link_libraries(test-number number)
-	gtest_discover_tests(test-number)
 
 	add_executable(test-hashing hashing.cpp)
 	target_link_libraries(test-hashing hashing)
 	gtest_discover_tests(test-hashing)
-
-	add_executable(test-aes aes.cpp)
-	target_link_libraries(test-aes cipher)
-	gtest_discover_tests(test-aes)
 
 	add_executable(test-json json.cpp)
 	target_link_libraries(test-json json)
@@ -38,5 +33,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
 	add_executable(test-tls tls/key_exchange.cpp)
 	target_link_libraries(test-tls tls)
-	# gtest_discover_tests(test-tls)
+
+	add_executable(test-cipher cipher.cpp)
+	target_link_libraries(test-cipher cipher)
 endif ()

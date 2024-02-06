@@ -8,6 +8,16 @@ namespace leaf {
 		return '0' <= c && c <= '9' ? c - '0' : 'a' <= c && c <= 'f' ? c - 'a' + 10 : 'A' <= c && c <= 'F' ? c - 'A' + 10 : 0;
 	}
 
+	template<typename T>
+	std::int8_t msb(const T val) {
+		if (!val)
+			return -1;
+		std::int8_t pos = sizeof(T) * 8 - 1;
+		auto mask = static_cast<T>(1) << pos;
+		for (; !(val & mask); mask >>= 1, --pos);
+		return pos;
+	}
+
 	bool var_unsigned::unsigned_add_(std::size_t pos, unit_t val, bool carry) {
 		auto& field = data[pos], ori = field;
 		field += val;
@@ -21,7 +31,7 @@ namespace leaf {
 
 	var_unsigned var_unsigned::from_bytes(const std::string_view bytes) {
 		auto ptr = bytes.rbegin();
-		var_unsigned ret(bytes.size() * 8);
+		var_unsigned ret{bytes.size() * 8};
 		for (std::size_t i = 0; i < ret.bits_ / 8 + (ret.bits_ % 8 ? 1 : 0) && ptr != bytes.rend(); ++i)
 			ret.data[i / unit_bytes] |= static_cast<unit_t>(*ptr++ & 0xff) << 8 * (i % unit_bytes);
 		return ret;
@@ -36,10 +46,11 @@ namespace leaf {
 	}
 
 	var_unsigned var_unsigned::from_hex(std::string_view hex) {
-		var_unsigned ret(hex.size() * 4);
+		var_unsigned ret{hex.size() * 4};
 		std::size_t t = 0;
 		for (char ptr: std::ranges::reverse_view(hex))
 			ret[t / 2 / unit_bytes] |= hex_to_bits(ptr) << 4 * t % unit_bits, ++t;
+		ret.shrink();
 		return ret;
 	}
 
@@ -146,6 +157,7 @@ namespace leaf {
 					data[i] |= data[i + 1 + shift_units] << (unit_bits - shift);
 			}
 		}
+		shrink();
 		return *this;
 	}
 
@@ -183,19 +195,30 @@ namespace leaf {
 	}
 
 	std::strong_ordering var_unsigned::operator<=>(const number_base& other) const {
-		if (data_units() > other.data_units()) {
-			for (auto i = data_units() - 1; i >= other.data_units(); --i)
-				if (data[i] > 0) return std::strong_ordering::greater;
+		const auto
+				this_units = data_units(),
+				other_units = other.data_units(),
+				cmn_units = std::min(other_units, this_units);
+		if (this_units > other_units) {
+			if (this_units > 1)
+				for (auto i = this_units - 1; i >= other_units; --i)
+					if (data[i] > 0) return std::strong_ordering::greater;
 		} else {
-			for (auto i = other.data_units() - 1; i >= data_units(); --i)
-				if (other[i] > 0) return std::strong_ordering::less;
+			if (other_units > 1)
+				for (auto i = other_units - 1; i >= this_units; --i)
+					if (other[i] > 0) return std::strong_ordering::less;
 		}
-
-		for (auto i = std::min(other.data_units(), data_units()) - 1; i > 0; --i) {
-			auto r = data[i] <=> other[i];
-			if (std::is_neq(r)) return r;
-		}
-		return data[0] <=> other[0];
+		if (cmn_units > 1)
+			for (auto i = cmn_units - 1; i > 0; --i) {
+				auto r = data[i] <=> other[i];
+				if (std::is_neq(r)) return r;
+			}
+		if (cmn_units >= 1)
+			return data[0] <=> other[0];
+		else if (this_units > other_units)
+			return data[0] > 0 ? std::strong_ordering::greater : std::strong_ordering::equal;
+		else
+			return other[0] > 0 ? std::strong_ordering::less : std::strong_ordering::equal;
 	}
 
 	std::size_t var_unsigned::bits() const {
@@ -251,9 +274,10 @@ namespace leaf {
 	}
 
 	var_unsigned exp_mod(const var_unsigned& base, var_unsigned exp, const var_unsigned& modulus) {
+		const auto zero = var_unsigned::from_number(0);
 		auto ret = var_unsigned::from_number(1);
 		auto new_base = base % modulus;
-		while (exp > var_unsigned::from_number(0) && ret > var_unsigned::from_number(0)) {
+		while (exp > zero && ret > zero) {
 			if (exp.data[0] % 2 == 1)
 				ret = ret * new_base % modulus;
 			exp >>= 1;
@@ -264,9 +288,6 @@ namespace leaf {
 
 	var_unsigned var_unsigned::operator%(const var_unsigned& modulus) const {
 		var_unsigned ret{*this};
-		std::size_t start_shift = modulus.data_units() - 1;
-		while (start_shift && modulus.data[start_shift] == 0)
-			--start_shift;
 		auto expanded_modulus = modulus.resize(bits_);
 		if (bits_ > modulus.bits_)
 			expanded_modulus <<= bits_ - modulus.bits_;
@@ -283,6 +304,6 @@ namespace leaf {
 		data.erase(
 				std::ranges::find_if_not(data.rbegin(), data.rend(), [](const auto val){ return !val;}).base(),
 				data.end());
-		bits_ = data.size() * unit_bits;
+		bits_ = data.size() ? (data.size() - 1) * unit_bits + msb(data[data.size() - 1]) + 1 : 0;
 	}
 }

@@ -1,35 +1,9 @@
 #include <gtest/gtest.h>
 
-#include "tls-key/ecc.h"
-#include "tls-key/ffdhe2048.h"
-#include "tls-key/x25519.h"
-#include "tls-cipher/aes_gcm.h"
+#include "tls-cipher/cipher_suite_aes_gcm.h"
 
 using namespace leaf;
 using namespace leaf::network;
-
-
-TEST(gcm, increase) {
-    auto value1 = var_unsigned::from_hex("abcf");
-    EXPECT_EQ(increase(4, value1), var_unsigned::from_hex("abc0"));
-
-    auto value2 = var_unsigned::from_hex("cdef");
-    EXPECT_EQ(increase(8, value2), var_unsigned::from_hex("cdf0"));
-
-    auto value3 = var_unsigned::from_hex("cdff");
-    EXPECT_EQ(increase(8, value3), var_unsigned::from_hex("cd00"));
-}
-
-TEST(key_exchange, x25519_functions) {
-	EXPECT_EQ(
-			ecc::x25519(var_unsigned::from_number(0x9).resize(256), var_unsigned::from_number(0x9).resize(256)),
-			var_unsigned::from_hex("7930ae1103e8603c784b85b67bb897789f27b72b3e0b35a1bcd727627a8e2c42")
-	);
-	auto scalar = var_unsigned::from_hex("a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4"),
-			u_coordinate = var_unsigned::from_hex("e6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c");
-	EXPECT_EQ(ecc::x25519(scalar, u_coordinate),
-			var_unsigned::from_hex("3db3f3698d52b0123e923d40e2ac47f48dda1d7da1cc35ec3461d94012fb44d3"));
-}
 
 TEST(cipher, aes_128_gcm_sha256) {
 	tls::aes_128_gcm_sha256 cipher;

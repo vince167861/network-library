@@ -2,6 +2,7 @@
 #include "number/fixed.h"
 
 namespace leaf::ecc {
+
 	template<std::size_t bits>
 	consteval fixed_signed<bits> p() {
 		if constexpr (bits == 255)
@@ -56,7 +57,6 @@ namespace leaf::ecc {
 		c_swap(swap, z_2, z_3);
 		return x_2 * operand_t(exp_mod(z_2, _p - _2, _p)) % _p;
 	}
-
 
 
 	inline auto x25519(fixed_unsigned<255> scalar, const fixed_unsigned<255>& u_coordinate) {
