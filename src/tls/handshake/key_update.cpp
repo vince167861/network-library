@@ -12,7 +12,7 @@ namespace leaf::network::tls {
 		: request_update(request ? key_update_request::update_requested : key_update_request::update_not_requested) {
 	}
 
-	void key_update::format(std::format_context::iterator& it) const {
+	std::format_context::iterator key_update::format(std::format_context::iterator it) const {
 		it = std::ranges::copy("KeyUpdate: ", it).out;
 		switch (request_update) {
 			case key_update_request::update_requested:
@@ -21,7 +21,10 @@ namespace leaf::network::tls {
 			case key_update_request::update_not_requested:
 				it = std::ranges::copy("Update not requested (echo)", it).out;
 				break;
+			default:
+				throw std::runtime_error{"unexpected"};
 		}
+		return it;
 	}
 
 	std::string key_update::to_bytestring(std::endian) const {

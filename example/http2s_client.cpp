@@ -1,10 +1,9 @@
-#include <iostream>
-
 #include "tcp/client.h"
 #include "tls/client.h"
 #include "http2/client.h"
-#include "http2/stream.h"
+#include <iostream>
 
+using namespace leaf;
 using namespace leaf::network;
 
 int main() {
@@ -12,9 +11,9 @@ int main() {
 	tcp::client tcp_client;
 
 	tls::client tls_client(tcp_client);
-	tls_client.add_cipher("AES_128_GCM_SHA256");
-	tls_client.add_group("x25519:ffdhe2048");
-	tls_client.add_alpn("h2");
+	tls_client.add_cipher_suite({cipher_suite_t::AES_128_GCM_SHA256});
+	tls_client.add_group({named_group_t::x25519, named_group_t::ffdhe2048});
+	tls_client.alpn_protocols.push_back("h2");
 
 	http2::client http2_client(tls_client);
 

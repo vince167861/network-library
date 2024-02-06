@@ -1,7 +1,5 @@
-#include <utility>
-
 #include "tls-extension/extension.h"
-
+#include "tls-record/alert.h"
 #include "utils.h"
 
 namespace leaf::network::tls {
@@ -11,8 +9,10 @@ namespace leaf::network::tls {
 	}
 
 	alpn::alpn(const std::string_view source) {
+		if (source.empty())
+			return;
 		auto ptr = source.begin();
-		read<std::uint16_t>(std::endian::big, ptr);
+		auto size = read<std::uint16_t>(std::endian::big, ptr);
 		while (ptr != source.end())
 			protocol_name_list.push_back(read_bytestring(ptr, read<std::uint8_t>(std::endian::big, ptr)));
 	}

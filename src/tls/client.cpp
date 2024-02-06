@@ -25,7 +25,7 @@ namespace leaf::network::tls {
 		return app_data_buffer.view().size();
 	}
 
-	client_hello client::gen_client_hello_() const {
+	std::unique_ptr<client_hello> client::gen_client_hello_() const {
 		client_hello clt_hl{available_cipher_suites_};
 		switch (endpoint_version) {
 			case protocol_version_t::TLS1_3:
@@ -69,15 +69,15 @@ namespace leaf::network::tls {
 			clt_hl.add_extension({alpn{alpn_protocols}});
 		std::ranges::copy(random, clt_hl.random.begin());
 		clt_hl.session_id = session_id;
-		return clt_hl;
+		return std::make_unique<client_hello>(std::move(clt_hl));
 	}
 
 	void client::handshake_() {
 		std::string handshake_msgs, cert_verify;
 		{
-			const auto ch = gen_client_hello_();
-			send_(record::construct(content_type_t::handshake, std::nullopt, ch));
-			handshake_msgs = ch.to_bytestring();
+			auto ch = gen_client_hello_();
+			handshake_msgs += ch->to_bytestring();
+			send_(content_type_t::handshake, false, {std::move(ch)});
 		}
 		client_state_t client_state = client_state_t::wait_server_hello;
 		while (client_state != client_state_t::connected) {
@@ -86,16 +86,16 @@ namespace leaf::network::tls {
 			switch (record.type) {
 				case content_type_t::handshake:
 					for (std::string_view handshake_fragments{record.messages}; !handshake_fragments.empty(); ) {
-						const auto opt_message = parse_handshake(*this, handshake_fragments, record.encrypted());
+						const auto opt_message = parse_handshake(*this, handshake_fragments, record.encrypted(), false);
 						if (!opt_message)
 							break;
 						auto& handshake_msg = opt_message.value();
+						std::cout << std::format("[TLS client] got {}\n", handshake_msg);
 						switch (client_state) {
 							case client_state_t::wait_server_hello: {
 								if (!std::holds_alternative<server_hello>(handshake_msg))
 									throw alert::unexpected_message();
 								auto& srv_hl = std::get<server_hello>(handshake_msg);
-								std::cout << std::format("[TLS client] got {}\n", static_cast<const message&>(srv_hl));
 								use_cipher(srv_hl.cipher_suite);
 								if (srv_hl.is_hello_retry_request)
 									handshake_msgs = message_hash(active_cipher_suite(), handshake_msgs);
@@ -122,9 +122,9 @@ namespace leaf::network::tls {
 								} else
 									use_group(group);
 								if (srv_hl.is_hello_retry_request) {
-									const auto ch = gen_client_hello_();
-									send_(record::construct(content_type_t::handshake, std::nullopt, ch));
-									handshake_msgs += ch.to_bytestring();
+									auto ch = gen_client_hello_();
+									handshake_msgs += ch->to_bytestring();
+									send_(content_type_t::handshake, false, {std::move(ch)});
 								} else {
 									cipher_.update_entropy_secret(pre_shared_key); // todo: should calculate before wait_server_hello?
 									active_manager().exchange_key(key);
@@ -137,6 +137,13 @@ namespace leaf::network::tls {
 							case client_state_t::wait_encrypted_extensions: {
 								if (!std::holds_alternative<encrypted_extension>(handshake_msg))
 									throw alert::unexpected_message();
+								auto& srv_enc_ext = std::get<encrypted_extension>(handshake_msg);
+								if (!alpn_protocols.empty()) {
+									if (!srv_enc_ext.extensions.contains(ext_type_t::alpn))
+										throw std::runtime_error{"server does not support ALPN"};
+									alpn srv_alpn{srv_enc_ext.extensions.at(ext_type_t::alpn)};
+									std::cout << std::format("[TLS client] ALPN selected: {}\n", srv_alpn.protocol_name_list.front());
+								}
 								handshake_msgs += std::get<encrypted_extension>(handshake_msg).to_bytestring();
 								client_state = client_state_t::wait_cert_request;
 								break;
@@ -169,13 +176,14 @@ namespace leaf::network::tls {
 									throw alert::unexpected_message();
 								handshake_msgs += std::get<finished>(handshake_msg).to_bytestring();
 								auto& cipher = active_cipher_suite();
-								send_(record::construct(content_type_t::handshake, cipher_, finished{
-										cipher.HMAC_hash(
-												cipher.hash(handshake_msgs),
-												cipher.HKDF_expand_label(
-														cipher_.client_handshake_traffic_secret,
-														"finished", "", cipher.digest_length)),
-										cipher}));
+								send_(content_type_t::handshake, true, {
+									std::make_unique<finished>(
+											cipher.HMAC_hash(
+													cipher.hash(handshake_msgs),
+													cipher.HKDF_expand_label(
+															cipher_.client_handshake_traffic_secret,
+															"finished", "", cipher.digest_length)),
+											cipher)});
 
 								client_state = client_state_t::connected;
 								cipher_.update_entropy_secret();

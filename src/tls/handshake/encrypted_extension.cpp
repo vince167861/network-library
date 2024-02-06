@@ -11,15 +11,18 @@ namespace leaf::network::tls {
 			throw alert::decode_error_early_end_of_data("extensions.size", available, size);
 		for (std::string_view ext_fragments{ptr, std::next(ptr, size)}; !ext_fragments.empty(); ) {
 			auto ext = parse_extension(ext_fragments);
-			if (!ext) break;
-			extensions.push_back(std::move(ext.value()));
+			if (!ext)
+				break;
+			auto& [type, data] = ext.value();
+			extensions.emplace(type, std::move(data));
+			extension_order_.push_back(type);
 		}
 	}
 
 	std::string encrypted_extension::to_bytestring(std::endian) const {
 		std::string data, exts;
-		for (auto& ext: extensions)
-			exts += ext.to_bytestring();
+		for (auto type: extension_order_)
+			exts += generate_extension(type, extensions.at(type));
 		write(std::endian::big, data, exts.size(), 2);
 		data += exts;
 
@@ -29,11 +32,12 @@ namespace leaf::network::tls {
 		return str + data;
 	}
 
-	void encrypted_extension::format(std::format_context::iterator& it) const {
+	std::format_context::iterator encrypted_extension::format(std::format_context::iterator it) const {
 		it = std::ranges::copy("EncryptedExtension", it).out;
 		if (extensions.empty())
 			it = std::ranges::copy(" (empty)", it).out;
 		else for (auto& ext: extensions)
-			it = std::format_to(it, "{}", ext);
+			it = std::format_to(it, "\n\t{}", raw_extension{ext.first, ext.second});
+		return it;
 	}
 }

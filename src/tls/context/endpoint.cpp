@@ -1,7 +1,7 @@
 #include "tls-context/endpoint.h"
 #include "tls-record/record.h"
 #include "tls-record/alert.h"
-
+#include "tls-handshake/handshake.h"
 #include "utils.h"
 #include <iostream>
 
@@ -18,27 +18,34 @@ namespace leaf::network::tls {
 			const auto read
 					= app_data_buffer.readsome(buffer, std::min<std::streamsize>(size - read_data.size(), 1024));
 			if (read == 0) {
-				try {
-					const auto record = record::extract(underlying, cipher_);
-					switch (record.type) {
-						case content_type_t::alert:
-							switch (alert alert{record.messages}; alert.description) {
-								case alert_description_t::close_notify:
-									close();
-									break;
-								default:
-									std::cout << std::format("[TLS client] got {}: {}\n", alert.level, alert.description);
-									break;
-							}
+				const auto record = record::extract(underlying, cipher_);
+				switch (record.type) {
+					case content_type_t::alert:
+						switch (alert alert{record.messages}; alert.description) {
+							case alert_description_t::close_notify:
+								close();
+								break;
+							default:
+								std::cout << std::format("[TLS client] got {}: {}\n", alert.level, alert.description);
+								break;
+						}
+						break;
+					case content_type_t::application_data:
+						app_data_buffer << record.messages;
+						break;
+					case content_type_t::handshake: {
+						std::string_view handshake_fragments = record.messages;
+						const auto opt_message = parse_handshake(*this, handshake_fragments, record.encrypted(), true);
+						if (!opt_message)
 							break;
-						case content_type_t::application_data:
-							app_data_buffer << record.messages;
-							break;
-						default:
-							throw std::runtime_error{"unexpected"};
+						auto& handshake_msg = opt_message.value();
+						if (std::holds_alternative<new_session_ticket>(handshake_msg)) {
+							auto& peer_new_session_ticket = std::get<new_session_ticket>(handshake_msg);
+						}
+						break;
 					}
-				} catch (...) {
-					break;
+					default:
+						throw std::runtime_error{"unexpected"};
 				}
 			} else
 				read_data.append(buffer, read);
@@ -81,6 +88,15 @@ namespace leaf::network::tls {
 
 	void endpoint::send_(const record& record) {
 		std::cout << std::format("[TLS endpoint] sending {}\n", record);
+		underlying.write(record.to_bytestring());
+	}
+
+	void endpoint::send_(content_type_t type, bool encrypted, std::initializer_list<std::unique_ptr<message>> msgs) {
+		record record{type, encrypted ? std::optional{std::ref(cipher_)} : std::nullopt};
+		for (auto& ptr: msgs) {
+			std::cout << std::format("[TLS endpoint] sending {}\n", *ptr);
+			record.messages += ptr->to_bytestring();
+		}
 		underlying.write(record.to_bytestring());
 	}
 }

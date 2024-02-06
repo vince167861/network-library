@@ -21,9 +21,10 @@ namespace leaf::network::tls {
 		return str + data;
 	}
 
-	void certificate_verify::format(std::format_context::iterator& it) const {
+	std::format_context::iterator certificate_verify::format(std::format_context::iterator it) const {
 		it = std::format_to(it, "CertificateVerify\n\tScheme: {}\n\tSignature: ", signature_scheme);
-		for (auto c: signature)
+		for (std::uint8_t c: signature)
 			it = std::format_to(it, "{:02x}", c);
+		return it;
 	}
 }

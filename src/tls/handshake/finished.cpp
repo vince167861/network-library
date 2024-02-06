@@ -10,10 +10,11 @@ namespace leaf::network::tls {
 		verify_data = source;
 	}
 
-	void finished::format(std::format_context::iterator& it) const {
+	std::format_context::iterator finished::format(std::format_context::iterator it) const {
 		it = std::ranges::copy("Finished\n\tVerify data: ", it).out;
-		for (auto c: verify_data)
-			it = std::format_to(it, "{:#04x}", c);
+		for (std::uint8_t c: verify_data)
+			it = std::format_to(it, "{:02x}", c);
+		return it;
 	}
 
 	std::string finished::to_bytestring(std::endian) const {

@@ -60,16 +60,16 @@ namespace leaf::network::tls {
 		return str + data;
 	}
 
-	void client_hello::format(std::format_context::iterator& it) const {
+	std::format_context::iterator client_hello::format(std::format_context::iterator it) const {
 		using std::literals::operator ""sv;
 		it = std::format_to(it, "ClientHello\n\tlegacy_version: {}\n\trandom: 0x", version);
 		for (auto& u: random)
 			it = std::format_to(it, "{:x}", u);
-		it = std::ranges::copy("\n\tlegacy_session_id: 0x"sv, it).out;
+		it = std::ranges::copy("\n\tlegacy_session_id: "sv, it).out;
 		if (session_id.empty())
-			*it++ = '0';
+			it = std::format_to(it, "(empty)");
 		else for (auto& u: session_id)
-			it = std::format_to(it, "{:x}", u);
+			it = std::format_to(it, "{:02x}", u);
 		it = std::ranges::copy("\n\tcipher_suites:", it).out;
 		if (cipher_suites.empty())
 			it = std::ranges::copy(" (empty)"sv, it).out;
@@ -78,6 +78,7 @@ namespace leaf::network::tls {
 		it = std::ranges::copy("\n\textensions:"sv, it).out;
 		for (auto& ext: extensions)
 			it = std::format_to(it, "\n\t\t{}", raw_extension{ext.first, ext.second});
+		return it;
 	}
 
 	void client_hello::add_extension(std::initializer_list<raw_extension> exts) {

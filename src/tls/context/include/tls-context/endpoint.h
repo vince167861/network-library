@@ -28,6 +28,10 @@ namespace leaf::network::tls {
 
 		traffic_secret_manager cipher_;
 
+		void send_(const record&);
+
+		void send_(content_type_t, bool encrypted, std::initializer_list<std::unique_ptr<message>>);
+
 	public:
 		network::endpoint& underlying;
 
@@ -44,8 +48,6 @@ namespace leaf::network::tls {
 		std::string read(std::size_t size) override;
 
 		std::size_t write(std::string_view) override;
-
-		void send_(const record&);
 
 		void use_group(named_group_t);
 

@@ -93,6 +93,8 @@ namespace leaf::network::http2 {
 		if (state_ != state_t::idle && state_ != state_t::local_reserved)
 			throw std::runtime_error{std::format("stream {} is in use", stream_id_)};
 
+		state_ = state_t::open;
+
 		auto& headers = request_.headers;
 		headers.set(":path", request_.request_url.requesting_uri_string());
 		headers.set(":method", request_.method);
@@ -172,14 +174,16 @@ namespace leaf::network::http2 {
 			: stream_handler(promised, context, stream_handler::state_t::remote_reserved) {
 		const auto next = context_.next_remote_stream_id();
 		if (next != promised)
-			throw std::runtime_error{"Invalid promised stream identifier."};
+			throw std::runtime_error{"invalid promised stream identifier."};
 		request_.headers = std::move(headers);
 	}
 
 	void response_handler::notify(const http::http_fields& headers, const bool end_stream) {
-		if (state_ != state_t::open && state_ != state_t::local_half_closed)
-			throw std::runtime_error{"Unexpected HEADER from closed/half-closed stream."};
+		if (state_ != state_t::open && state_ != stream_handler::state_t::local_half_closed && state_ != stream_handler::state_t::remote_reserved)
+			throw std::runtime_error{"unexpected HEADER"};
 
+		if (state_ == stream_handler::state_t::remote_reserved)
+			state_ = stream_handler::state_t::local_half_closed;
 		response_.headers = headers;
 		if (auto status_node = response_.headers.extract(":status"))
 			response_.status = std::stol(status_node.mapped());
@@ -202,7 +206,7 @@ namespace leaf::network::http2 {
 
 	void response_handler::reserve(stream_id_t promised, http::http_fields headers) {
 		if (state_ != state_t::open && state_ != state_t::local_half_closed)
-			throw std::runtime_error{"Unexpected PUSH_PROMISE at closed/half-closed stream."};
+			throw std::runtime_error{"unexpected PUSH_PROMISE"};
 
 		auto promised_stream = std::make_unique<response_handler>(promised, std::move(headers), context_);
 		promised_stream_.emplace_back(*promised_stream);

@@ -47,7 +47,7 @@ namespace leaf::network::tls {
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
-		void format(std::format_context::iterator&) const override;
+		std::format_context::iterator format(std::format_context::iterator) const override;
 
 		void add_extension(std::initializer_list<raw_extension>);
 
@@ -82,7 +82,7 @@ namespace leaf::network::tls {
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
-		void format(std::format_context::iterator&) const override;
+		std::format_context::iterator format(std::format_context::iterator) const override;
 
 		bool is_hello_retry_request = false;
 
@@ -101,7 +101,7 @@ namespace leaf::network::tls {
 	 */
 	struct encrypted_extension final: handshake_base {
 
-		std::list<raw_extension> extensions;
+		std::map<ext_type_t, std::string> extensions;
 
 		encrypted_extension() = default;
 
@@ -109,7 +109,10 @@ namespace leaf::network::tls {
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
-		void format(std::format_context::iterator&) const override;
+		std::format_context::iterator format(std::format_context::iterator) const override;
+
+	private:
+		std::list<ext_type_t> extension_order_;
 	};
 
 
@@ -133,7 +136,7 @@ namespace leaf::network::tls {
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
-		void format(std::format_context::iterator&) const override;
+		std::format_context::iterator format(std::format_context::iterator) const override;
 	};
 
 
@@ -151,7 +154,7 @@ namespace leaf::network::tls {
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
-		void format(std::format_context::iterator&) const override;
+		std::format_context::iterator format(std::format_context::iterator) const override;
 	};
 
 
@@ -169,7 +172,7 @@ namespace leaf::network::tls {
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
-		void format(std::format_context::iterator&) const override;
+		std::format_context::iterator format(std::format_context::iterator) const override;
 	};
 
 
@@ -185,7 +188,7 @@ namespace leaf::network::tls {
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
-		void format(std::format_context::iterator&) const override;
+		std::format_context::iterator format(std::format_context::iterator) const override;
 	};
 
 
@@ -205,7 +208,7 @@ namespace leaf::network::tls {
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
-		void format(std::format_context::iterator&) const override;
+		std::format_context::iterator format(std::format_context::iterator) const override;
 	};
 
 
@@ -221,7 +224,7 @@ namespace leaf::network::tls {
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
-		void format(std::format_context::iterator&) const override;
+		std::format_context::iterator format(std::format_context::iterator) const override;
 	};
 
 	std::string message_hash(const cipher_suite&, std::string_view);
@@ -231,5 +234,16 @@ namespace leaf::network::tls {
 
 	class endpoint;
 
-	std::optional<handshake> parse_handshake(tls::endpoint&, std::string_view& source, bool encrypted);
+	std::optional<handshake> parse_handshake(tls::endpoint&, std::string_view& source, bool encrypted, bool established);
 }
+
+
+template<>
+struct std::formatter<leaf::network::tls::handshake> {
+
+	constexpr auto parse(std::format_parse_context& ctx) {
+		return ctx.begin();
+	}
+
+	std::format_context::iterator format(const leaf::network::tls::handshake&, std::format_context& ctx) const;
+};

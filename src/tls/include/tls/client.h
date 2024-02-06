@@ -31,7 +31,7 @@ namespace leaf::network::tls {
 
 		std::set<cipher_suite_t> available_cipher_suites_;
 
-		client_hello gen_client_hello_() const;
+		std::unique_ptr<client_hello> gen_client_hello_() const;
 
 		void handshake_();
 

@@ -126,7 +126,7 @@ namespace leaf::network::http2 {
 	void client::process() {
 		while (client_.connected() && (!process_tasks() || has_pending_streams())) {
 			auto frame = parse_frame(client_);
-			std::cout << std::format("[HTTP/2 client] Received {}\n", frame);
+			std::cout << std::format("[HTTP/2 client] got {}\n", frame);
 			if (std::holds_alternative<window_update_frame>(frame)) {
 				const auto& casted = std::get<window_update_frame>(frame);
 				if (const auto stream_id = casted.stream_id)

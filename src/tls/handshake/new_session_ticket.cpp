@@ -17,7 +17,7 @@ namespace leaf::network::tls {
 		}
 	}
 
-	void new_session_ticket::format(std::format_context::iterator& it) const {
+	std::format_context::iterator new_session_ticket::format(std::format_context::iterator it) const {
 		it = std::format_to(it,
 			"NewSessionTicket\n\tLifetime: {}\n\tAge add: {}\n\tNonce: {}\n\tTicket: {}\n\tExtensions:",
 			ticket_lifetime, ticket_age_add, ticket_nonce, ticket);
@@ -25,6 +25,7 @@ namespace leaf::network::tls {
 			it = std::ranges::copy(" (empty)", it).out;
 		else for (auto& ext: extensions)
 			it = std::format_to(it, "\n{}", ext);
+		return it;
 	}
 
 	std::string new_session_ticket::to_bytestring(std::endian) const {

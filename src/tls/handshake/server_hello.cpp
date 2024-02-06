@@ -52,7 +52,7 @@ namespace leaf::network::tls {
 		return str + data;
 	}
 
-	void server_hello::format(std::format_context::iterator& it) const {
+	std::format_context::iterator server_hello::format(std::format_context::iterator it) const {
 		it = std::format_to(it, "{}\n\tlegacy_version: {}\n\trandom: 0x",
 			is_hello_retry_request ? "HelloRetryRequest" : "ServerHello", version);
 		for (auto u: random)
@@ -67,6 +67,7 @@ namespace leaf::network::tls {
 			it = std::ranges::copy(" (empty)", it).out;
 		else for (auto& [type, data]: extensions)
 			it = std::format_to(it, "\n\t\t{}", raw_extension{type, data});
+		return it;
 	}
 
 	void server_hello::to_retry() {

@@ -16,7 +16,7 @@ namespace leaf::network::tls {
 	 */
 	struct message: binary_object {
 
-		virtual void format(std::format_context::iterator&) const = 0;
+		virtual std::format_context::iterator format(std::format_context::iterator) const = 0;
 	};
 
 
@@ -59,9 +59,7 @@ struct std::formatter<leaf::network::tls::message> {
 	}
 
 	auto format(const leaf::network::tls::message& msg, std::format_context& ctx) const {
-		auto it = ctx.out();
-		msg.format(it);
-		return it;
+		return msg.format(ctx.out());
 	}
 };
 

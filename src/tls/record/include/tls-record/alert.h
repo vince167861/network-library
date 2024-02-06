@@ -21,7 +21,7 @@ namespace leaf::network::tls {
 
 		std::string to_bytestring(std::endian) const override;
 
-		void format(std::format_context::iterator&) const override;
+		std::format_context::iterator format(std::format_context::iterator) const override;
 
 		const char* what() const _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW override;
 

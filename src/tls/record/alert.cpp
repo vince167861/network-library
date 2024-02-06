@@ -5,10 +5,11 @@
 
 namespace leaf::network::tls {
 
-	void alert::format(std::format_context::iterator& it) const {
+	std::format_context::iterator alert::format(std::format_context::iterator it) const {
 		it = std::format_to(it, "Alert\n\tLevel: {}\n\tDescription: {}", level, description);
 		if (!debug_string.empty())
 			it = std::format_to(it, "\n\tDebug: {}", debug_string);
+		return it;
 	}
 
 	std::string alert::to_bytestring(std::endian endian) const {

@@ -51,18 +51,19 @@ namespace leaf::network::tls {
 		return str + data;
 	}
 
-	void certificate::format(std::format_context::iterator& it) const {
+	std::format_context::iterator certificate::format(std::format_context::iterator it) const {
 		it = std::format_to(it, "Certificate\n\tCertificate request context: {}\n\tCertificate list:",
 			certificate_request_context);
 		for (const auto& [data, extensions]: certificate_list) {
 			it = std::ranges::copy("\n\t\tEntry:\n\t\t\tData: ", it).out;
-			for (auto c: data)
-				it = std::format_to(it, "{:04x}", c);
+			for (std::uint8_t c: data)
+				it = std::format_to(it, "{:02x}", c);
 			it = std::ranges::copy("\n\t\t\tExtensions:", it).out;
 			if (extensions.empty())
 				it = std::ranges::copy(" (empty)", it).out;
 			else for (auto& ext: extensions)
 				it = std::format_to(it, "\n\t\t\t\t{}", ext);
 		}
+		return it;
 	}
 }

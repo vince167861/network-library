@@ -5,7 +5,7 @@
 
 namespace leaf::network::tls {
 
-	std::optional<handshake> parse_handshake(endpoint& context, std::string_view& source, const bool encrypted) {
+	std::optional<handshake> parse_handshake(endpoint& context, std::string_view& source, const bool encrypted, const bool established) {
 		auto ptr = source.begin();
 
 		const auto type = read<handshake_type_t>(std::endian::big, ptr);
@@ -27,21 +27,25 @@ namespace leaf::network::tls {
 				default:
 					throw alert::unexpected_message();
 			}
-		switch (type) {
-			case handshake_type_t::encrypted_extensions:
-				return encrypted_extension{content};
-			case handshake_type_t::certificate:
-				return certificate{content};
-			case handshake_type_t::certificate_verify:
-				return certificate_verify{content};
-			case handshake_type_t::finished:
-				return finished{content, context.active_cipher_suite()};
-			case handshake_type_t::new_session_ticket:
-				return new_session_ticket{content};
-			case handshake_type_t::key_update:
-				return key_update{content};
-			default:
-				throw alert::unexpected_message();
+		else {
+			switch (type) {
+				case handshake_type_t::encrypted_extensions:
+					return encrypted_extension{content};
+				case handshake_type_t::certificate:
+					return certificate{content};
+				case handshake_type_t::certificate_verify:
+					return certificate_verify{content};
+				case handshake_type_t::finished:
+					return finished{content, context.active_cipher_suite()};
+				case handshake_type_t::key_update:
+					return key_update{content};
+				default:
+					if (established) switch (type) {
+						case handshake_type_t::new_session_ticket:
+							return new_session_ticket{content};
+					}
+					throw alert::unexpected_message();
+			}
 		}
 	}
 
@@ -76,8 +80,8 @@ namespace leaf::network::tls {
 		return str + data;
 	}
 
-	void certificate_request::format(std::format_context::iterator& it) const {
-		it = std::format_to(it, "CertificateRequest");
+	std::format_context::iterator certificate_request::format(std::format_context::iterator it) const {
+		return std::format_to(it, "CertificateRequest");
 	}
 
 	std::string message_hash(const cipher_suite& cipher, const std::string_view data) {
@@ -88,4 +92,9 @@ namespace leaf::network::tls {
 		msg += cipher.hash(data);
 		return msg;
 	}
+}
+
+std::format_context::iterator
+std::formatter<leaf::network::tls::handshake>::format(const leaf::network::tls::handshake& msg, std::format_context& ctx) const {
+	return std::visit([&](const auto& typed_msg){ return typed_msg.format(ctx.out()); }, msg);
 }
