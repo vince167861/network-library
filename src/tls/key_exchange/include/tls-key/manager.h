@@ -3,6 +3,8 @@
 #include "tls-utils/type.h"
 #include "tls-utils/rng.h"
 
+#include <memory>
+
 namespace leaf::network::tls {
 
 	class key_exchange_manager {
@@ -23,6 +25,7 @@ namespace leaf::network::tls {
 
 		virtual ~key_exchange_manager() = default;
 	};
+
 
 	class unimplemented_group: public key_exchange_manager {
 	public:
@@ -50,5 +53,5 @@ namespace leaf::network::tls {
 		}
 	};
 
-	key_exchange_manager* get_key_manager(std::string_view);
+	std::unique_ptr<key_exchange_manager> get_key_manager(named_group_t, random_number_generator&);
 }

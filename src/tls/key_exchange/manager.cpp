@@ -9,11 +9,20 @@ namespace leaf::network::tls {
 			: group(ng) {
 	}
 
-	key_exchange_manager* get_key_manager(const std::string_view str) {
-		if (str == "ffdhe2048")
-			return new ffdhe2048_manager;
-		if (str == "x25519")
-			return new x25519_manager;
-		return nullptr;
+	std::unique_ptr<key_exchange_manager> get_key_manager(const named_group_t group, random_number_generator& rng) {
+		std::unique_ptr<key_exchange_manager> ptr;
+		switch (group) {
+			case named_group_t::ffdhe2048:
+				ptr = std::make_unique<ffdhe2048_manager>();
+				break;
+			case named_group_t::x25519:
+				ptr = std::make_unique<x25519_manager>();
+				break;
+			default:
+				ptr = std::make_unique<unimplemented_group>(group);
+				break;
+		}
+		ptr->generate_private_key(rng);
+		return ptr;
 	}
 }

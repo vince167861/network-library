@@ -4,18 +4,10 @@
 
 namespace leaf::network::tls {
 
-	finished::finished(std::string_view source, context& context) {
-		if (context.active_cipher().digest_length != source.length())
+	finished::finished(const std::string_view source, cipher_suite& suite) {
+		if (suite.digest_length != source.length())
 			throw alert::decrypt_error();
 		verify_data = source;
-	}
-
-	finished::finished(context& context, std::string_view handshake_msgs) {
-		auto& cipher = context.active_cipher();
-		const auto finished_key = cipher.HKDF_expand_label(
-				context.client_handshake_traffic_secret.to_bytestring(std::endian::big),
-				"finished", "", cipher.digest_length);
-		verify_data = cipher.HMAC_hash(cipher.hash(handshake_msgs), finished_key);
 	}
 
 	void finished::format(std::format_context::iterator& it) const {

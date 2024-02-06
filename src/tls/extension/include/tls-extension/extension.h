@@ -1,11 +1,15 @@
 #pragma once
 
 #include "binary_object.h"
+#include "tls-key/manager.h"
 #include "tls-utils/type.h"
-#include "tls-context/context.h"
 
+#include <memory>
+#include <set>
+#include <map>
 #include <list>
 #include <string>
+#include <span>
 
 namespace leaf::network::tls {
 
@@ -47,12 +51,9 @@ namespace leaf::network::tls {
 
 		std::list<protocol_version_t> versions;
 
-		/**
-		 * \brief Creates a supported_versions extension under |context|.
-		 */
-		explicit supported_versions(const context& context);
+		supported_versions(msg_type_t, std::string_view);
 
-		supported_versions(std::string_view, context& context);
+		supported_versions(msg_type_t, std::initializer_list<protocol_version_t>);
 
 		void format(std::format_context::iterator& it, std::size_t level) const override;
 
@@ -65,7 +66,7 @@ namespace leaf::network::tls {
 	 */
 	struct key_share final: extension_base {
 
-		std::list<std::pair<named_group_t, std::string>> shares;
+		std::map<named_group_t, std::string> shares;
 
 		enum class msg_type_t {
 			client_hello,
@@ -73,9 +74,11 @@ namespace leaf::network::tls {
 			server_hello
 		} message_type;
 
-		explicit key_share(const context& context);
+		key_share(msg_type_t, const std::map<named_group_t, std::unique_ptr<key_exchange_manager>>&);
 
-		key_share(std::string_view, bool is_hello_retry_request, context&);
+		key_share(msg_type_t, std::map<named_group_t, std::string>);
+
+		key_share(msg_type_t, std::string_view);
 
 		void format(std::format_context::iterator&, std::size_t level) const override;
 
@@ -88,16 +91,11 @@ namespace leaf::network::tls {
 	 */
 	struct supported_groups final: extension_base {
 
-		enum class msg_type_t {
-			client_hello,
-			server_hello
-		} message_type;
-
 		std::list<named_group_t> named_group_list;
 
-		explicit supported_groups(const context&);
+		supported_groups(const std::set<named_group_t>&);
 
-		supported_groups(std::string_view, context&);
+		supported_groups(std::string_view);
 
 		void format(std::format_context::iterator&, std::size_t level) const override;
 
@@ -219,6 +217,8 @@ namespace leaf::network::tls {
 
 
 	std::optional<raw_extension> parse_extension(std::string_view& source);
+
+	std::string generate_extension(ext_type_t, std::string_view);
 }
 
 

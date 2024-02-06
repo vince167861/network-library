@@ -1,8 +1,10 @@
 #pragma once
 
 #include "tls-utils/type.h"
-#include "tls-context/context.h"
 #include "binary_object.h"
+#include "basic_endpoint.h"
+#include "tls-utils/type.h"
+#include "tls-cipher/traffic_secret_manager.h"
 
 #include <string>
 #include <format>
@@ -13,6 +15,7 @@ namespace leaf::network::tls {
 	 * \brief A protocol layer message.
 	 */
 	struct message: binary_object {
+
 		virtual void format(std::format_context::iterator&) const = 0;
 	};
 
@@ -22,26 +25,45 @@ namespace leaf::network::tls {
 	 */
 	struct record final: binary_object {
 
-		content_type_t type;
+		using opt_cipher = std::optional<std::reference_wrapper<traffic_secret_manager>>;
 
-		bool encrypted;
+		content_type_t type;
 
 		protocol_version_t legacy_record_version = protocol_version_t::TLS1_2;
 
 		std::string messages;
 
+		record(content_type_t type, opt_cipher);
+
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
-		static record extract(context&);
+		static record extract(endpoint&, traffic_secret_manager&);
 
-		static record
-		construct(content_type_t, bool encrypted, const message&, context&);
+		static record construct(content_type_t, opt_cipher, const message&);
 
-		record(content_type_t type, bool encrypted, context&);
+		bool encrypted() const {
+			return cipher_.has_value();
+		}
 
-		context& context_;
+	private:
+		opt_cipher cipher_;
 	};
 }
+
+
+template<>
+struct std::formatter<leaf::network::tls::message> {
+
+	constexpr auto parse(const std::format_parse_context& ctx) {
+		return ctx.begin();
+	}
+
+	auto format(const leaf::network::tls::message& msg, std::format_context& ctx) const {
+		auto it = ctx.out();
+		msg.format(it);
+		return it;
+	}
+};
 
 
 template<>

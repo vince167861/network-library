@@ -3,6 +3,7 @@
 #include "number/fixed.h"
 #include "tls-utils/type.h"
 
+#include <memory>
 #include <string>
 #include <ostream>
 
@@ -119,6 +120,6 @@ namespace leaf::network::tls {
 	};
 
 
-	cipher_suite* get_cipher_suite(std::string_view);
+	std::unique_ptr<cipher_suite> get_cipher_suite(cipher_suite_t);
 
 }

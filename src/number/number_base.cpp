@@ -6,15 +6,17 @@
 namespace leaf {
 
 	std::string number_base::to_bytestring(std::endian endian) const {
+		if (!bits())
+			return "";
 		std::string str;
 		bool big_endian = endian == std::endian::big;
 		const auto top_bytes = (bits() / 8 + (bits() % 8 ? 1 : 0)) % unit_bytes;
 		if (big_endian)
-			write(std::endian::big, str, operator[](data_units() - 1), top_bytes);
+			write(std::endian::big, str, operator[](data_units() - 1), top_bytes ? top_bytes : unit_bytes);
 		for (std::size_t i = data_units() - 1; i > 0; --i)
 			write(endian, str, operator[](big_endian ? i - 1 : data_units() - 1 - i));
 		if (!big_endian)
-			write(std::endian::little, str, operator[](data_units() - 1), top_bytes);
+			write(std::endian::little, str, operator[](data_units() - 1), top_bytes ? top_bytes : unit_bytes);
 		return str;
 	}
 

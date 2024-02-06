@@ -27,9 +27,6 @@ namespace leaf::network::tls {
 	}
 
 	std::string certificate::to_bytestring(std::endian) const {
-		std::string data;
-		write(std::endian::big, data, certificate_request_context.size(), 1);
-		data += certificate_request_context;
 		std::string cert_list;
 		for (const auto& [data, extensions]: certificate_list) {
 			std::string ext;
@@ -41,6 +38,10 @@ namespace leaf::network::tls {
 			write(std::endian::big, cert_list, ext.size(), 2);
 			cert_list += ext;
 		}
+
+		std::string data;
+		write(std::endian::big, data, certificate_request_context.size(), 1);
+		data += certificate_request_context;
 		write(std::endian::big, data, cert_list.size(), 3);
 		data += cert_list;
 

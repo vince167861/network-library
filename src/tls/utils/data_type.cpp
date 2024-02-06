@@ -25,6 +25,8 @@ std::formatter<leaf::ext_type_t>::format(leaf::ext_type_t type, std::format_cont
 		build_enum_item2(it, ext_type_t, server_name)
 		build_enum_item2(it, ext_type_t, max_fragment_length)
 		build_enum_item2(it, ext_type_t, status_request)
+		build_enum_item2(it, ext_type_t, supported_versions)
+		build_enum_item2(it, ext_type_t, key_share)
 		default:
 			it = std::ranges::copy("unknown"sv, it).out;
 	}

@@ -1,7 +1,8 @@
 add_library(tls-cipher
 		aes_gcm.cpp
 		cipher_suite.cpp
-		gcm_cipher.cpp)
+		gcm_cipher.cpp
+		traffic_secret_manager.cpp)
 target_link_libraries(tls-cipher
 		PUBLIC tls-utils tls-record cipher hashing)
 target_sources(tls-cipher

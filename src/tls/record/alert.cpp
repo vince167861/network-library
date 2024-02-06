@@ -1,7 +1,6 @@
 #include "tls-record/alert.h"
 #include "utils.h"
 
-#include <sstream>
 #include <utility>
 
 namespace leaf::network::tls {

@@ -14,15 +14,20 @@ namespace leaf::network::tls {
 		return {raw_extension{ext_type, {it, std::next(it, ext_size)}}};
 	}
 
+	std::string generate_extension(ext_type_t type, std::string_view data) {
+		std::string str;
+		write(std::endian::big, str, type);
+		write(std::endian::big, str, data.size(), 2);
+		str += data;
+		return str;
+	}
+
 	raw_extension::raw_extension(ext_type_t type, std::string data)
 		: type(type), data(data) {
 	}
 
 	std::string raw_extension::to_bytestring(std::endian) const {
-		std::string str;
-		write(std::endian::big, str, type);
-		write(std::endian::big, str, data.size(), 2);
-		return str + data;
+		return generate_extension(type, data);
 	}
 
 	std::string extension_base::to_bytestring(std::endian endian) const {

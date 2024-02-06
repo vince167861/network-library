@@ -4,38 +4,28 @@
 
 namespace leaf::network::tls {
 
-	supported_versions::supported_versions(std::string_view source, context& context) {
+	supported_versions::supported_versions(msg_type_t type, std::string_view source)
+		: message_type(type) {
 		auto ptr = source.begin();
-		switch (context.endpoint_type) {
-			case context::endpoint_type_t::client: {
-				message_type = msg_type_t::server_hello;
+		switch (message_type) {
+			case msg_type_t::server_hello:
+				if (std::distance(ptr, source.end()) < sizeof(protocol_version_t))
+					throw std::runtime_error{"SupportedVersions.versions.[size]"};
 				versions.push_back(read<protocol_version_t>(std::endian::big, ptr));
 				return;
-			}
-			case context::endpoint_type_t::server: {
-				message_type = msg_type_t::client_hello;
-				read<std::uint8_t>(std::endian::big, ptr); // size of versions
-				while (ptr != source.end())
+			case msg_type_t::client_hello: {
+				const auto end = std::next(ptr, read<std::uint8_t>(std::endian::big, ptr));
+				if (end > source.end())
+					throw std::runtime_error{"SupportedVersions.versions.[size]"};
+				while (ptr != end)
 					versions.push_back(read<protocol_version_t>(std::endian::big, ptr));
 				return;
 			}
 		}
 	}
 
-	supported_versions::supported_versions(const context& context) {
-		if (context.endpoint_version < protocol_version_t::TLS1_3)
-			throw std::exception();
-		switch (context.endpoint_type) {
-			case context::endpoint_type_t::server:
-				message_type = msg_type_t::server_hello;
-				break;
-			case context::endpoint_type_t::client:
-				message_type = msg_type_t::client_hello;
-				break;
-			default:
-				throw std::exception();
-		}
-		versions.push_back(context.endpoint_version);
+	supported_versions::supported_versions(msg_type_t type, std::initializer_list<protocol_version_t> versions)
+			: message_type(type), versions(versions) {
 	}
 
 	void supported_versions::format(std::format_context::iterator& it, const std::size_t level) const {

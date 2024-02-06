@@ -9,7 +9,7 @@ namespace leaf::network::tls {
 		read(std::endian::big, ticket_age_add, ptr);
 		ticket_nonce = read_bytestring(ptr, read<std::uint8_t>(std::endian::big, ptr));
 		ticket = read_bytestring(ptr, read<std::uint16_t>(std::endian::big, ptr));
-		const auto ext_size = read<extension_size_t>(std::endian::big, ptr);
+		const auto ext_size = read<ext_size_t>(std::endian::big, ptr);
 		for (std::string_view ext_data{ptr, std::next(ptr, ext_size)}; !ext_data.empty(); ) {
 			auto ext = parse_extension(ext_data);
 			if (!ext) break;

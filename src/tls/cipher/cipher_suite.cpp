@@ -9,12 +9,15 @@ namespace leaf::network::tls {
 			: value(cs), digest_length(digest_length), key_length(key_length), iv_length(iv_length) {
 	}
 
-	cipher_suite* get_cipher_suite(const std::string_view name) {
-		if (name == "AES_128_GCM_SHA256")
-			return new aes_128_gcm_sha256;
-		if (name == "AES_256_GCM_SHA384")
-			return new aes_256_gcm_sha384;
-		return nullptr;
+	std::unique_ptr<cipher_suite> get_cipher_suite(cipher_suite_t suite) {
+		switch (suite) {
+			case cipher_suite_t::AES_128_GCM_SHA256:
+				return std::make_unique<aes_128_gcm_sha256>();
+			case cipher_suite_t::AES_256_GCM_SHA384:
+				return std::make_unique<aes_256_gcm_sha384>();
+			default:
+				return std::make_unique<unimplemented_cipher_suite>(suite);
+		}
 	}
 
 	std::ostream& operator<<(std::ostream& s, const cipher_suite& c) {

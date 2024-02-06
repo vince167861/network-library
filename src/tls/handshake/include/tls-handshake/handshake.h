@@ -3,9 +3,10 @@
 #include "tls-extension/extension.h"
 #include "tls-record/record.h"
 #include "tls-cipher/cipher_suite.h"
-#include "tls-context/context.h"
 
+#include <map>
 #include <list>
+#include <set>
 
 namespace leaf::network::tls {
 
@@ -21,40 +22,59 @@ namespace leaf::network::tls {
 
 
 	/**
-	 * TLS "ClientHello" handshake message
+	 * TLS "ClientHello" handshake_ message
 	 */
 	struct client_hello final: handshake_base {
 
-		protocol_version_t legacy_version = protocol_version_t::TLS1_2;
-		random_t random;
-		std::string legacy_session_id;
-		std::list<cipher_suite_t> cipher_suites;
-		std::string legacy_compression_methods;
-		std::list<raw_extension> extensions;
+		/** legacy_version */
+		protocol_version_t version;
 
-		client_hello(const context& context);
+		random_t random;
+
+		/** legacy_session_id */
+		std::string session_id;
+
+		std::list<cipher_suite_t> cipher_suites;
+
+		/** legacy_compression_methods */
+		std::string compression_methods;
+
+		std::map<ext_type_t, std::string> extensions;
+
+		client_hello(std::set<cipher_suite_t>);
 
 		client_hello(std::string_view);
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
 		void format(std::format_context::iterator&) const override;
+
+		void add_extension(std::initializer_list<raw_extension>);
+
+	private:
+		std::list<ext_type_t> extension_order_;
 	};
 
 
 	/**
-	 * TLS "ServerHello" handshake message
+	 * TLS "ServerHello" handshake_ message
 	 */
 	struct server_hello final: handshake_base {
 
-		protocol_version_t legacy_version = protocol_version_t::TLS1_2;
-		random_t random;
-		std::string legacy_session_id_echo; // 0..32 bytes
-		cipher_suite_t cipher_suite;
-		uint8_t legacy_compression_method = 0;
-		std::list<raw_extension> extensions; // 6..2^16-1 bytes
+		/** legacy_version */
+		protocol_version_t version;
 
-		bool is_hello_retry_request = false;
+		random_t random;
+
+		/** legacy_session_id_echo */
+		std::string session_id_echo;
+
+		cipher_suite_t cipher_suite;
+
+		/** legacy_compression_method */
+		std::uint8_t compression_method;
+
+		std::map<ext_type_t, std::string> extensions;
 
 		server_hello() = default;
 
@@ -64,16 +84,26 @@ namespace leaf::network::tls {
 
 		void format(std::format_context::iterator&) const override;
 
+		bool is_hello_retry_request = false;
+
+		void to_retry();
+
+		void add_extension(std::initializer_list<raw_extension>);
+
+	private:
+		std::list<ext_type_t> extension_order_;
 	};
 
 
 	/**
-	 * \brief TLS "EncryptedExtensions" handshake message
+	 * \brief TLS "EncryptedExtensions" handshake_ message
 	 * \note Encryption required
 	 */
 	struct encrypted_extension final: handshake_base {
 
 		std::list<raw_extension> extensions;
+
+		encrypted_extension() = default;
 
 		encrypted_extension(std::string_view);
 
@@ -84,7 +114,7 @@ namespace leaf::network::tls {
 
 
 	/**
-	 * TLS "Certificate" handshake message
+	 * TLS "Certificate" handshake_ message
 	 */
 	struct certificate final: handshake_base {
 
@@ -97,6 +127,8 @@ namespace leaf::network::tls {
 
 		std::list<certificate_entry> certificate_list;
 
+		certificate() = default;
+
 		certificate(std::string_view);
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
@@ -106,7 +138,7 @@ namespace leaf::network::tls {
 
 
 	/**
-	 * \brief A TLS "CertificateRequest" handshake message.
+	 * \brief A TLS "CertificateRequest" handshake_ message.
 	 * \note Encryption required.
 	 */
 	struct certificate_request final: handshake_base {
@@ -124,7 +156,7 @@ namespace leaf::network::tls {
 
 
 	/**
-	 * \brief A TLS "CertificateVerify" handshake message.
+	 * \brief A TLS "CertificateVerify" handshake_ message.
 	 * \note Encryption required.
 	 */
 	struct certificate_verify final: handshake_base {
@@ -142,16 +174,14 @@ namespace leaf::network::tls {
 
 
 	/**
-	 * \brief A TLS "Finished" handshake message.
+	 * \brief A TLS "Finished" handshake_ message.
 	 * \note Encryption required.
 	 */
 	struct finished final: handshake_base {
 
 		std::string verify_data;
 
-		finished(context&, std::string_view handshake_msgs);
-
-		finished(std::string_view source, context&);
+		finished(std::string_view source, cipher_suite&);
 
 		std::string to_bytestring(std::endian = std::endian::big) const override;
 
@@ -199,5 +229,7 @@ namespace leaf::network::tls {
 	using handshake = std::variant<client_hello, server_hello, encrypted_extension, certificate, certificate_request,
 			certificate_verify, finished, new_session_ticket, key_update>;
 
-	std::optional<handshake> parse_handshake(context&, std::string_view& source, bool encrypted);
+	class endpoint;
+
+	std::optional<handshake> parse_handshake(tls::endpoint&, std::string_view& source, bool encrypted);
 }

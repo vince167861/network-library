@@ -5,11 +5,11 @@
 
 namespace leaf {
 
-	using extension_size_t = std::uint16_t;
+	enum class endpoint_type_t {
+		server, client
+	};
 
-	using ext_data_size_t = std::uint16_t;
-
-	using random_t = std::uint8_t[32];
+	using random_t = std::array<std::uint8_t, 32>;
 
 	enum class content_type_t: std::uint8_t {
 		invalid = 0, change_cipher_spec = 20, alert = 21, handshake = 22, application_data = 23
@@ -20,10 +20,14 @@ namespace leaf {
 		server_name = 0, max_fragment_length = 1, status_request = 5, supported_groups = 10,signature_algorithms = 13,
 		use_srtp = 14, heartbeat = 15, alpn = 16, signed_cert_timestamp = 18, client_cert_type = 19,
 		server_cert_type = 20, padding = 21, record_size_limit = 28, session_ticket = 35, pre_shared_key = 41,
-		early_data = 42,supported_versions = 43, cookie = 44, psk_key_exchange_modes = 45, cert_authorities = 47,
-		oid_filters = 48,post_handshake_auth = 49, signature_algorithms_cert = 50, key_share = 51,
+		early_data = 42, supported_versions = 43, cookie = 44, psk_key_exchange_modes = 45, cert_authorities = 47,
+		oid_filters = 48, post_handshake_auth = 49, signature_algorithms_cert = 50, key_share = 51,
 		renegotiation_info = 0xff01
 	};
+
+	using ext_size_t = std::uint16_t;
+
+	using ext_data_size_t = std::uint16_t;
 
 
 	enum class protocol_version_t: uint16_t {

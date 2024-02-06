@@ -4,70 +4,57 @@
 #include "tls-handshake/handshake.h"
 #include "tls-key/manager.h"
 #include "tls-record/record.h"
-#include "tls-context/context.h"
+#include "tls-context/endpoint.h"
 #include "tls-utils/rng.h"
+#include "tls-cipher/cipher_suite.h"
+#include "tls-cipher/traffic_secret_manager.h"
 
 #include <memory>
 #include <sstream>
 #include <optional>
+#include <list>
 
 namespace leaf::network::tls {
 
-	class client final: public network::client, context {
+	class client final: public network::client, public endpoint {
+
+		enum class client_state_t: std::uint8_t {
+			wait_server_hello, wait_encrypted_extensions, wait_cert_request, wait_cert,
+			wait_cert_verify, wait_finish, wait_key_update, connected, wait_closed, closed
+		};
+
+		network::client& client_;
+
+		std::map<named_group_t, std::unique_ptr<key_exchange_manager>> available_managers_;
+
+		std::set<named_group_t> available_groups_;
+
+		std::set<cipher_suite_t> available_cipher_suites_;
+
+		client_hello gen_client_hello_() const;
+
+		void handshake_();
+
 	public:
-		bool compatibility_mode = false;
+		std::optional<std::string> init_session_id;
 
-		std::optional<std::string> server_name, init_session_id;
+		std::optional<random_t> init_random;
 
-	private:
-		std::stringstream app_data_buffer;
-
-		bool random_random = true;
+		std::optional<std::string> server_name;
 
 		std::list<std::string> alpn_protocols;
 
-		client_hello gen_client_hello() const;
-
-		void handshake();
-
-		void send(const record&) const;
-
-	public:
-		const std::unique_ptr<random_number_generator> random_generator;
-
 		explicit client(network::client& client, std::unique_ptr<random_number_generator> generator = std::make_unique<mt19937_uniform>());
 
-		void reset();
-
-		bool connect(std::string_view host, unsigned short port) override;
-
-		bool connected() const override;
-
-		std::string read(std::size_t size) override;
-
-		std::size_t write(std::string_view) override;
-
-		bool finish() override;
-
-		void close() override;
+		bool connect(std::string_view host, std::uint16_t port) override;
 
 		std::size_t available() override;
 
-		void add_group(key_exchange_manager*);
+		void add_group(std::initializer_list<named_group_t>);
 
-		void add_group(std::string_view);
+		void add_cipher_suite(std::initializer_list<cipher_suite_t>);
 
-		void mock_group(named_group_t);
-
-		void add_cipher(cipher_suite*);
-
-		void add_cipher(std::string_view);
-
-		void mock_cipher(cipher_suite_t);
-
-		void set_random(std::string_view bytes);
-
-		void add_alpn(std::string_view);
+		void reset();
 	};
 
 }

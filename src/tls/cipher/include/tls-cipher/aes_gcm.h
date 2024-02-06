@@ -28,8 +28,8 @@ namespace leaf::network::tls {
 		}
 
 		aes_128_gcm();
-
 	};
+
 
 	class aes_128_gcm_sha256 final: public aes_128_gcm {
 	public:
@@ -38,7 +38,6 @@ namespace leaf::network::tls {
 		std::string HMAC_hash(std::string_view data, std::string_view key) const override;
 
 		aes_128_gcm_sha256();
-
 	};
 
 	class aes_256_gcm: public gcm_cipher {

@@ -5,33 +5,16 @@
 
 namespace leaf::network::tls {
 
-	supported_groups::supported_groups(const context& context) {
-		switch (context.endpoint_type) {
-			case context::endpoint_type_t::client:
-				message_type = msg_type_t::client_hello;
-			break;
-			case context::endpoint_type_t::server:
-				message_type = msg_type_t::server_hello;
-			break;
-		}
-		for (auto& m: context.managers)
-			named_group_list.push_back(m->group);
+	supported_groups::supported_groups(const std::set<named_group_t>& groups)
+			: named_group_list{groups.begin(), groups.end()} {
 	}
 
-	supported_groups::supported_groups(std::string_view source, context& context) {
-		switch (context.endpoint_type) {
-			case context::endpoint_type_t::client:
-				message_type = msg_type_t::server_hello;
-			break;
-			case context::endpoint_type_t::server:
-				message_type = msg_type_t::client_hello;
-			break;
-		}
+	supported_groups::supported_groups(std::string_view source) {
 		auto ptr = source.begin();
-		const auto ngl_size = read<std::uint16_t>(std::endian::big, ptr);
-		if (std::distance(ptr, source.end()) < ngl_size)
-			throw alert::decode_error_early_end_of_data("named_group_list.size", std::distance(ptr, source.end()), ngl_size);
-		while (ptr != source.end())
+		const auto end = std::next(ptr, read<std::uint16_t>(std::endian::big, ptr));
+		if (end > source.end())
+			throw alert::decode_error("SupportedGroups.[size]");
+		while (ptr < end)
 			named_group_list.push_back(read<named_group_t>(std::endian::big, ptr));
 	}
 
