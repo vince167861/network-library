@@ -35,4 +35,8 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 	add_executable(test-tcp tcp.cpp)
 	target_link_libraries(test-tcp tcp)
 	gtest_discover_tests(test-tcp)
+
+	add_executable(test-tls tls/key_exchange.cpp)
+	target_link_libraries(test-tls tls)
+	# gtest_discover_tests(test-tls)
 endif ()

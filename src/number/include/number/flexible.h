@@ -1,11 +1,11 @@
 #pragma once
 
-#include "fixed.h"
+#include "number_base.h"
 #include <vector>
 
 namespace leaf {
 
-	class var_unsigned: public number_base {
+	class var_unsigned : public number_base {
 
 		std::size_t bits_;
 
@@ -36,6 +36,14 @@ namespace leaf {
 
 		static var_unsigned from_little_endian_hex(std::string_view hex);
 
+		template<class T> requires std::is_integral_v<T>
+		static var_unsigned from_number(T val) {
+			var_unsigned ret(sizeof(T) * 8);
+			for (std::size_t i = 0; i < ret.data_units(); ++i)
+				ret[i] = i * unit_bytes < sizeof(T) ? val >> (unit_bits * i) : 0;
+		return ret;
+		}
+
 		var_unsigned operator+(const var_unsigned&) const;
 
 		var_unsigned& operator+=(const var_unsigned&);
@@ -60,6 +68,10 @@ namespace leaf {
 
 		var_unsigned operator~() const;
 
+		var_unsigned operator%(const var_unsigned& modulus) const;
+
+		friend var_unsigned exp_mod(const var_unsigned& base, var_unsigned exp, const var_unsigned& modulus);
+
 		std::strong_ordering operator<=>(const number_base& other) const;
 
 		bool operator==(const number_base&) const;
@@ -78,6 +90,10 @@ namespace leaf {
 
 		unit_t& operator[](std::size_t size) override;
 
+		bool bit(std::size_t pos) const {
+			return (data[pos / unit_bits] >> pos % unit_bits) & 1;
+		}
+
 		template<class V> requires std::is_integral_v<V>
 		V value(std::size_t pos) const {
 			if constexpr (sizeof(V) > unit_bytes) {
@@ -91,5 +107,7 @@ namespace leaf {
 				return data[unit_pos] >> pos % (unit_bytes / sizeof(V)) * 8;
 			}
 		}
+
+		void shrink();
 	};
 }

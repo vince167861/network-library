@@ -5,18 +5,15 @@
 namespace leaf::network::tls {
 
 	class x25519_manager: public key_exchange_manager {
-	public:
-		using key_t = fixed_unsigned<32 * 8>;
-
 	private:
 		bool has_key;
 
-		key_t secret_key;
-		key_t public_key_;
-		key_t shared_key_;
+		var_unsigned secret_key;
+        var_unsigned public_key_;
+        var_unsigned shared_key_;
 
 	public:
-		explicit x25519_manager(const key_t& secret_key);
+		explicit x25519_manager(const var_unsigned& secret_key);
 
 		explicit x25519_manager();
 
@@ -24,7 +21,7 @@ namespace leaf::network::tls {
 
 		void exchange_key(std::string_view remote_public_key) override;
 
-		void exchange_key(const key_t& remote_public_key);
+		void exchange_key(const var_unsigned& remote_public_key);
 
 		std::string public_key() override;
 

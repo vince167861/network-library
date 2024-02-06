@@ -40,4 +40,9 @@ namespace leaf {
 
 		virtual ~number_base() = default;
 	};
+
+	inline std::ostream& operator<<(std::ostream& s, const number_base& number) {
+		s << number.to_string();
+		return s;
+	}
 }

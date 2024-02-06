@@ -6,7 +6,7 @@
 using namespace leaf;
 
 TEST(hash, SHA256) {
-	EXPECT_EQ(sha_256::hash(var_unsigned{}), fixed_unsigned("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"));
+	EXPECT_EQ(sha_256::hash(var_unsigned{}), var_unsigned::from_hex("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"));
 	EXPECT_EQ(
 			sha_256::hash(var_unsigned::from_hex("616263")),
 			var_unsigned::from_hex("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"));

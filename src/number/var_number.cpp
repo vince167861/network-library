@@ -4,6 +4,10 @@
 
 namespace leaf {
 
+	constexpr unsigned long long hex_to_bits(char c) {
+		return '0' <= c && c <= '9' ? c - '0' : 'a' <= c && c <= 'f' ? c - 'a' + 10 : 'A' <= c && c <= 'F' ? c - 'A' + 10 : 0;
+	}
+
 	bool var_unsigned::unsigned_add_(std::size_t pos, unit_t val, bool carry) {
 		auto& field = data[pos], ori = field;
 		field += val;
@@ -66,10 +70,11 @@ namespace leaf {
 	}
 
 	var_unsigned& var_unsigned::operator-=(const var_unsigned& other) {
+		const auto cmn_size = std::min(data_units(), other.data_units()), size = data_units();
 		bool borrow = false;
-		for (size_t i = 0; i < data_units(); ++i) {
+		for (std::size_t i = 0; i < size; ++i) {
 			auto this_data = data[i];
-			data[i] -= other.data[i] + (borrow ? 1 : 0);
+			data[i] -= (i < cmn_size ? other.data[i] : 0) + (borrow ? 1 : 0);
 			borrow = data[i] > this_data || (borrow && data[i] == this_data);
 		}
 		return *this;
@@ -83,12 +88,12 @@ namespace leaf {
 
 	var_unsigned var_unsigned::operator*(const var_unsigned& other) const {
 		auto return_bits = bits_ + other.bits_;
-		var_unsigned ret(return_bits);
+		var_unsigned ret{return_bits};
 		auto return_units = ret.data_units();
-		for (size_t i = 0; i < data_units(); ++i) {
-			uint64_t a = data[i];
+		for (std::size_t i = 0; i < data_units(); ++i) {
+			std::uint64_t a = data[i];
 			for (std::size_t j = 0; j < other.data_units() && i + j < return_units; ++j) {
-				uint64_t b = other.data[j];
+				std::uint64_t b = other.data[j];
 				auto r = a * b;
 				bool carry = false;
 				for (auto pos = i + j;
@@ -97,6 +102,7 @@ namespace leaf {
 					carry = ret.unsigned_add_(pos, r, carry);
 			}
 		}
+		ret.shrink();
 		return ret;
 	}
 
@@ -244,4 +250,39 @@ namespace leaf {
 			data[byte] &= ~mask;
 	}
 
+	var_unsigned exp_mod(const var_unsigned& base, var_unsigned exp, const var_unsigned& modulus) {
+		auto ret = var_unsigned::from_number(1);
+		auto new_base = base % modulus;
+		while (exp > var_unsigned::from_number(0) && ret > var_unsigned::from_number(0)) {
+			if (exp.data[0] % 2 == 1)
+				ret = ret * new_base % modulus;
+			exp >>= 1;
+			new_base = new_base * new_base % modulus;
+		}
+		return ret;
+	}
+
+	var_unsigned var_unsigned::operator%(const var_unsigned& modulus) const {
+		var_unsigned ret{*this};
+		std::size_t start_shift = modulus.data_units() - 1;
+		while (start_shift && modulus.data[start_shift] == 0)
+			--start_shift;
+		auto expanded_modulus = modulus.resize(bits_);
+		if (bits_ > modulus.bits_)
+			expanded_modulus <<= bits_ - modulus.bits_;
+		while (ret >= modulus) {
+			if (ret >= expanded_modulus)
+				ret -= expanded_modulus;
+			expanded_modulus >>= 1;
+		}
+		ret.shrink();
+		return ret;
+	}
+
+	void var_unsigned::shrink() {
+		data.erase(
+				std::ranges::find_if_not(data.rbegin(), data.rend(), [](const auto val){ return !val;}).base(),
+				data.end());
+		bits_ = data.size() * unit_bits;
+	}
 }

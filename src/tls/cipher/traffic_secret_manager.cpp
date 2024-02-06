@@ -23,7 +23,7 @@ namespace leaf::network::tls {
 				default:
 					throw std::runtime_error{"unexpected"};
 			}
-			record_nonce.set(fixed_unsigned(write_nonce++));
+			record_nonce.set(var_unsigned::from_number(write_nonce++));
 			record_nonce ^= *sender_write_iv;
 			active_cipher_->set_key(*sender_write_key);
 		}
@@ -46,7 +46,7 @@ namespace leaf::network::tls {
 				default:
 					throw std::runtime_error{"unexpected"};
 			}
-			record_nonce.set(fixed_unsigned(read_nonce++));
+			record_nonce.set(var_unsigned::from_number(read_nonce++));
 			record_nonce ^= *sender_write_iv;
 			active_cipher_->set_key(*sender_write_key);
 		}
