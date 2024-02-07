@@ -1,8 +1,5 @@
 #pragma once
-
 #include "basic_endpoint.h"
-
-#include <string>
 #include <cstdint>
 
 namespace leaf::network {
@@ -10,7 +7,7 @@ namespace leaf::network {
 	class client: virtual public endpoint {
 	public:
 
-		virtual bool connect(std::string_view host, uint16_t port) = 0;
+		virtual bool connect(std::string_view host, std::uint16_t port) = 0;
 
 		virtual std::size_t available() = 0;
 

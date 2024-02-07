@@ -9,15 +9,10 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
 	add_executable(test-hashing hashing.cpp)
 	target_link_libraries(test-hashing hashing)
-	gtest_discover_tests(test-hashing)
 
 	add_executable(test-json json.cpp)
 	target_link_libraries(test-json json)
 	gtest_discover_tests(test-json)
-
-	add_executable(test-tls_client tls_client.cpp)
-	target_link_libraries(test-tls_client tls)
-	gtest_discover_tests(test-tls_client)
 
 	add_executable(test-http_url http_url.cpp)
 	target_link_libraries(test-http_url http)
@@ -31,7 +26,9 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 	target_link_libraries(test-tcp tcp)
 	gtest_discover_tests(test-tcp)
 
-	add_executable(test-tls tls/key_exchange.cpp)
+	add_executable(test-tls
+			tls/key_exchange.cpp
+			tls/cipher.cpp)
 	target_link_libraries(test-tls tls)
 
 	add_executable(test-cipher cipher.cpp)

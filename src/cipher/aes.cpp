@@ -176,7 +176,9 @@ namespace leaf {
 	}
 
 	void aes::key_expansion(const var_unsigned& key, var_unsigned& key_schedule) const {
-		key_schedule = key.resize(key_schedule_units * 32) << (key_schedule_units * 32 - key.bits());
+		key_schedule = key;
+		key_schedule.resize(key_schedule_units * 32);
+		key_schedule <<= (key_schedule_units * 32 - key.bits());
 		uint8_t xt = 0x01;
 		for (std::size_t i = N_k; i < key_schedule_units; ++i) {
 			auto t = key_schedule.value<uint32_t>(key_schedule_units - 1 - (i - 1));

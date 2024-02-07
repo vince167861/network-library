@@ -25,6 +25,6 @@ struct std::formatter<leaf::network::http::response> {
 	}
 
 	auto format(const leaf::network::http::response& response, std::format_context& ctx) const {
-		return std::format_to(ctx.out(), "response (status {})\n\t{}", response.status, response.body);
+		return std::format_to(ctx.out(), "response (status {})\n{}", response.status, response.body);
 	}
 };

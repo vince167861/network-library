@@ -50,7 +50,6 @@ namespace leaf {
 		std::size_t t = 0;
 		for (char ptr: std::ranges::reverse_view(hex))
 			ret[t / 2 / unit_bytes] |= hex_to_bits(ptr) << 4 * t % unit_bits, ++t;
-		ret.shrink();
 		return ret;
 	}
 
@@ -143,21 +142,20 @@ namespace leaf {
 	}
 
 	var_unsigned& var_unsigned::operator>>=(std::size_t shift) {
-		if (shift > data_units() * unit_bits)
+		if (shift > bits_) {
 			for (auto& u: data) u = 0;
-		else {
-			auto shift_units = shift / unit_bits;
-			shift %= unit_bits;
-			for (std::size_t i = 0; i < data_units(); ++i) {
-				auto this_data = data[i];
-				data[i] = 0;
-				if (i + shift_units < data_units())
-					data[i] = (shift_units == 0 ? this_data : data[i + shift_units]) >> shift;
-				if (i + 1 + shift_units < data_units() && shift > 0)
-					data[i] |= data[i + 1 + shift_units] << (unit_bits - shift);
-			}
+			return *this;
 		}
-		shrink();
+		const auto shift_units = shift / unit_bits;
+		shift %= unit_bits;
+		for (std::size_t i = 0; i < data_units(); ++i) {
+			auto this_data = data[i];
+			data[i] = 0;
+			if (i + shift_units < data_units())
+				data[i] = (shift_units == 0 ? this_data : data[i + shift_units]) >> shift;
+			if (i + 1 + shift_units < data_units() && shift > 0)
+				data[i] |= data[i + 1 + shift_units] << (unit_bits - shift);
+		}
 		return *this;
 	}
 
@@ -168,7 +166,8 @@ namespace leaf {
 	}
 
 	var_unsigned& var_unsigned::operator^=(const var_unsigned& other) {
-		for (std::size_t i = 0; i < data_units(); ++i)
+		const auto cmn_units = std::min(data.size(), other.data.size());
+		for (std::size_t i = 0; i < cmn_units; ++i)
 			data[i] ^= other.data[i];
 		return *this;
 	}
@@ -233,13 +232,15 @@ namespace leaf {
 		return data[size];
 	}
 
-	void var_unsigned::set(const number_base& other, const std::size_t bits) {
-		auto other_bits = std::min(other.bits(), bits);
-		for (std::size_t i = 0; i < other_bits / unit_bits; ++i)
-			data[i] = other[i];
-		if (const auto excess = other_bits % unit_bits) {
-			auto& msu = data[other_bits / unit_bits];
-			const unit_t val = other[other_bits / unit_bits] & ~(~0 << excess);
+	void var_unsigned::set(const number_base& other, std::size_t use_bits) {
+		if (use_bits == ~static_cast<std::size_t>(0))
+			use_bits = other.bits();
+		const auto other_size = other.data_units();
+		for (std::size_t i = 0; i < use_bits / unit_bits; ++i)
+			data[i] = i < other_size ? other[i] : 0;
+		if (const auto excess = use_bits % unit_bits) {
+			auto& msu = data[use_bits / unit_bits];
+			const unit_t val = other[use_bits / unit_bits] & ~(~0 << std::min(excess, other.bits() % unit_bits));
 			msu = msu & ~0 << excess | val;
 		}
 	}
@@ -252,10 +253,9 @@ namespace leaf {
 		return std::is_eq(*this <=> other);
 	}
 
-	var_unsigned var_unsigned::resize(const std::size_t new_bits) const {
-		var_unsigned ret(new_bits);
-		ret.set(*this, new_bits);
-		return ret;
+	void var_unsigned::resize(const std::size_t new_bits) {
+		data.resize(new_bits / unit_bits + (new_bits % unit_bits ? 1 : 0));
+		bits_ = new_bits;
 	}
 
 	var_unsigned::var_unsigned(const number_base& ref)
@@ -287,14 +287,20 @@ namespace leaf {
 	}
 
 	var_unsigned var_unsigned::operator%(const var_unsigned& modulus) const {
+		const auto this_bits = msb_pos() + 1, modulus_bits = modulus.msb_pos() + 1;
+		const auto cmp = this_bits <=> modulus_bits;
+		if (std::is_lt(cmp))
+			return *this;
+		auto m_modulus = modulus;
+		if (std::is_gt(cmp)) {
+			m_modulus.resize(this_bits);
+			m_modulus <<= this_bits - modulus_bits;
+		}
 		var_unsigned ret{*this};
-		auto expanded_modulus = modulus.resize(bits_);
-		if (bits_ > modulus.bits_)
-			expanded_modulus <<= bits_ - modulus.bits_;
 		while (ret >= modulus) {
-			if (ret >= expanded_modulus)
-				ret -= expanded_modulus;
-			expanded_modulus >>= 1;
+			if (ret >= m_modulus)
+				ret -= m_modulus;
+			m_modulus >>= 1;
 		}
 		ret.shrink();
 		return ret;
@@ -304,6 +310,14 @@ namespace leaf {
 		data.erase(
 				std::ranges::find_if_not(data.rbegin(), data.rend(), [](const auto val){ return !val;}).base(),
 				data.end());
-		bits_ = data.size() ? (data.size() - 1) * unit_bits + msb(data[data.size() - 1]) + 1 : 0;
+		bits_ = msb_pos() + 1;
+	}
+
+	std::size_t var_unsigned::msb_pos() const {
+		std::size_t pos = data.size() - 1;
+		for (auto it = data.rbegin(), end = data.rend(); it != end; ++it, --pos)
+			if (*it)
+				return pos * unit_bits + msb(data[pos]);
+		return -1;
 	}
 }

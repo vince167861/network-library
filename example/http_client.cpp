@@ -16,7 +16,7 @@ int main() {
 
 	auto future_1 = http_client.fetch(request_1), future_2 = http_client.fetch(request_2);
 	http_client.process();
-	std::cout << future_1.get().body << '\n' << future_2.get().body;
+	std::cout << std::format("response of request 1:\n{}\nresponse of request 2:\n{}", future_1.get(), future_2.get());
 
 	return 0;
 }

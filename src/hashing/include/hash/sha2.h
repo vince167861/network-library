@@ -7,7 +7,8 @@ namespace leaf {
 		template<std::size_t block_size>
 		var_unsigned padding(const var_unsigned& val) {
 			auto ext = (val.bits() + 65) % block_size;
-			var_unsigned ret = val.resize(block_size * ((val.bits() + 65) / block_size + 1));
+			auto ret{val};
+			ret.resize(block_size * ((val.bits() + 65) / block_size + 1));
 			if (ext)
 				ret <<= block_size - ext + 65;
 			ret.set(true, block_size - ext + 64);
@@ -26,8 +27,8 @@ namespace leaf {
 		}
 	}
 
-	template<std::size_t D, class T>
-	T rotate_right(T x) {
+	template<class T>
+	T rotate_right(T x, std::size_t D) {
 		return (x << (sizeof(T) * 8 - D)) | (x >> D);
 	}
 
@@ -44,19 +45,19 @@ namespace leaf {
 				0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
 		static uint32_t Sigma_0(uint32_t x) {
-			return rotate_right<2>(x) ^ rotate_right<13>(x) ^ rotate_right<22>(x);
+			return rotate_right(x, 2) ^ rotate_right(x, 13) ^ rotate_right(x, 22);
 		}
 
 		static uint32_t Sigma_1(uint32_t x) {
-			return rotate_right<6>(x) ^ rotate_right<11>(x) ^ rotate_right<25>(x);
+			return rotate_right(x, 6) ^ rotate_right(x, 11) ^ rotate_right(x, 25);
 		}
 
 		static uint32_t sigma_0(uint32_t x) {
-			return rotate_right<7>(x) ^ rotate_right<18>(x) ^ (x >> 3);
+			return rotate_right(x, 7) ^ rotate_right(x, 18) ^ (x >> 3);
 		}
 
 		static uint32_t sigma_1(uint32_t x) {
-			return rotate_right<17>(x) ^ rotate_right<19>(x) ^ (x >> 10);
+			return rotate_right(x, 17) ^ rotate_right(x, 19) ^ (x >> 10);
 		}
 
 	public:
@@ -89,7 +90,7 @@ namespace leaf {
             var_unsigned ret{256};
             for (auto i : H) {
                 ret <<= sizeof i * 8;
-                ret.set(var_unsigned::from_number(i));
+				ret.set(var_unsigned::from_number(i), 32);
             }
             return ret;
         }
@@ -121,19 +122,19 @@ namespace leaf {
 		};
 
 		static uint64_t Sigma_0(uint64_t x) {
-			return rotate_right<28>(x) ^ rotate_right<34>(x) ^ rotate_right<39>(x);
+			return rotate_right(x, 28) ^ rotate_right(x, 34) ^ rotate_right(x, 39);
 		}
 
 		static uint64_t Sigma_1(uint64_t x) {
-			return rotate_right<14>(x) ^ rotate_right<18>(x) ^ rotate_right<41>(x);
+			return rotate_right(x, 14) ^ rotate_right(x, 18) ^ rotate_right(x, 41);
 		}
 
 		static uint64_t sigma_0(uint64_t x) {
-			return rotate_right<1>(x) ^ rotate_right<8>(x) ^ (x >> 7);
+			return rotate_right(x, 1) ^ rotate_right(x, 8) ^ (x >> 7);
 		}
 
 		static uint64_t sigma_1(uint64_t x) {
-			return rotate_right<19>(x) ^ rotate_right<61>(x) ^ (x >> 6);
+			return rotate_right(x, 19) ^ rotate_right(x, 61) ^ (x >> 6);
 		}
 
 	public:
@@ -166,7 +167,7 @@ namespace leaf {
             var_unsigned ret{384};
             for (uint8_t i = 0; i < 6; ++i) {
                 ret <<= 64;
-                ret.set(var_unsigned::from_number(H[i]));
+				ret.set(var_unsigned::from_number(H[i]), 64);
             }
             return ret;
         }

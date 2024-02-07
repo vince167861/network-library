@@ -9,15 +9,17 @@ namespace leaf::hashing {
 		var_unsigned key = key_;
 		auto&& cmp = key.bits() <=> block_size * 8;
 		if (std::is_lt(cmp)) {
-			key = key.resize(block_size * 8);
+			key.resize(block_size * 8);
 			key <<= block_size * 8 - key_.bits();
 		} else if (std::is_gt(cmp))
 			key = hash(key);
-		auto&& ind = (key ^ ipad).resize(block_size * 8 + data.bits());
+		auto ind = key ^ ipad;
+		ind.resize(block_size * 8 + data.bits());
 		ind <<= data.bits();
 		ind.set(data);
 		ind = hash(ind);
-		auto&& ret = (key ^ opad).resize(block_size * 8 + ind.bits());
+		auto ret = key ^ opad;
+		ret.resize(block_size * 8 + ind.bits());
 		ret <<= ind.bits();
 		ret.set(ind);
 		return hash(ret);

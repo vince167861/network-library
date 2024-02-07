@@ -41,7 +41,6 @@ namespace leaf {
 			var_unsigned ret(sizeof(T) * 8);
 			for (std::size_t i = 0; i < ret.data_units(); ++i)
 				ret[i] = i * unit_bytes < sizeof(T) ? val >> (unit_bits * i) : 0;
-			ret.shrink();
 			return ret;
 		}
 
@@ -77,11 +76,11 @@ namespace leaf {
 
 		bool operator==(const number_base&) const;
 
-		void set(const number_base&, std::size_t bits = -1);
+		void set(const number_base&, std::size_t use_bits = -1);
 
 		void set(bool, std::size_t pos);
 
-		var_unsigned resize(std::size_t new_bits) const;
+		void resize(const std::size_t new_bits);
 
 		std::size_t block_needed(std::size_t block_size) const;
 
@@ -110,5 +109,7 @@ namespace leaf {
 		}
 
 		void shrink();
+
+		std::size_t msb_pos() const;
 	};
 }

@@ -36,8 +36,10 @@ TEST(gcm, increase) {
 }
 
 TEST(ecc, x25519_functions) {
+	auto x9_256b = var_unsigned::from_number(0x9);
+	x9_256b.resize(256);
 	EXPECT_EQ(
-			ecc::x25519(var_unsigned::from_number(0x9).resize(256), var_unsigned::from_number(0x9).resize(256)),
+			ecc::x25519(x9_256b, x9_256b),
 			var_unsigned::from_hex("7930ae1103e8603c784b85b67bb897789f27b72b3e0b35a1bcd727627a8e2c42"));
 	EXPECT_EQ(
 			ecc::x25519(

@@ -6,7 +6,8 @@ namespace leaf {
 	const std::runtime_error decrypt_failed{"Decryption failed: authentication failed."};
 
 	var_unsigned multiply(const var_unsigned& X, var_unsigned Y) {
-		auto R = var_unsigned::from_hex("e1").resize(128);
+		auto R = var_unsigned::from_number(0xe1);
+		R.resize(128);
 		R <<= 120;
 		var_unsigned Z(128);
 		for (std::size_t i = 0; i < 128; ++i) {
@@ -21,12 +22,12 @@ namespace leaf {
 	}
 
 	var_unsigned increase(const std::size_t bits, var_unsigned val) {
-		val.set((val + var_unsigned{1, 1}).resize(bits));
+		val.set(val + var_unsigned{1, 1}, bits);
 		return val;
 	}
 
 	void inplace_increase(const std::size_t bits, var_unsigned& val) {
-		val.set((val + var_unsigned{1, 1}).resize(bits));
+		val.set(val + var_unsigned{1, 1}, bits);
 	}
 
 	void gcm::init() {
@@ -37,12 +38,14 @@ namespace leaf {
 	gcm::encrypt(const var_unsigned& iv, const var_unsigned& plain, const var_unsigned& data) const {
 		var_unsigned J;
 		if (iv_size == 96) {
-			J = iv.resize(128) << 32;
+			J = iv;
+			J.resize(128);
+			J <<= 32;
 			J.set(true, 0);
 		} else {
-			auto J_p
-					= iv.resize(128 * (1 + iv_size / 128 + (iv_size % 128 ? 0 : 1)))
-							<< (iv_size % 128 ? 128 - iv_size % 128 : 0) + 64;
+			auto J_p = iv;
+			J_p.resize(128 * (1 + iv_size / 128 + (iv_size % 128 ? 0 : 1)));
+			J_p <<= (iv_size % 128 ? 128 - iv_size % 128 : 0) + 64;
 			J_p.set(var_unsigned::from_number(iv_size), 64);
 			J = ghash(J_p);
 		}
@@ -64,10 +67,13 @@ namespace leaf {
 	gcm::decrypt(const var_unsigned& iv, const var_unsigned& cipher, const var_unsigned& data, const var_unsigned& tag) const {
 		var_unsigned J(block_size);
 		if (iv_size == 96) {
-			J = iv.resize(block_size) << 32;
+			J = iv;
+			J.resize(block_size);
+			J <<= 32;
 			J.set(true, 0);
 		} else {
-			var_unsigned J_p = iv.resize(128 * (iv_size / 128 + (iv_size % 128 ? 0 : 1) + 1));
+			auto J_p = iv;
+			J_p.resize(128 * (iv_size / 128 + (iv_size % 128 ? 0 : 1) + 1));
 			J_p <<= (iv_size % 128 ? 128 - iv_size % 128 : 0) + 64;
 			J_p.set(var_unsigned(64, iv_size));
 			J = ghash(J_p);
@@ -89,9 +95,9 @@ namespace leaf {
 	}
 
 	var_unsigned gcm::ghash(const var_unsigned& val) const {
-		var_unsigned y(128);
+		var_unsigned y{128};
 		for (std::size_t i = 0; i < val.bits() / 128; ++i) {
-			y ^= (val >> 128 * (val.bits() / 128 - i - 1)).resize(block_size);
+			y ^= val >> 128 * (val.bits() / 128 - i - 1);
 			y = multiply(y, hash_subkey_);
 		}
 		return y;
@@ -104,12 +110,15 @@ namespace leaf {
 		const auto n = X.block_needed(block_size), excess = X.bits() % block_size ? X.bits() % block_size : block_size;
 		for (size_t i = 0; i < n - 1; ++i) {
 			Y <<= block_size;
-			auto X_i = (X >> block_size * (n - i - 2) + excess).resize(block_size);
+			auto X_i = X >> block_size * (n - i - 2) + excess;
+			X_i.resize(block_size);
 			Y.set(X_i ^ ciph(ICB));
 			inplace_increase(32, ICB);
 		}
 		Y <<= excess;
-		Y.set(X.resize(excess) ^ ciph(ICB) >> 128 - excess);
+		auto X_excess = X;
+		X_excess.resize(excess);
+		Y.set(X_excess ^ ciph(ICB) >> 128 - excess);
 		return Y;
 	}
 }

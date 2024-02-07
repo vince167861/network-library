@@ -22,5 +22,4 @@ namespace leaf::network::http {
 
 		void print(std::ostream&) const;
 	};
-
 }

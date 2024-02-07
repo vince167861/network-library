@@ -7,7 +7,8 @@ namespace leaf::network::tls {
 	}
 
 	std::string cipher_suite_gcm::encrypt(const std::string_view nonce, const std::string_view auth, const std::string_view plain_text) const {
-		auto nonce_data = var_unsigned::from_bytes(nonce).resize(iv_size);
+		auto nonce_data = var_unsigned::from_bytes(nonce);
+		nonce_data.resize(iv_size);
 		auto plain_data = var_unsigned::from_bytes(plain_text);
 		auto auth_data = var_unsigned::from_bytes(auth);
 		auto [ciphered, tag] = gcm::encrypt(nonce_data, plain_data, auth_data);
@@ -15,7 +16,8 @@ namespace leaf::network::tls {
 	}
 
 	std::string cipher_suite_gcm::decrypt(std::string_view nonce, std::string_view data, std::string_view cipher_text) const {
-		auto nonce_data = var_unsigned::from_bytes(nonce).resize(iv_size);
+		auto nonce_data = var_unsigned::from_bytes(nonce);
+		nonce_data.resize(iv_size);
 		auto cipher_data = var_unsigned::from_bytes({cipher_text.begin(), cipher_text.end() - 16});
 		auto auth_data = var_unsigned::from_bytes(data);
 		auto tag_data = var_unsigned::from_bytes({cipher_text.end() - 16, cipher_text.end()});

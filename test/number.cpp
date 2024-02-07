@@ -93,7 +93,7 @@ TEST(fixed_unsigned, left_shift) {
 	fixed_unsigned x150(0x150), x54(0x54), x0(0);
 	fixed_unsigned x15e33("15000000000000000000000000000000000");
 	EXPECT_EQ(x54 << 0, x54);
-	EXPECT_EQ(x54 << sizeof(unsigned long long) * 8, x0);
+	EXPECT_EQ(x54 << sizeof(std::uint64_t) * 8, x0);
 	EXPECT_EQ(x15e33 << 0, x15e33);
 	EXPECT_EQ(x54 << 0x2, x150);
 	EXPECT_EQ(fixed_unsigned<0x89>(0x54) << 0x82, x15e33);
@@ -106,16 +106,18 @@ TEST(var_unsigned, left_shift) {
 			x0 = var_unsigned::from_number(0),
 			x15e33 = var_unsigned::from_hex("15000000000000000000000000000000000");
 	EXPECT_EQ(x54 << 0, x54);
-	EXPECT_EQ(x54 << sizeof(unsigned long long) * 8, x0);
+	EXPECT_EQ(x54 << sizeof(std::uint64_t) * 8, x0);
 	EXPECT_EQ(x15e33 << 0, x15e33);
 	EXPECT_EQ(x54 << 0x2, x150);
-	EXPECT_EQ(var_unsigned::from_number(0x54).resize(0x89) << 0x82, x15e33);
+	auto a = var_unsigned::from_number(0x54);
+	a.resize(0x89);
+	EXPECT_EQ(a << 0x82, x15e33);
 }
 
 TEST(fixed_unsigned, right_shift) {
 	fixed_unsigned x150(0x150), x54(0x54), x0(0);
 	EXPECT_EQ(x54 >> 0, x54);
-	EXPECT_EQ(x54 >> sizeof(unsigned long long) * 8, x0);
+	EXPECT_EQ(x54 >> sizeof(std::uint64_t) * 8, x0);
 	EXPECT_EQ(x54 >> 0x2, fixed_unsigned(0x15));
 	EXPECT_EQ(fixed_unsigned("15000000000000000000000000000000000") >> 0x82, x54);
 	EXPECT_EQ(

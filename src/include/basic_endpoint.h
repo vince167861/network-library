@@ -1,5 +1,4 @@
 #pragma once
-
 #include "basic_stream.h"
 
 namespace leaf::network {
