@@ -1,4 +1,4 @@
-#include "tls-handshake/handshake.h"
+#include "tls-record/handshake.h"
 #include "tls-context/endpoint.h"
 #include "tls-record/alert.h"
 #include "utils.h"

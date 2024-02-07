@@ -1,7 +1,7 @@
 #pragma once
 
 #include "basic_client.h"
-#include "tls-handshake/handshake.h"
+#include "tls-record/handshake.h"
 #include "tls-key/manager.h"
 #include "tls-record/record.h"
 #include "tls-context/endpoint.h"

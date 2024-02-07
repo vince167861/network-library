@@ -1,6 +1,23 @@
-add_library(tls-record alert.cpp record.cpp)
-target_link_libraries(tls-record PUBLIC tls-utils tls-handshake tls-context)
-target_include_directories(tls-record PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
-set_property(TARGET tls-record PROPERTY PUBLIC_HEADER include/tls-record/record.h include/tls-record/alert.h)
+add_library(tls-record
+		alert.cpp
+		record.cpp
+		certificate.cpp
+		certificate_verify.cpp
+		client_hello.cpp
+		encrypted_extension.cpp
+		finished.cpp
+		key_update.cpp
+		new_session_ticket.cpp
+		server_hello.cpp
+		handshake.cpp)
+target_link_libraries(tls-record
+		PUBLIC tls-utils tls-extension tls-context)
+target_include_directories(tls-record
+		PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
+target_sources(tls-record PUBLIC FILE_SET tls_record_headers TYPE HEADERS BASE_DIRS include FILES
+		include/tls-record/record.h
+		include/tls-record/alert.h
+		include/tls-record/handshake.h)
 install(TARGETS tls-record EXPORT leaf
-        PUBLIC_HEADER DESTINATION include/tls-record)
+		FILE_SET tls_record_headers
+		LIBRARY)

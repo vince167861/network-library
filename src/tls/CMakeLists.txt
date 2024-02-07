@@ -4,7 +4,6 @@ add_subdirectory(record)
 add_subdirectory(cipher)
 add_subdirectory(key_exchange)
 add_subdirectory(extension)
-add_subdirectory(handshake)
 
 add_library(tls client.cpp)
 target_link_libraries(tls tcp number hashing tls-key tls-extension tls-cipher tls-context)
