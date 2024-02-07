@@ -1,89 +1,97 @@
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 #include "json/json.h"
 
 using namespace leaf::json;
+using namespace testing;
 
-TEST(json, boolean) {
-	auto element_1 = element::parse("true");
-	ASSERT_TRUE(element_1);
-	ASSERT_TRUE(reinterpret_cast<boolean&>(*element_1).value);
-
-	auto element_2 = element::parse("false");
-	ASSERT_TRUE(element_2);
-	ASSERT_FALSE(reinterpret_cast<boolean&>(*element_2).value);
-
-	ASSERT_THROW(element::parse("t rue"), malformed_json);
+TEST(parse, boolean_valid) {
+	EXPECT_THAT(parse("true"), VariantWith<bool>(IsTrue()));
+	EXPECT_THAT(parse("false"), VariantWith<bool>(IsFalse()));
 }
 
-TEST(json, string) {
-	auto s1 = element::parse(R"a("true")a");
-	ASSERT_TRUE(s1);
-	ASSERT_EQ(reinterpret_cast<string&>(*s1).value, "true");
-
-	auto s2 = element::parse(R"("\u1234\u5678")");
-	ASSERT_TRUE(s2);
-	ASSERT_EQ(reinterpret_cast<string&>(*s2).value, "\u1234\u5678");
-
-	EXPECT_THROW(element::parse(R"a("true)a"), malformed_json);
-	EXPECT_THROW(element::parse(R"a(tr""ue)a"), malformed_json);
+TEST(parse, boolean_invalid) {
+	ASSERT_THROW(parse("t rue"), std::runtime_error);
 }
 
-TEST(json, number) {
-	auto element_1 = element::parse("123");
-	ASSERT_TRUE(element_1);
-	EXPECT_DOUBLE_EQ(reinterpret_cast<number&>(*element_1).value, 123);
-	auto element_2 = element::parse("123e2");
-	ASSERT_TRUE(element_2);
-	EXPECT_DOUBLE_EQ(reinterpret_cast<number&>(*element_2).value, 123e2);
-	auto element_3 = element::parse("-123.0e2");
-	ASSERT_TRUE(element_3);
-	EXPECT_DOUBLE_EQ(reinterpret_cast<number&>(*element_3).value, -123.0e2);
-	auto element_4 = element::parse("-1.32e-2");
-	ASSERT_TRUE(element_4);
-	EXPECT_DOUBLE_EQ(reinterpret_cast<number&>(*element_4).value, -1.32e-2);
-	auto element_5 = element::parse("-1.32");
-	ASSERT_TRUE(element_5);
-	EXPECT_DOUBLE_EQ(reinterpret_cast<number&>(*element_5).value, -1.32);
-
-	EXPECT_THROW(element::parse("123.e2"), malformed_json);
-	EXPECT_THROW(element::parse("-01.32"), malformed_json);
+TEST(parse, string_valid) {
+	EXPECT_THAT(parse(R"("true")"), VariantWith<std::string>("true"));
+	EXPECT_THAT(parse(R"("\u1234\u5678")"), VariantWith<std::string>("\u1234\u5678"));
 }
 
-TEST(json, null) {
-	EXPECT_NO_THROW(element::parse("null"));
-
-	EXPECT_THROW(element::parse("nul"), malformed_json);
+TEST(parse, string_invalid) {
+	EXPECT_THROW(parse(R"("true)"), std::runtime_error);
+	EXPECT_THROW(parse(R"(tr""ue)"), std::runtime_error);
 }
 
-TEST(json, object) {
-	auto element_1 = element::parse(R"({"name1": "value1"})");
-	ASSERT_TRUE(element_1);
-	auto& members_1 = reinterpret_cast<object&>(*element_1).members;
-	EXPECT_EQ(reinterpret_cast<string&>(*members_1.at("name1")).value, "value1");
+TEST(parse, number_valid) {
+	EXPECT_THAT(parse("123"), VariantWith<double>(DoubleEq(123)));
+	EXPECT_THAT(parse("123e2"), VariantWith<double>(DoubleEq(123e2)));
+	EXPECT_THAT(parse("-123.0e2"), VariantWith<double>(DoubleEq(-123.0e2)));
+	EXPECT_THAT(parse("-1.32"), VariantWith<double>(DoubleEq(-1.32)));
+	EXPECT_THAT(parse("-1.32e-2"), VariantWith<double>(DoubleEq(-1.32e-2)));
+}
 
-	auto element_2 = element::parse(R"({"name1": "value1", " name2": 123})");
-	ASSERT_TRUE(element_2);
-	auto& members_2 = reinterpret_cast<object&>(*element_2).members;
-	EXPECT_EQ(reinterpret_cast<string&>(*members_2.at("name1")).value, "value1");
-	EXPECT_DOUBLE_EQ(reinterpret_cast<number&>(*members_2.at(" name2")).value, 123);
+TEST(parse, number_invalid) {
+	EXPECT_THROW(parse("123.e2"), std::runtime_error);
+	EXPECT_THROW(parse("-01.32"), std::runtime_error);
+}
 
-	auto element_3
-			= element::parse(R"({"name1": "value1", )" "\t" R"(" name2": 123,  "n ame3"  :null  })");
-	ASSERT_TRUE(element_3);
-	auto& members_3 = reinterpret_cast<object&>(*element_3).members;
-	EXPECT_EQ(reinterpret_cast<string&>(*members_3.at("name1")).value, "value1");
-	EXPECT_DOUBLE_EQ(reinterpret_cast<number&>(*members_3.at(" name2")).value, 123);
-	EXPECT_TRUE(members_3.at("n ame3"));
+TEST(parse, null) {
+	EXPECT_THAT(parse("null"), VariantWith<std::nullptr_t>(IsNull()));
+	EXPECT_THROW(parse("nul"), std::runtime_error);
+}
 
-	auto element_4
-			= element::parse(R"({"name1": "value1", " name2": 123,  "n ame3"  :null  , "": "i am nu\tll"})");
-	ASSERT_TRUE(element_4);
-	auto& members_4 = reinterpret_cast<object&>(*element_4).members;
-	EXPECT_EQ(reinterpret_cast<string&>(*members_4.at("name1")).value, "value1");
-	EXPECT_DOUBLE_EQ(reinterpret_cast<number&>(*members_4.at(" name2")).value, 123);
-	EXPECT_TRUE(members_4.at("n ame3"));
-	EXPECT_EQ(reinterpret_cast<string&>(*members_4.at("")).value, "i am nu\tll");
+TEST(parse, object_valid) {
+	EXPECT_THAT(
+			parse(R"({"name1": "value1"})"),
+			VariantWith<object>(Field(&object::members, UnorderedElementsAre(
+					Pair("name1", VariantWith<std::string>("value1"))))));
+	EXPECT_THAT(
+			parse(R"({"name1": "value1", " name2": 123})"),
+			VariantWith<object>(Field(&object::members, UnorderedElementsAre(
+					Pair("name1", VariantWith<std::string>("value1")),
+					Pair(" name2", VariantWith<double>(DoubleEq(123)))))));
+	EXPECT_THAT(
+			parse(R"({"name1": "value1", )" "\t" R"(" name2": 123,  "n ame3"  :null  })"),
+			VariantWith<object>(Field(&object::members, UnorderedElementsAre(
+					Pair("name1", VariantWith<std::string>("value1")),
+					Pair(" name2", VariantWith<double>(DoubleEq(123))),
+					Pair("n ame3", VariantWith<std::nullptr_t>(nullptr))))));
+	EXPECT_THAT(
+			parse(R"({"name1": "value1", " name2": 123,  "n ame3"  :null  , "": "i am nu\tll"})"),
+			VariantWith<object>(Field(&object::members, UnorderedElementsAre(
+					Pair("name1", VariantWith<std::string>("value1")),
+					Pair(" name2", VariantWith<double>(DoubleEq(123))),
+					Pair("n ame3", VariantWith<std::nullptr_t>(nullptr)),
+					Pair("", VariantWith<std::string>("i am nu\tll"))))));
+}
+
+TEST(stringfy, boolean) {
+	EXPECT_EQ(stringfy(true), "true");
+	EXPECT_EQ(stringfy(false), "false");
+}
+
+TEST(stringfy, string) {
+	EXPECT_EQ(stringfy("123"), R"("123")");
+	EXPECT_EQ(stringfy(R"(123"123)"), R"("123\"123")");
+	EXPECT_EQ(stringfy("\n\r\f\b\t"), R"("\n\r\f\b\t")");
+	EXPECT_EQ(stringfy("\u1234\u5667\uaddd\uffff"), R"("\u1234\u5667\uaddd\uffff")");
+}
+
+TEST(stringfy, number) {
+	EXPECT_EQ(stringfy(123.), "123");
+	EXPECT_EQ(stringfy(123e2), "12300");
+}
+
+TEST(stringfy, null) {
+	EXPECT_EQ(stringfy(nullptr), "null");
+}
+
+TEST(stringfy, object) {
+	EXPECT_EQ(stringfy(object{{{"name1", "value1"}, {"name2", 123.}}}), R"({"name1": "value1", "name2": 123})");
+	EXPECT_EQ(stringfy(object{{{"name3", nullptr}, {"name4", false}}}), R"({"name3": null, "name4": false})");
 }
 
 int main() {

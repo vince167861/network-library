@@ -1,13 +1,14 @@
 #include "json/json.h"
-
-#include <cmath>
-#include <utility>
-
 #include "utils.h"
+#include <cmath>
+#include <format>
 
 
 namespace leaf::json {
+
 	constexpr std::string_view whitespaces = "\x20\x09\x0a\x0d";
+
+	const std::runtime_error malformed_json{"malformed json"};
 
 	void skip_ws(std::string_view::const_iterator& ptr, const std::string_view::const_iterator end) {
 		while (ptr != end && whitespaces.contains(*ptr))
@@ -17,7 +18,7 @@ namespace leaf::json {
 	std::string parse_string(std::string_view::const_iterator& ptr, const std::string_view::const_iterator end) {
 		std::string value;
 		if (*ptr++ != '"')
-			throw malformed_json{};
+			throw malformed_json;
 		while (*ptr != '"') {
 			if (*ptr == '\\') {
 				++ptr;
@@ -34,17 +35,17 @@ namespace leaf::json {
 						if (code_point <= 0x7f)
 							value.push_back(static_cast<char>(code_point));
 						else if (code_point <= 0x7ff) {
-							value.push_back(static_cast<char>(0b110 << 5 | code_point >> 6));
-							value.push_back(static_cast<char>(0b10 << 6 | code_point & 0b111111));
+							value.push_back(static_cast<char>(0b11000000 | code_point >> 6));
+							value.push_back(static_cast<char>(0b10000000 | code_point & 0b111111));
 						} else if (code_point <= 0xffff) {
-							value.push_back(static_cast<char>(0b1110 << 4 | code_point >> 12));
-							value.push_back(static_cast<char>(0b10 << 6 | code_point >> 6 & 0b111111));
-							value.push_back(static_cast<char>(0b10 << 6 | code_point & 0b111111));
+							value.push_back(static_cast<char>(0b11100000 | code_point >> 12));
+							value.push_back(static_cast<char>(0b10000000 | code_point >> 6 & 0b111111));
+							value.push_back(static_cast<char>(0b10000000 | code_point & 0b111111));
 						} else {
-							value.push_back(static_cast<char>(0b11110 << 3 | code_point >> 18));
-							value.push_back(static_cast<char>(0b10 << 6 | code_point >> 12 & 0b111111));
-							value.push_back(static_cast<char>(0b10 << 6 | code_point >> 6 & 0b111111));
-							value.push_back(static_cast<char>(0b10 << 6 | code_point & 0b111111));
+							value.push_back(static_cast<char>(0b11110000 | code_point >> 18));
+							value.push_back(static_cast<char>(0b10000000 | code_point >> 12 & 0b111111));
+							value.push_back(static_cast<char>(0b10000000 | code_point >> 6 & 0b111111));
+							value.push_back(static_cast<char>(0b10000000 | code_point & 0b111111));
 						}
 						std::advance(ptr, 3);
 						break;
@@ -55,7 +56,7 @@ namespace leaf::json {
 			} else
 				value.push_back(*ptr);
 			if (++ptr == end)
-				throw malformed_json{};
+				throw malformed_json;
 		}
 		++ptr;
 		return value;
@@ -70,7 +71,7 @@ namespace leaf::json {
 				value = 10 * value + (*ptr++ - '0');
 		if (*ptr == '.') {
 			if ('0' > *++ptr || *ptr > '9')
-				throw malformed_json{};
+				throw malformed_json;
 			double i = -1;
 			while (ptr != end && '0' <= *ptr && *ptr <= '9')
 				value += (*ptr++ - '0') * std::pow<double>(10, i--);
@@ -87,25 +88,25 @@ namespace leaf::json {
 		return minus ? -value : value;
 	}
 
-	std::shared_ptr<element> parse_element(std::string_view::const_iterator&, std::string_view::const_iterator);
+	element parse_element(std::string_view::const_iterator&, std::string_view::const_iterator);
 
 	object::members_t parse_object(std::string_view::const_iterator& ptr, const std::string_view::const_iterator end) {
-		using namespace std::literals::string_view_literals;
 		object::members_t members;
 		skip_ws(ptr, end);
 		if (*ptr++ != '{')
-			throw malformed_json{};
+			throw malformed_json;
 		while (*ptr != '}') {
 			skip_ws(ptr, end);
 			std::string key = parse_string(ptr, end);
 			skip_ws(ptr, end);
 			if (*ptr++ != ':')
-				throw malformed_json{};
+				throw malformed_json;
 			members.emplace(std::move(key), parse_element(ptr, end));
+			skip_ws(ptr, end);
 			if (*ptr == ',')
 				++ptr;
 			else if (*ptr != '}')
-				throw malformed_json{};
+				throw malformed_json;
 		}
 		skip_ws(++ptr, end);
 		return members;
@@ -115,7 +116,7 @@ namespace leaf::json {
 		array::items_t items;
 		skip_ws(ptr, end);
 		if (*ptr++ != '[')
-			throw malformed_json{};
+			throw malformed_json;
 		while (*ptr != ']') {
 			skip_ws(ptr, end);
 			items.emplace_back(parse_element(ptr, end));
@@ -125,7 +126,7 @@ namespace leaf::json {
 
 	void parse_null(std::string_view::const_iterator& ptr, const std::string_view::const_iterator end) {
 		if (std::distance(ptr, end) < 4 || !std::equal(ptr, ptr + 4, "null"))
-			throw malformed_json{};
+			throw malformed_json;
 		std::advance(ptr, 4);
 	}
 
@@ -138,88 +139,103 @@ namespace leaf::json {
 			std::advance(ptr, 5);
 			return false;
 		}
-		throw malformed_json{};
+		throw malformed_json;
 	}
 
-	std::shared_ptr<element> parse_element(std::string_view::const_iterator& ptr, const std::string_view::const_iterator end) { // NOLINT(*-no-recursion)
-		std::shared_ptr<element> element;
+	element parse_element(std::string_view::const_iterator& ptr, const std::string_view::const_iterator end) { // NOLINT(*-no-recursion)
 		skip_ws(ptr, end);
 		switch (*ptr) {
 			case '{':
-				element = std::make_shared<object>(parse_object(ptr, end));
-				break;
+				return object{parse_object(ptr, end)};
 			case '[':
-				element = std::make_shared<array>(parse_array(ptr, end));
-				break;
+				return array{parse_array(ptr, end)};
 			case '"':
-				element = std::make_shared<string>(parse_string(ptr, end));
-				break;
+				return parse_string(ptr, end);
 			case 't': case 'f':
-				element = std::make_shared<boolean>(parse_boolean(ptr, end));
-				break;
+				return parse_boolean(ptr, end);
 			case 'n':
 				parse_null(ptr, end);
-				element = std::make_shared<null>();
-				break;
+				return nullptr;
 			default:
-				element = std::make_shared<number>(parse_number(ptr, end));
-				break;
+				return parse_number(ptr, end);
 		}
-		skip_ws(ptr, end);
-		return element;
 	}
 
-	std::shared_ptr<element> element::parse(const std::string_view json_text) {
+	element parse(const std::string_view json_text) {
 		auto ptr = json_text.begin();
 		auto element = parse_element(ptr, json_text.end());
-		return ptr != json_text.end() ? throw malformed_json{} : element;
+		return ptr != json_text.end() ? throw malformed_json : element;
 	}
 
-	object::object(const std::string_view source) {
-		auto ptr = source.begin();
-		skip_ws(ptr, source.end());
-		if (*ptr++ != '{')
-			throw malformed_json{};
-		while (*ptr != '}') {
-			skip_ws(ptr, source.end());
-			std::string key = parse_string(ptr, source.end());
-			skip_ws(ptr, source.end());
-			if (*ptr++ != ':')
-				throw malformed_json{};
-			members.emplace(std::move(key), parse_element(ptr, source.end()));
+	std::string stringfy(const element& item) {
+		if (std::holds_alternative<std::nullptr_t>(item))
+			return "null";
+		if (std::holds_alternative<double>(item))
+			return std::format("{}", std::get<double>(item));
+		if (std::holds_alternative<bool>(item))
+			return std::get<bool>(item) ? "true" : "false";
+		if (std::holds_alternative<std::string>(item)) {
+			auto& origin = std::get<std::string>(item);
+			std::string str = R"(")";
+			for (auto it = origin.begin(), end = origin.end(); it != end; ++it) {
+				if ((*it & 0b11110000) == 0b11110000 && (*(it + 1) & 0b10000000) == 0b10000000
+						&& (*(it + 2) & 0b10000000) == 0b10000000 && (*(it + 3) & 0b10000000) == 0b10000000)
+					str += std::format(R"(\u{:04x})", (*it & 0b111) << 18 | (*(it + 1) & 0b111111) << 12
+							| (*(it + 2) & 0b111111) << 6 | *(it + 3) & 0b111111), std::advance(it, 3);
+				else if ((*it & 0b11100000) == 0b11100000 && (*(it + 1) & 0b10000000) == 0b10000000
+						&& (*(it + 2) & 0b10000000) == 0b10000000)
+					str += std::format(R"(\u{:04x})", (*it & 0b1111) << 12 | (*(it + 1) & 0b111111) << 6
+							| *(it + 2) & 0b111111), std::advance(it, 2);
+				else if ((*it & 0b11100000) == 0b11100000 && (*(it + 1) & 0b10000000) == 0b10000000)
+					str += std::format(R"(\u{:04x})", (*it & 0b11111) << 6 | (*(it + 1) & 0b111111)),
+							std::advance(it, 1);
+				else switch (*it) {
+					case '"':
+						str += R"(\")";
+						break;
+					case '\b':
+						str += R"(\b)";
+						break;
+					case '\f':
+						str += R"(\f)";
+						break;
+					case '\n':
+						str += R"(\n)";
+						break;
+					case '\r':
+						str += R"(\r)";
+						break;
+					case '\t':
+						str += R"(\t)";
+						break;
+					default:
+						str += *it;
+				}
+			}
+			str += R"(")";
+			return str;
 		}
-		skip_ws(++ptr, source.end());
-		if (ptr != source.end())
-			throw malformed_json{};
-	}
-
-	object::object(members_t members)
-			: members(std::move(members)) {
-	}
-
-	array::array(items_t values)
-			: items(std::move(values)) {
-	}
-
-	string::string(const std::string_view source) {
-		auto ptr = source.begin();
-		value = parse_string(ptr, source.end());
-	}
-
-	string::string(std::string value)
-			: value(std::move(value)) {
-	}
-
-	number::number(const std::string_view source) {
-		auto ptr = source.begin();
-		value = parse_number(ptr, source.end());
-	}
-
-	number::number(const double value)
-			: value(value) {
-	}
-
-	boolean::boolean(const bool value)
-			: value(value) {
+		if (std::holds_alternative<array>(item)) {
+			std::string str = "[";
+			for (bool first = true; auto& entry: std::get<array>(item).items) {
+				str += first ? " " : ", ";
+				str += stringfy(entry);
+				first = false;
+			}
+			str += "]";
+			return str;
+		}
+		if (std::holds_alternative<object>(item)) {
+			std::string str = "{";
+			for (bool first = true; auto& [key, value]: std::get<object>(item).members) {
+				if (!first)
+					str += ", ";
+				str += std::format(R"("{}": {})", key, stringfy(value));
+				first = false;
+			}
+			str += "}";
+			return str;
+		}
+		throw std::runtime_error{"unexpected @ leaf::json::stringfy()"};
 	}
 }

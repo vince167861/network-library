@@ -2,7 +2,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 	find_package(GTest CONFIG REQUIRED)
 	include(GoogleTest)
 
-	link_libraries(GTest::gtest)
+	link_libraries(GTest::gtest GTest::gmock)
 
 	add_executable(test-number number.cpp)
 	target_link_libraries(test-number number)
@@ -12,7 +12,6 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
 	add_executable(test-json json.cpp)
 	target_link_libraries(test-json json)
-	gtest_discover_tests(test-json)
 
 	add_executable(test-http_url http_url.cpp)
 	target_link_libraries(test-http_url http)
