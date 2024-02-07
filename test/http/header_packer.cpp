@@ -1,10 +1,9 @@
-#include <gmock/gmock.h>
-
+#include <gtest/gtest.h>
 #include "http2/header_packer.h"
 
 using namespace leaf::network;
 
-TEST(HTTP2, header_packer) {
+TEST(header_packer, encode) {
 	http2::header_packer packer;
 	http::http_fields headers;
 	headers.set("custom-key", "custom-header");

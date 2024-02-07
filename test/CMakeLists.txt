@@ -13,13 +13,10 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 	add_executable(test-json json.cpp)
 	target_link_libraries(test-json json)
 
-	add_executable(test-http_url http_url.cpp)
-	target_link_libraries(test-http_url http)
-	gtest_discover_tests(test-http_url)
-
-	add_executable(test-http2 http2.cpp)
-	target_link_libraries(test-http2 http2)
-	gtest_discover_tests(test-http2)
+	add_executable(test-http
+			http/header_packer.cpp
+			http/url.cpp)
+	target_link_libraries(test-http http http2)
 
 	add_executable(test-tcp tcp.cpp)
 	target_link_libraries(test-tcp tcp)

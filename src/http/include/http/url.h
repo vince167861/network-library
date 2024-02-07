@@ -17,8 +17,8 @@ namespace leaf::network {
 
 	std::string to_percent_encoding(std::string_view);
 
-	class url {
-	public:
+	struct url {
+
 		std::string scheme;
 
 		std::string username;

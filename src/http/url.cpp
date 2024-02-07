@@ -53,25 +53,24 @@ namespace leaf::network {
 		if (*authority_end == '/' && *(authority_end + 1) == '/') {
 			// contains authority
 			authority_end = std::ranges::find_first_of(std::string_view{authority_end + 2, string.end()}, "/?#");
-			auto at = std::find(scheme_end + 3, authority_end, '@');
-			if (at != authority_end) {
+			const auto userinfo_end = std::find(std::make_reverse_iterator(authority_end), std::make_reverse_iterator(scheme_end + 3), '@').base();
+			if (userinfo_end != scheme_end + 3) {
 				// contains userinfo
-				if (const auto colon = std::find(scheme_end + 3, at, ':'); colon != at) {
+				if (const auto colon = std::find(scheme_end + 3, userinfo_end, ':'); colon != userinfo_end) {
 					// contains password
-					this->username = {scheme_end + 3, colon};
-					this->password = {colon + 1, at};
+					username = {scheme_end + 3, colon};
+					password = {colon + 1, userinfo_end - 1};
 				} else
-					this->username = {scheme_end + 3, at};
-			} else
-				at = scheme_end + 3;
-			if (const auto colon = std::find(at, authority_end, ':'); colon != authority_end) {
+					username = {scheme_end + 3, userinfo_end - 1};
+			};
+			if (const auto colon = std::find(userinfo_end, authority_end, ':'); colon != authority_end) {
 				// contains port
-				host = {at, colon};
+				host = {userinfo_end, colon};
 				std::string port_string{colon + 1, authority_end};
 				if (!port_string.empty())
 					this->port = std::stoi(port_string);
 			} else
-				host = {at, authority_end};
+				host = {userinfo_end, authority_end};
 		}
 		const auto path_end = std::ranges::find_first_of(std::string_view{authority_end, string.end()}, "?#");
 		path = {authority_end, path_end};
