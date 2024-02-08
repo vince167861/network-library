@@ -1,6 +1,6 @@
 #pragma once
 
-#include "basic_client.h"
+#include "basic_endpoint.h"
 
 #include <stdexcept>
 #include <string>
@@ -101,6 +101,20 @@ namespace leaf::network::tcp {
 			return socket_ != invalid_socket;
 		}
 
+		std::uint8_t read() override {
+			if (socket_ == invalid_socket)
+				throw closed;
+			char c;
+			const auto count = recv(socket_, &c, 1, 0);
+			if (count < 0)
+				handle_error_("recv");
+			if (count == 0) {
+				close();
+				throw closed;
+			}
+			return c;
+		}
+
 		std::string read(std::size_t size) override {
 			if (socket_ == invalid_socket)
 				throw closed;
@@ -119,7 +133,7 @@ namespace leaf::network::tcp {
 			return read_data;
 		}
 
-		std::size_t write(std::string_view buffer) override {
+		void write(std::string_view buffer) override {
 			if (socket_ == invalid_socket)
 				throw closed;
 			const auto result = send(socket_, buffer.data(), buffer.size(), 0);
@@ -127,7 +141,10 @@ namespace leaf::network::tcp {
 				handle_error_("send_");
 			if (result == 0 && !buffer.empty())
 				close();
-			return result;
+		}
+
+		void write(std::uint8_t octet) override {
+			write({reinterpret_cast<char *>(&octet), 1});
 		}
 
 		void finish() override {

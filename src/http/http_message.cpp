@@ -33,7 +33,7 @@ namespace leaf::network::http {
 		return std::is_gt(result) && lhs == "host" || std::is_lt(result);
 	}
 
-	http_fields http_fields::from_http_headers(stream& source) {
+	http_fields http_fields::from_http_headers(istream& source) {
 		http_fields fields;
 		while (true) {
 			auto line = source.read_until("\n");
@@ -49,7 +49,7 @@ namespace leaf::network::http {
 		return fields;
 	}
 
-	http_fields http_fields::from_event_stream(stream& source) {
+	http_fields http_fields::from_event_stream(istream& source) {
 		http_fields fields;
 		for (char last_terminator = '\n';;) {
 			auto line = source.read_until("\r\n");
@@ -65,5 +65,20 @@ namespace leaf::network::http {
 					"\n");
 		}
 		return fields;
+	}
+
+	request::request(std::string method, url target, http_fields headers)
+			: message{std::move(headers)}, method(std::move(method)), request_url(std::move(target)) {
+	}
+
+	void request::print(std::ostream& s) const {
+		s << "Request " << method << ' ' << request_url.url_string() << '\n';
+		for (auto& [key, value]: headers)
+			s << '\t' << key << ": " << value << '\n';
+		s << body << '\n';
+	}
+
+	bool response::is_redirection() const {
+		return 300 <= status && status <= 399;
 	}
 }

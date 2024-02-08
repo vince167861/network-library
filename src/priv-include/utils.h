@@ -1,6 +1,6 @@
 #pragma once
 
-#include "basic_stream.h"
+#include "byte_stream.h"
 
 #include <bit>
 #include <list>
@@ -40,7 +40,7 @@ namespace leaf {
 			while (dst_ptr != dst_end)
 				*dst_ptr-- = *src++;
 		} else while (dst_ptr != dst_end)
-		  *dst_ptr++ = *src++;
+			*dst_ptr++ = *src++;
 	}
 
 	template<typename T, typename iter>
@@ -48,6 +48,18 @@ namespace leaf {
 		T val{};
 		read(endian, val, src, count);
 		return val;
+	}
+
+	template<class T>
+	void read(std::endian endian, T& val, istream& src, const std::size_t count = sizeof(T)) {
+		bool reverse = endian != std::endian::native;
+		std::uint8_t* dst_ptr = reinterpret_cast<uint8_t *>(&val), * dst_end = dst_ptr + count;
+		if (reverse) {
+			std::swap(--dst_ptr, --dst_end);
+			while (dst_ptr != dst_end)
+				*dst_ptr-- = src.read();
+		} else while (dst_ptr != dst_end)
+				*dst_ptr++ = src.read();
 	}
 
 	template<typename iter>

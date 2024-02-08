@@ -1,6 +1,6 @@
 #pragma once
 
-#include "basic_client.h"
+#include "basic_endpoint.h"
 #include "tls-record/handshake.h"
 #include "tls-key/manager.h"
 #include "tls-record/record.h"
@@ -16,7 +16,7 @@
 
 namespace leaf::network::tls {
 
-	class client final: public network::client, public endpoint {
+	class client final: public endpoint, public network::client {
 
 		enum class client_state_t: std::uint8_t {
 			wait_server_hello, wait_encrypted_extensions, wait_cert_request, wait_cert,

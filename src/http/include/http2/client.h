@@ -1,10 +1,9 @@
 #pragma once
 
-#include "basic_client.h"
+#include "basic_endpoint.h"
 #include "http2/context.h"
 #include "http2/frame.h"
-#include "http/request.h"
-#include "http/response.h"
+#include "http/message.h"
 #include "http/event_stream.h"
 
 #include <future>

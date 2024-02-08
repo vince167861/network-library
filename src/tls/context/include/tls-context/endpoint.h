@@ -1,6 +1,6 @@
 #pragma once
 
-#include "basic_client.h"
+#include "basic_endpoint.h"
 
 #include "tls-key/manager.h"
 #include "tls-cipher/cipher_suite.h"
@@ -15,8 +15,6 @@
 #include <optional>
 
 namespace leaf::network::tls {
-
-	struct client_hello;
 
 	class endpoint: virtual public network::endpoint {
 	protected:
@@ -47,7 +45,11 @@ namespace leaf::network::tls {
 
 		std::string read(std::size_t size) override;
 
-		std::size_t write(std::string_view) override;
+		std::uint8_t read() override;
+
+		void write(std::uint8_t octet) override;
+
+		void write(std::string_view) override;
 
 		void use_group(named_group_t);
 

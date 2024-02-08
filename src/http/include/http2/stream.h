@@ -1,7 +1,6 @@
 #pragma once
 
-#include "http/request.h"
-#include "http/response.h"
+#include "http/message.h"
 #include "http/event_stream.h"
 #include "http2/frame.h"
 #include "http2/context.h"

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "tcp/endpoint.h"
-#include "basic_server.h"
+#include "basic_endpoint.h"
 
 #include <unordered_set>
 

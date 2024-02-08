@@ -1,10 +1,13 @@
 #pragma once
-#include "basic_client.h"
+#include "basic_endpoint.h"
+#include "url.h"
 #include <map>
+#include <string>
 
 namespace leaf::network::http {
 
 	struct http_field_name_less {
+
 		constexpr bool operator()(const std::string&, const std::string&) const;
 	};
 
@@ -21,13 +24,53 @@ namespace leaf::network::http {
 
 		operator std::string();
 
-		static http_fields from_http_headers(stream& source);
+		static http_fields from_http_headers(istream&);
 
-		static http_fields from_event_stream(stream& source);
+		static http_fields from_event_stream(istream&);
 	};
 
 
 	struct message {
+
 		http_fields headers;
 	};
+
+
+	struct request final: message {
+
+		std::string method;
+
+		url request_url;
+
+		std::string body;
+
+		request() = default;
+
+		request(std::string method, url, http_fields headers = {});
+
+		void print(std::ostream&) const;
+	};
+
+
+	struct response final: message {
+
+		long status;
+
+		std::string body;
+
+		bool is_redirection() const;
+	};
 }
+
+
+template<>
+struct std::formatter<leaf::network::http::response> {
+
+	constexpr auto parse(std::format_parse_context& ctx) {
+		return ctx.begin();
+	}
+
+	auto format(const leaf::network::http::response& response, std::format_context& ctx) const {
+		return std::format_to(ctx.out(), "response (status {})\n{}", response.status, response.body);
+	}
+};

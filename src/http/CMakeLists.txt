@@ -1,8 +1,6 @@
 add_library(http_message
-	url.cpp
-	http_message.cpp
-	http_request.cpp
-	http_response.cpp
+		url.cpp
+		http_message.cpp
 		http_event_stream.cpp
 )
 target_include_directories(http_message
@@ -11,8 +9,6 @@ target_sources(http_message
 	PUBLIC FILE_SET http_message_headers TYPE HEADERS BASE_DIRS include FILES
 	include/http/url.h
 	include/http/message.h
-	include/http/request.h
-	include/http/response.h
 	include/http/event_stream.h
 )
 install(TARGETS http_message EXPORT leaf

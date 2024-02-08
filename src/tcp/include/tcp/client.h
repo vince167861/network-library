@@ -4,8 +4,8 @@
 
 namespace leaf::network::tcp {
 
-	class client final: public endpoint, public network::client {
-	public:
+	struct client final: endpoint, network::client {
+
 		bool connect(std::string_view host, std::uint16_t port) override {
 			close();
 			addrinfo

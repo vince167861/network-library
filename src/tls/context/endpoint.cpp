@@ -53,11 +53,10 @@ namespace leaf::network::tls {
 		return read_data;
 	}
 
-	std::size_t endpoint::write(const std::string_view buffer) {
+	void endpoint::write(const std::string_view buffer) {
 		record record{content_type_t::application_data, cipher_};
 		record.messages = buffer;
 		send_(record);
-		return buffer.length();
 	}
 
 	void endpoint::use_group(const named_group_t ng) {
@@ -98,5 +97,16 @@ namespace leaf::network::tls {
 			record.messages += ptr->to_bytestring();
 		}
 		underlying.write(record.to_bytestring());
+	}
+
+	std::uint8_t endpoint::read() {
+		const auto data = read(1);
+		if (data.empty())
+			throw std::runtime_error{"read failed"};
+		return data[0];
+	}
+
+	void endpoint::write(std::uint8_t octet) {
+		write({reinterpret_cast<char *>(&octet), 1});
 	}
 }
