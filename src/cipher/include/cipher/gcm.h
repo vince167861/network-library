@@ -1,5 +1,4 @@
 #pragma once
-#include "number/fixed.h"
 #include "number/flexible.h"
 
 namespace leaf {

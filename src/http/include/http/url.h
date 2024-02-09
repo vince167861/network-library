@@ -1,5 +1,5 @@
 #pragma once
-
+#include <cstdint>
 #include <list>
 #include <string>
 
@@ -26,7 +26,7 @@ namespace leaf::network {
 
 		std::string host;
 
-		uint16_t port = 0;
+		std::uint16_t port = 0;
 
 		std::string path;
 

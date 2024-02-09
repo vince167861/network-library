@@ -6,6 +6,10 @@
 
 namespace leaf {
 
+	inline constexpr unsigned long long hex_to_bits(char c) {
+		return '0' <= c && c <= '9' ? c - '0' : 'a' <= c && c <= 'f' ? c - 'a' + 10 : 'A' <= c && c <= 'F' ? c - 'A' + 10 : 0;
+	}
+
 	class number_base: public binary_object {
 	public:
 		using unit_t = std::uint32_t;

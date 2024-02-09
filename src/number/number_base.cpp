@@ -1,4 +1,4 @@
-#include "number/fixed.h"
+#include "number/number_base.h"
 #include "utils.h"
 
 #include <format>
@@ -31,6 +31,7 @@ namespace leaf {
 			else
 				str += std::format("{:02x}", val);
 		}
+		str += std::format("{:02x}", operator[](0));
 		return str.empty() ? "0" : str;
 	}
 }

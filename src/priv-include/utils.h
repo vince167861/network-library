@@ -114,6 +114,13 @@ namespace leaf {
 			list.emplace_back(begin, ptr);
 		return list;
 	}
+
+	template<class T>
+	std::pair<T, T> big_small(T a, T b) {
+		if (a > b)
+			return {a, b};
+		return {b, a};
+	}
 }
 
 namespace std {

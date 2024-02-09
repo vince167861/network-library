@@ -1,7 +1,6 @@
 #pragma once
 
 #include "tls-utils/rng.h"
-#include "number/fixed.h"
 #include "number/flexible.h"
 
 #include "manager.h"

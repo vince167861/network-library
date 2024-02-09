@@ -1,6 +1,6 @@
 #pragma once
 
-#include "number/fixed.h"
+#include "number/number_base.h"
 #include "tls-utils/type.h"
 
 #include <memory>

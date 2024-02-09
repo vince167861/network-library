@@ -1,12 +1,7 @@
 #include "number/flexible.h"
-
-#include <ranges>
+#include "utils.h"
 
 namespace leaf {
-
-	constexpr unsigned long long hex_to_bits(char c) {
-		return '0' <= c && c <= '9' ? c - '0' : 'a' <= c && c <= 'f' ? c - 'a' + 10 : 'A' <= c && c <= 'F' ? c - 'A' + 10 : 0;
-	}
 
 	template<typename T>
 	std::int8_t msb(const T val) {
@@ -66,10 +61,16 @@ namespace leaf {
 	}
 
 	var_unsigned& var_unsigned::operator+=(const var_unsigned& other) {
-		auto min_len = std::min(data_units(), other.data_units());
+		const auto this_units = data.size(), other_units = other.data.size();
+		const auto [max, cmn] = big_small(this_units, other_units);
+		if (this_units != max)
+			data.resize(max);
 		bool carry = false;
-		for (size_t i = 0; i < min_len; ++i)
-			carry = unsigned_add_(i, other.data[i], carry);
+		for (std::size_t i = 0; i < max; ++i)
+			carry = unsigned_add_(i, i >= other_units ? 0 : other.data[i], carry);
+		if (carry)
+			data.push_back(1);
+		bits_ = std::max(std::max(bits_, other.bits_), msb_pos() + 1);
 		return *this;
 	}
 
@@ -80,7 +81,7 @@ namespace leaf {
 	}
 
 	var_unsigned& var_unsigned::operator-=(const var_unsigned& other) {
-		const auto cmn_size = std::min(data_units(), other.data_units()), size = data_units();
+		const auto size = data.size(), cmn_size = std::min(size, other.data.size());
 		bool borrow = false;
 		for (std::size_t i = 0; i < size; ++i) {
 			auto this_data = data[i];
@@ -97,18 +98,15 @@ namespace leaf {
 	}
 
 	var_unsigned var_unsigned::operator*(const var_unsigned& other) const {
-		auto return_bits = bits_ + other.bits_;
-		var_unsigned ret{return_bits};
+		var_unsigned ret{bits_ + other.bits_};
 		auto return_units = ret.data_units();
-		for (std::size_t i = 0; i < data_units(); ++i) {
-			std::uint64_t a = data[i];
-			for (std::size_t j = 0; j < other.data_units() && i + j < return_units; ++j) {
-				std::uint64_t b = other.data[j];
+		for (std::size_t i = 0; i < data.size(); ++i) {
+			const std::uint64_t a = data[i];
+			for (std::size_t j = 0; j < other.data.size() && i + j < return_units; ++j) {
+				const std::uint64_t b = other.data[j];
 				auto r = a * b;
 				bool carry = false;
-				for (auto pos = i + j;
-					 pos < return_units && (r || carry);
-					 r >>= unit_bits, ++pos)
+				for (auto pos = i + j; pos < return_units && (r || carry); r >>= unit_bits, ++pos)
 					carry = ret.unsigned_add_(pos, r, carry);
 			}
 		}
@@ -199,11 +197,11 @@ namespace leaf {
 				other_units = other.data_units(),
 				cmn_units = std::min(other_units, this_units);
 		if (this_units > other_units) {
-			if (this_units > 1)
+			if (other_units > 0)
 				for (auto i = this_units - 1; i >= other_units; --i)
 					if (data[i] > 0) return std::strong_ordering::greater;
 		} else {
-			if (other_units > 1)
+			if (this_units > 0)
 				for (auto i = other_units - 1; i >= this_units; --i)
 					if (other[i] > 0) return std::strong_ordering::less;
 		}
@@ -212,12 +210,14 @@ namespace leaf {
 				auto r = data[i] <=> other[i];
 				if (std::is_neq(r)) return r;
 			}
-		if (cmn_units >= 1)
+		if (cmn_units > 0)
 			return data[0] <=> other[0];
-		else if (this_units > other_units)
+		else if (this_units)
 			return data[0] > 0 ? std::strong_ordering::greater : std::strong_ordering::equal;
-		else
+		else if (other_units)
 			return other[0] > 0 ? std::strong_ordering::less : std::strong_ordering::equal;
+		else
+			return std::strong_ordering::equal;
 	}
 
 	std::size_t var_unsigned::bits() const {
@@ -319,5 +319,57 @@ namespace leaf {
 			if (*it)
 				return pos * unit_bits + msb(data[pos]);
 		return -1;
+	}
+
+	var_signed var_signed::operator+(const var_signed& other) const {
+		if (negative)
+			return other - (- *this);
+		if (other.negative)
+			return operator-(- other);
+		return var_unsigned::operator+(other);
+	}
+
+	var_signed var_signed::operator-(const var_signed& other) const {
+		if (negative && other.negative)
+			return (- other) - (- *this);
+		if (negative)
+			return - ((- *this) + other);
+		if (other.negative)
+			return *this + (- other);
+		if (*this < other)
+			return {static_cast<var_unsigned>(other) - static_cast<var_unsigned>(*this), true};
+		return var_unsigned::operator-(other);
+	}
+
+	var_signed var_signed::operator*(const var_signed& other) const {
+		if (negative && other.negative)
+			return static_cast<var_unsigned>(- *this) * static_cast<var_unsigned>(- other);
+		if (negative)
+			return -((- *this) * other);
+		if (other.negative)
+			return -((*this) * (-other));
+		return var_unsigned::operator*(other);
+	}
+
+	var_signed var_signed::operator%(const var_signed& modulus) const {
+		auto ret = static_cast<var_unsigned>(negative ? -*this : *this) % modulus;
+		if (negative)
+			ret = modulus - ret;
+		return {ret};
+	}
+
+	var_signed var_signed::operator-() const {
+		auto ret{*this};
+		ret.negative = !negative;
+		return ret;
+	}
+
+	std::strong_ordering var_signed::operator<=>(const var_signed& other) const {
+		bool this_neg = negative, other_neg = other.negative;
+		if (this_neg != other_neg)		// negative values are always less than positive values and zeros
+			return this_neg ? std::strong_ordering::less : std::strong_ordering::greater;
+
+		auto&& ret = var_unsigned::operator<=>(other);
+		return this_neg ? 0 <=> ret : ret;
 	}
 }

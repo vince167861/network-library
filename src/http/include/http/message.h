@@ -3,6 +3,7 @@
 #include "url.h"
 #include <map>
 #include <string>
+#include <format>
 
 namespace leaf::network::http {
 

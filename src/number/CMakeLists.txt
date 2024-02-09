@@ -6,7 +6,6 @@ target_include_directories(number
 target_sources(number
 		PUBLIC FILE_SET number_headers TYPE HEADERS BASE_DIRS include FILES
 		include/number/number_base.h
-		include/number/fixed.h
 		include/number/flexible.h)
 install(TARGETS number EXPORT leaf
 		FILE_SET number_headers
