@@ -56,12 +56,12 @@ namespace leaf {
 		return val;
 	}
 
-	void sub_bytes(var_unsigned& state) {
+	void sub_bytes(big_unsigned& state) {
 		for (auto& u: state.data)
 			u = sub_bytes(u);
 	}
 
-	void inv_sub_bytes(var_unsigned& state) {
+	void inv_sub_bytes(big_unsigned& state) {
 		for (auto& u: state.data)
 			u = inv_sub_bytes(u);
 	}
@@ -77,7 +77,7 @@ namespace leaf {
 		return val << 8 | val >> 24;
 	}
 
-	void rotation_left(var_unsigned& state, std::size_t row, std::size_t shift) {
+	void rotation_left(big_unsigned& state, std::size_t row, std::size_t shift) {
 		std::uint32_t mask = ~(0xff << (4 - row - 1) * 8);
 		uint8_t t[shift];
 		for (std::size_t i = 0; i < state.data_units(); ++i) {
@@ -104,19 +104,19 @@ namespace leaf {
 		return ret;
 	}
 
-	void aes::shift_rows(var_unsigned& state) {
+	void aes::shift_rows(big_unsigned& state) {
 		rotation_left(state, 1, 1);
 		rotation_left(state, 2, 2);
 		rotation_left(state, 3, 3);
 	}
 
-	void aes::inv_shift_rows(var_unsigned& state) const {
+	void aes::inv_shift_rows(big_unsigned& state) const {
 		rotation_left(state, 1, N_b - 1);
 		rotation_left(state, 2, N_b - 2);
 		rotation_left(state, 3, N_b - 3);
 	}
 
-	void aes::mix_columns(var_unsigned& state) const {
+	void aes::mix_columns(big_unsigned& state) const {
 		for (std::size_t i = 0; i < N_b; ++i) {
 			uint8_t b_0 = state.value<uint8_t>((N_b - i - 1) * 4 + 3),
 					b_1 = state.value<uint8_t>((N_b - i - 1) * 4 + 2),
@@ -130,7 +130,7 @@ namespace leaf {
 		}
 	}
 
-	void aes::inv_mix_columns(var_unsigned& state) const {
+	void aes::inv_mix_columns(big_unsigned& state) const {
 		for (std::size_t i = 0; i < N_b; ++i) {
 			uint8_t b_0 = state.value<uint8_t>((N_b - i - 1) * 4 + 3),
 					b_1 = state.value<uint8_t>((N_b - i - 1) * 4 + 2),
@@ -144,12 +144,12 @@ namespace leaf {
 		}
 	}
 
-	void aes::add_round_key(var_unsigned& state, const var_unsigned& key_schedule, std::size_t round) const {
+	void aes::add_round_key(big_unsigned& state, const big_unsigned& key_schedule, std::size_t round) const {
 		for (std::size_t i = 0; i < N_b; ++i)
 			state[state.data_units() - i - 1] ^= key_schedule[key_schedule.data_units() - (N_b * round + i) - 1];
 	}
 
-	void aes::cipher(var_unsigned& val, const var_unsigned& key_schedule) const {
+	void aes::cipher(big_unsigned& val, const big_unsigned& key_schedule) const {
 		add_round_key(val, key_schedule, 0);
 		for (std::size_t i = 1; i < N_r; ++i) {
 			sub_bytes(val);
@@ -162,7 +162,7 @@ namespace leaf {
 		add_round_key(val, key_schedule, N_r);
 	}
 
-	void aes::inv_cipher(var_unsigned& val, const var_unsigned& key_schedule) const {
+	void aes::inv_cipher(big_unsigned& val, const big_unsigned& key_schedule) const {
 		add_round_key(val, key_schedule, N_r);
 		for (std::size_t i = N_r - 1; i > 0; --i) {
 			inv_shift_rows(val);
@@ -175,7 +175,7 @@ namespace leaf {
 		add_round_key(val, key_schedule, 0);
 	}
 
-	void aes::key_expansion(const var_unsigned& key, var_unsigned& key_schedule) const {
+	void aes::key_expansion(const big_unsigned& key, big_unsigned& key_schedule) const {
 		key_schedule = key;
 		key_schedule.resize(key_schedule_units * 32);
 		key_schedule <<= (key_schedule_units * 32 - key.bits());

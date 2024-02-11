@@ -6,10 +6,9 @@
 
 namespace leaf {
 
-	class var_unsigned : public number_base {
+	struct big_unsigned : number_base {
 
-	public:
-		using unit_t = uint32_t;
+		using number_base::unit_t;
 
 		std::size_t bits() const override;
 
@@ -19,73 +18,60 @@ namespace leaf {
 
 		std::vector<unit_t> data;
 
-	protected:
-		bool unsigned_add_(std::size_t pos, unit_t val, bool carry = false);
-
-		std::size_t bits_;
-
-	public:
-		var_unsigned(std::size_t bits = 0, unit_t val = 0);
-
-		var_unsigned(const number_base&);
-
-		static var_unsigned from_bytes(std::string_view bytes);
-
-		static var_unsigned from_little_endian_bytes(std::string_view bytes);
-
-		static var_unsigned from_hex(std::string_view hex);
-
-		static var_unsigned from_little_endian_hex(std::string_view hex);
-
-		template<class T> requires std::is_integral_v<T>
-		static var_unsigned from_number(T val) {
-			var_unsigned ret(sizeof(T) * 8);
-			for (std::size_t i = 0; i < ret.data_units(); ++i)
-				ret[i] = i * unit_bytes < sizeof(T) ? val >> (unit_bits * i) : 0;
-			return ret;
+		big_unsigned()
+				: bits_(0) {
 		}
 
-		var_unsigned operator+(const var_unsigned&) const;
+		template<class T> requires std::is_integral_v<T>
+		big_unsigned(T val, std::optional<std::size_t> bits = std::nullopt)
+				: big_unsigned(std::string_view{reinterpret_cast<const char *>(&val), sizeof(T)}, bits, std::endian::little) {
+		}
 
-		var_unsigned& operator+=(const var_unsigned&);
+		big_unsigned(const std::string_view bitstring, std::optional<std::size_t> bits = std::nullopt, std::endian = std::endian::big);
 
-		var_unsigned operator-(const var_unsigned&) const;
+		big_unsigned(const number_base&);
 
-		var_unsigned& operator-=(const var_unsigned&);
+		static big_unsigned from_hex(std::string_view hex);
 
-		var_unsigned operator*(const var_unsigned&) const;
+		static big_unsigned from_little_endian_hex(std::string_view hex);
 
-		var_unsigned operator<<(std::size_t) const;
+		big_unsigned operator+(const big_unsigned&) const;
 
-		var_unsigned& operator<<=(std::size_t);
+		big_unsigned& operator+=(const big_unsigned&);
 
-		var_unsigned operator>>(std::size_t) const;
+		big_unsigned operator-(const big_unsigned&) const;
 
-		var_unsigned& operator>>=(std::size_t);
+		big_unsigned& operator-=(const big_unsigned&);
 
-		var_unsigned operator^(const var_unsigned&) const;
+		big_unsigned operator*(const big_unsigned&) const;
 
-		var_unsigned& operator^=(const var_unsigned&);
+		big_unsigned operator<<(std::size_t) const;
 
-		var_unsigned operator~() const;
+		big_unsigned& operator<<=(std::size_t);
 
-		var_unsigned operator%(const var_unsigned& modulus) const;
+		big_unsigned operator>>(std::size_t) const;
 
-		friend var_unsigned exp_mod(const var_unsigned& base, var_unsigned exp, const var_unsigned& modulus);
+		big_unsigned& operator>>=(std::size_t);
 
-		std::strong_ordering operator<=>(const number_base& other) const;
+		big_unsigned operator^(const big_unsigned&) const;
 
-		bool operator==(const number_base&) const;
+		big_unsigned& operator^=(const big_unsigned&);
+
+		big_unsigned operator~() const;
+
+		big_unsigned operator%(const big_unsigned& modulus) const;
+
+		friend big_unsigned exp_mod(const big_unsigned& base, big_unsigned exp, const big_unsigned& modulus);
+
+		std::strong_ordering operator<=>(const big_unsigned& other) const;
+
+		bool operator==(const big_unsigned&) const;
 
 		void set(const number_base&, std::size_t use_bits = -1);
 
 		void set(bool, std::size_t pos);
 
 		void resize(const std::size_t new_bits);
-
-		std::size_t block_needed(std::size_t block_size) const;
-
-		std::size_t padding_needed(std::size_t block_size) const;
 
 		const unit_t& operator[](std::size_t size) const override;
 
@@ -112,39 +98,33 @@ namespace leaf {
 		void shrink();
 
 		std::size_t msb_pos() const;
+
+	protected:
+		bool unsigned_add_(std::size_t pos, unit_t val, bool carry = false);
+
+		std::size_t bits_;
 	};
 
+	inline struct casting_t {} from_unsigned_casting;
 
-	struct var_signed: var_unsigned {
 
-		using var_unsigned::unit_t, var_unsigned::unit_bytes, var_unsigned::unit_bits, var_unsigned::var_unsigned;
+	struct var_signed: big_unsigned {
+
+		using big_unsigned::big_unsigned, big_unsigned::unit_bytes, big_unsigned::unit_bits;
 
 		bool negative = false;
 
-		var_signed(const var_unsigned& ref, bool neg = false)
-				: var_unsigned(ref), negative(neg) {
+		var_signed(casting_t, const big_unsigned& ref, bool neg = false)
+				: big_unsigned(ref), negative(neg) {
 		}
 
 		template<class T> requires std::is_integral_v<T>
-		var_signed(T val, std::size_t bits = sizeof(T) * 8)
-				: var_unsigned(bits) {
-			if (val < 0) {
-				val = -val;
-				negative = true;
-			}
-			for (std::size_t i = 0; i < data.size(); ++i)
-				data[i] = i * unit_bytes < sizeof(T) ? val >> (unit_bits * i) : 0;
-		}
-
-		var_signed(const std::string_view bitstring, std::endian)
-				: var_unsigned(bitstring.size() * 8) {
-			auto it = bitstring.rbegin(), end = bitstring.rend();
-			for (std::size_t i = 0; i < bits_ / 8 + (bits_ % 8 ? 1 : 0) && it != end; ++i)
-				data[i / unit_bytes] |= static_cast<unit_t>(*it++ & 0xff) << 8 * (i % unit_bytes);
+		var_signed(T val, std::optional<std::size_t> bits = std::nullopt)
+				: big_unsigned(val < 0 ? -val : val, bits), negative(val < 0) {
 		}
 
 		var_signed(const std::string_view hex)
-				: var_unsigned{hex.size() * 4} {
+				: big_unsigned(0, hex.size() * 4) {
 			std::size_t t = 0;
 			for (std::uint8_t ptr: std::ranges::reverse_view(hex))
 				data[t / 2 / unit_bytes] |= hex_to_bits(ptr) << 4 * t % unit_bits, ++t;

@@ -4,18 +4,12 @@
 
 namespace leaf::ecc {
 
-	var_signed p(const std::size_t bits) {
-		if (bits == 255) {
-			auto ret = var_unsigned::from_number(1);
-			ret.resize(256);
-			return (ret << 255) - var_unsigned::from_number(19);
-		} else if (bits == 448) {
-			auto ret_1 = var_unsigned::from_number(1);
-			ret_1.resize(449);
-			auto ret_2 = var_unsigned::from_number(1);
-			ret_2.resize(225);
-			return (ret_1 << 448) - (ret_2 << 224) - var_unsigned::from_number(1);
-		} else
+	inline var_signed p(const std::size_t bits) {
+		if (bits == 255)
+			return (big_unsigned(1, 256) << 255) - 19;
+		else if (bits == 448)
+			return (big_unsigned(1, 449) << 448) - (big_unsigned(1, 225) << 224) - 1;
+		else
 			throw std::runtime_error{"unexpected"};
 	}
 
@@ -24,8 +18,8 @@ namespace leaf::ecc {
 		if (swap) std::swap(a, b);
 	}
 
-	auto montgomery_curve(const var_unsigned& scalar, const var_unsigned& u_coordinate, const std::size_t bits) {
-		var_signed _2(2), a24(121665);
+	inline auto montgomery_curve(const big_unsigned& scalar, const big_unsigned& u_coordinate, const std::size_t bits) {
+		const var_signed a24(121665);
 		auto _p = p(bits);
 
 		var_signed x_1 = u_coordinate, x_2 = 1, z_2 = 0, x_3 = u_coordinate, z_3 = 1;
@@ -59,11 +53,13 @@ namespace leaf::ecc {
 		}
 		c_swap(swap, x_2, x_3);
 		c_swap(swap, z_2, z_3);
-		return x_2 * exp_mod(z_2, _p - _2, _p) % _p;
+		return x_2 * exp_mod(z_2, _p - 2, _p) % _p;
 	}
 
 
-	inline auto x25519(var_unsigned scalar, const var_unsigned& u_coordinate) {
+	inline auto x25519(big_unsigned scalar, big_unsigned u_coordinate) {
+		scalar.resize(255);
+		u_coordinate.resize(255);
 		scalar.set(false, 0);
 		scalar.set(false, 1);
 		scalar.set(false, 2);

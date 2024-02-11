@@ -2,6 +2,7 @@
 
 #include "number/number_base.h"
 #include "tls-utils/type.h"
+#include "number/flexible.h"
 
 #include <memory>
 #include <string>
@@ -35,11 +36,10 @@ namespace leaf::network::tls {
 
 		virtual void set_key(const number_base& secret_key) = 0;
 
-		[[nodiscard]] virtual std::string
-		encrypt(std::string_view nonce, std::string_view additional, std::string_view plain_text) const = 0;
+		[[nodiscard]]
+		virtual big_unsigned encrypt(big_unsigned nonce, big_unsigned additional, big_unsigned plain_text) const = 0;
 
-		virtual std::string
-		decrypt(std::string_view nonce, std::string_view data, std::string_view cipher_text) const = 0;
+		virtual big_unsigned decrypt(big_unsigned nonce, big_unsigned data, big_unsigned cipher_text) const = 0;
 
 		virtual std::string hash(std::string_view) const = 0;
 
@@ -77,13 +77,13 @@ namespace leaf::network::tls {
 			throw std::exception();
 		}
 
-		std::string
-		encrypt(std::string_view nonce, std::string_view additional, std::string_view plain_text) const override {
+		big_unsigned
+		encrypt(big_unsigned nonce, big_unsigned additional, big_unsigned plain_text) const override {
 			throw std::exception();
 		}
 
-		std::string
-		decrypt(std::string_view nonce, std::string_view data, std::string_view cipher_text) const override {
+		big_unsigned
+		decrypt(big_unsigned nonce, big_unsigned data, big_unsigned cipher_text) const override {
 			throw std::exception();
 		}
 

@@ -8,32 +8,26 @@ namespace leaf::network::tls {
 	}
 
 	std::string traffic_secret_manager::encrypt(std::string_view header, std::string_view fragment) {
-		var_unsigned record_nonce(active_cipher_->iv_length * 8);
-		{
-			const var_unsigned* sender_write_key, * sender_write_iv;
-			switch (endpoint_type_) {
-				case endpoint_type_t::client:
-					sender_write_key = &client_write_key;
-					sender_write_iv = &client_write_iv;
-					break;
-				case endpoint_type_t::server:
-					sender_write_key = &server_write_key;
-					sender_write_iv = &server_write_iv;
-					break;
-				default:
-					throw std::runtime_error{"unexpected"};
-			}
-			record_nonce.set(var_unsigned::from_number(write_nonce++));
-			record_nonce ^= *sender_write_iv;
-			active_cipher_->set_key(*sender_write_key);
+		big_unsigned record_nonce(write_nonce++, active_cipher_->iv_length * 8);
+		switch (endpoint_type_) {
+			case endpoint_type_t::client:
+				active_cipher_->set_key(client_write_key);
+				record_nonce ^= client_write_iv;
+				break;
+			case endpoint_type_t::server:
+				active_cipher_->set_key(server_write_key);
+				record_nonce ^= server_write_iv;
+				break;
+			default:
+				throw std::runtime_error{"unexpected"};
 		}
-		return active_cipher_->encrypt(record_nonce.to_bytestring(std::endian::big), header, fragment);
+		return active_cipher_->encrypt(record_nonce, big_unsigned(header), big_unsigned(fragment)).to_bytestring(std::endian::big);
 	}
 
 	std::string traffic_secret_manager::decrypt(const std::string_view header, const std::string_view fragment) {
-		var_unsigned record_nonce(active_cipher_->iv_length * 8);
+		big_unsigned record_nonce(0, active_cipher_->iv_length * 8);
 		{
-			const var_unsigned* sender_write_key, * sender_write_iv;
+			const big_unsigned* sender_write_key, * sender_write_iv;
 			switch (endpoint_type_) {
 				case endpoint_type_t::client:
 					sender_write_key = &server_write_key;
@@ -46,21 +40,21 @@ namespace leaf::network::tls {
 				default:
 					throw std::runtime_error{"unexpected"};
 			}
-			record_nonce.set(var_unsigned::from_number(read_nonce++));
+			record_nonce.set(big_unsigned(read_nonce++));
 			record_nonce ^= *sender_write_iv;
 			active_cipher_->set_key(*sender_write_key);
 		}
-		return active_cipher_->decrypt(record_nonce.to_bytestring(std::endian::big), header, fragment);
+		return active_cipher_->decrypt(record_nonce, big_unsigned(header), big_unsigned(fragment)).to_bytestring(std::endian::big);
 	}
 
 	void traffic_secret_manager::update_client_key_iv_(std::string_view write_secret) {
-		client_write_key = var_unsigned::from_bytes(active_cipher_->HKDF_expand_label(write_secret, "key", "", active_cipher_->key_length));
-		client_write_iv = var_unsigned::from_bytes(active_cipher_->HKDF_expand_label(write_secret, "iv", "", active_cipher_->iv_length));
+		client_write_key = big_unsigned(active_cipher_->HKDF_expand_label(write_secret, "key", "", active_cipher_->key_length));
+		client_write_iv = big_unsigned(active_cipher_->HKDF_expand_label(write_secret, "iv", "", active_cipher_->iv_length));
 	}
 
 	void traffic_secret_manager::update_server_key_iv_(std::string_view write_secret) {
-		server_write_key = var_unsigned::from_bytes(active_cipher_->HKDF_expand_label(write_secret, "key", "", active_cipher_->key_length));
-		server_write_iv = var_unsigned::from_bytes(active_cipher_->HKDF_expand_label(write_secret, "iv", "", active_cipher_->iv_length));
+		server_write_key = big_unsigned(active_cipher_->HKDF_expand_label(write_secret, "key", "", active_cipher_->key_length));
+		server_write_iv = big_unsigned(active_cipher_->HKDF_expand_label(write_secret, "iv", "", active_cipher_->iv_length));
 	}
 
 	void traffic_secret_manager::update_entropy_secret(std::string_view source) {

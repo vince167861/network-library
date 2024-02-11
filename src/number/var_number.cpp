@@ -3,6 +3,29 @@
 
 namespace leaf {
 
+	big_unsigned::big_unsigned(const number_base& ref)
+			: big_unsigned(0, ref.bits()) {
+		for (std::size_t i = 0; i < data.size(); ++i)
+			data[i] = i < ref.data_units() ? ref[i] : 0;
+	}
+
+	big_unsigned::big_unsigned(const std::string_view bitstring, std::optional<std::size_t> bits, std::endian endian)
+			: data(bits ? divide_ceiling(bits.value(), unit_bits) : divide_ceiling(bitstring.size(), unit_bytes)),
+			  bits_(bits ? bits.value() : bitstring.size() * 8) {
+		if (!bits_)
+			return;
+		const std::size_t actual = bitstring.size() / unit_bytes, excess = bitstring.size() % unit_bytes;
+		auto it = bitstring.begin();
+		if (endian == std::endian::big && excess)
+			read(endian, data[actual], it, excess);
+		for (std::size_t i = 0; i < actual; ++i) {
+			if (it < bitstring.end())
+				read(endian, data[endian == std::endian::big ? actual - i - 1 : i], it);
+		}
+		if (endian == std::endian::little && excess)
+			read(endian, data[0], it, excess);
+	}
+
 	template<typename T>
 	std::int8_t msb(const T val) {
 		if (!val)
@@ -13,7 +36,7 @@ namespace leaf {
 		return pos;
 	}
 
-	bool var_unsigned::unsigned_add_(std::size_t pos, unit_t val, bool carry) {
+	bool big_unsigned::unsigned_add_(std::size_t pos, unit_t val, bool carry) {
 		auto& field = data[pos], ori = field;
 		field += val;
 		if (carry) {
@@ -24,43 +47,23 @@ namespace leaf {
 		return field < ori;
 	}
 
-	var_unsigned var_unsigned::from_bytes(const std::string_view bytes) {
-		auto ptr = bytes.rbegin();
-		var_unsigned ret{bytes.size() * 8};
-		for (std::size_t i = 0; i < ret.bits_ / 8 + (ret.bits_ % 8 ? 1 : 0) && ptr != bytes.rend(); ++i)
-			ret.data[i / unit_bytes] |= static_cast<unit_t>(*ptr++ & 0xff) << 8 * (i % unit_bytes);
-		return ret;
-	}
-
-	var_unsigned var_unsigned::from_little_endian_bytes(const std::string_view bytes) {
-		auto ptr = bytes.begin();
-		var_unsigned ret(bytes.size() * 8);
-		for (std::size_t i = 0; i < ret.bits_ / 8 + (ret.bits_ % 8 ? 1 : 0) && ptr != bytes.end(); ++i)
-			ret.data[i / unit_bytes] |= static_cast<uint8_t>(*ptr++ & 0xff) << 8 * (i % unit_bytes);
-		return ret;
-	}
-
-	var_unsigned var_unsigned::from_hex(std::string_view hex) {
-		var_unsigned ret{hex.size() * 4};
+	big_unsigned big_unsigned::from_hex(const std::string_view hex) {
+		big_unsigned ret(0, hex.size() * 4);
 		std::size_t t = 0;
 		for (char ptr: std::ranges::reverse_view(hex))
 			ret[t / 2 / unit_bytes] |= hex_to_bits(ptr) << 4 * t % unit_bits, ++t;
 		return ret;
 	}
 
-	var_unsigned var_unsigned::from_little_endian_hex(std::string_view hex) {
-		var_unsigned ret(hex.size() * 4);
+	big_unsigned big_unsigned::from_little_endian_hex(std::string_view hex) {
+		big_unsigned ret(0, hex.size() * 4);
 		std::size_t t = 0;
 		for (char c: hex)
 			(ret[t / 2 / unit_bytes] |= hex_to_bits(c) << ((t / 2 % unit_bytes) * 8 + (1 - t % 2) * 4)), ++t;
 		return ret;
 	}
 
-	var_unsigned::var_unsigned(std::size_t bits, unit_t val)
-			: bits_(bits), data(bits / unit_bits + (bits % unit_bits ? 1 : 0), val) {
-	}
-
-	var_unsigned& var_unsigned::operator+=(const var_unsigned& other) {
+	big_unsigned& big_unsigned::operator+=(const big_unsigned& other) {
 		const auto this_units = data.size(), other_units = other.data.size();
 		const auto [max, cmn] = big_small(this_units, other_units);
 		if (this_units != max)
@@ -74,13 +77,13 @@ namespace leaf {
 		return *this;
 	}
 
-	var_unsigned var_unsigned::operator+(const var_unsigned& other) const {
-		var_unsigned ret(*this);
+	big_unsigned big_unsigned::operator+(const big_unsigned& other) const {
+		big_unsigned ret(*this);
 		ret += other;
 		return ret;
 	}
 
-	var_unsigned& var_unsigned::operator-=(const var_unsigned& other) {
+	big_unsigned& big_unsigned::operator-=(const big_unsigned& other) {
 		const auto size = data.size(), cmn_size = std::min(size, other.data.size());
 		bool borrow = false;
 		for (std::size_t i = 0; i < size; ++i) {
@@ -91,14 +94,14 @@ namespace leaf {
 		return *this;
 	}
 
-	var_unsigned var_unsigned::operator-(const var_unsigned& other) const {
-		var_unsigned ret(*this);
+	big_unsigned big_unsigned::operator-(const big_unsigned& other) const {
+		big_unsigned ret(*this);
 		ret -= other;
 		return ret;
 	}
 
-	var_unsigned var_unsigned::operator*(const var_unsigned& other) const {
-		var_unsigned ret{bits_ + other.bits_};
+	big_unsigned big_unsigned::operator*(const big_unsigned& other) const {
+		big_unsigned ret(0, bits_ + other.bits_);
 		auto return_units = ret.data_units();
 		for (std::size_t i = 0; i < data.size(); ++i) {
 			const std::uint64_t a = data[i];
@@ -114,7 +117,7 @@ namespace leaf {
 		return ret;
 	}
 
-	var_unsigned& var_unsigned::operator<<=(std::size_t shift) {
+	big_unsigned& big_unsigned::operator<<=(std::size_t shift) {
 		if (shift > data_units() * unit_bits)
 			for (auto& u: data) u = 0;
 		else {
@@ -133,13 +136,13 @@ namespace leaf {
 		return *this;
 	}
 
-	var_unsigned var_unsigned::operator<<(std::size_t shift) const {
-		var_unsigned ret{*this};
+	big_unsigned big_unsigned::operator<<(std::size_t shift) const {
+		big_unsigned ret{*this};
 		ret <<= shift;
 		return ret;
 	}
 
-	var_unsigned& var_unsigned::operator>>=(std::size_t shift) {
+	big_unsigned& big_unsigned::operator>>=(std::size_t shift) {
 		if (shift > bits_) {
 			for (auto& u: data) u = 0;
 			return *this;
@@ -157,41 +160,33 @@ namespace leaf {
 		return *this;
 	}
 
-	var_unsigned var_unsigned::operator>>(std::size_t shift) const {
-		var_unsigned ret{*this};
+	big_unsigned big_unsigned::operator>>(std::size_t shift) const {
+		big_unsigned ret{*this};
 		ret >>= shift;
 		return ret;
 	}
 
-	var_unsigned& var_unsigned::operator^=(const var_unsigned& other) {
+	big_unsigned& big_unsigned::operator^=(const big_unsigned& other) {
 		const auto cmn_units = std::min(data.size(), other.data.size());
 		for (std::size_t i = 0; i < cmn_units; ++i)
 			data[i] ^= other.data[i];
 		return *this;
 	}
 
-	var_unsigned var_unsigned::operator^(const var_unsigned& other) const {
-		var_unsigned ret{*this};
+	big_unsigned big_unsigned::operator^(const big_unsigned& other) const {
+		big_unsigned ret{*this};
 		ret ^= other;
 		return ret;
 	}
 
-	var_unsigned var_unsigned::operator~() const {
-		var_unsigned ret{*this};
+	big_unsigned big_unsigned::operator~() const {
+		big_unsigned ret{*this};
 		for (auto& u: ret.data)
 			u = ~u;
 		return ret;
 	}
 
-	std::size_t var_unsigned::block_needed(std::size_t block_size) const {
-		return bits_ / block_size + (bits_ % block_size ? 1 : 0);
-	}
-
-	std::size_t var_unsigned::padding_needed(std::size_t block_size) const {
-		return bits_ % block_size ? block_size - bits_ % block_size : 0;
-	}
-
-	std::strong_ordering var_unsigned::operator<=>(const number_base& other) const {
+	std::strong_ordering big_unsigned::operator<=>(const big_unsigned& other) const {
 		const auto
 				this_units = data_units(),
 				other_units = other.data_units(),
@@ -220,19 +215,20 @@ namespace leaf {
 			return std::strong_ordering::equal;
 	}
 
-	std::size_t var_unsigned::bits() const {
+	std::size_t big_unsigned::bits() const {
 		return bits_;
 	}
 
-	std::size_t var_unsigned::data_units() const {
+	std::size_t big_unsigned::data_units() const {
 		return data.size();
 	}
 
-	const number_base::unit_t& var_unsigned::operator[](std::size_t size) const {
+	const number_base::unit_t& big_unsigned::operator[](std::size_t size) const {
 		return data[size];
 	}
 
-	void var_unsigned::set(const number_base& other, std::size_t use_bits) {
+
+	void big_unsigned::set(const number_base& other, std::size_t use_bits) {
 		if (use_bits == ~static_cast<std::size_t>(0))
 			use_bits = other.bits();
 		const auto other_size = other.data_units();
@@ -240,31 +236,24 @@ namespace leaf {
 			data[i] = i < other_size ? other[i] : 0;
 		if (const auto excess = use_bits % unit_bits) {
 			auto& msu = data[use_bits / unit_bits];
-			const unit_t val = other[use_bits / unit_bits] & ~(~0 << std::min(excess, other.bits() % unit_bits));
+			const unit_t val = other[use_bits / unit_bits] & ~(~0 << std::min(excess, mod_not_exceed(other.bits(), unit_bits)));
 			msu = msu & ~0 << excess | val;
 		}
 	}
 
-	number_base::unit_t& var_unsigned::operator[](std::size_t size) {
+	number_base::unit_t& big_unsigned::operator[](std::size_t size) {
 		return data[size];
 	}
 
-	bool var_unsigned::operator==(const number_base& other) const {
+	bool big_unsigned::operator==(const big_unsigned& other) const {
 		return std::is_eq(*this <=> other);
 	}
 
-	void var_unsigned::resize(const std::size_t new_bits) {
-		data.resize(new_bits / unit_bits + (new_bits % unit_bits ? 1 : 0));
+	void big_unsigned::resize(const std::size_t new_bits) {
+		data.resize(divide_ceiling(new_bits, unit_bits));
 		bits_ = new_bits;
 	}
-
-	var_unsigned::var_unsigned(const number_base& ref)
-			: var_unsigned(ref.bits()) {
-		for (std::size_t i = 0; i < data.size(); ++i)
-			data[i] = i < ref.data_units() ? ref[i] : 0;
-	}
-
-	void var_unsigned::set(const bool val, const std::size_t pos) {
+	void big_unsigned::set(const bool val, const std::size_t pos) {
 		const auto byte = pos / unit_bits, bit = pos % unit_bits;
 		const unit_t mask = 1 << bit;
 		if (val)
@@ -273,9 +262,9 @@ namespace leaf {
 			data[byte] &= ~mask;
 	}
 
-	var_unsigned exp_mod(const var_unsigned& base, var_unsigned exp, const var_unsigned& modulus) {
-		const auto zero = var_unsigned::from_number(0);
-		auto ret = var_unsigned::from_number(1);
+	big_unsigned exp_mod(const big_unsigned& base, big_unsigned exp, const big_unsigned& modulus) {
+		const big_unsigned zero(0);
+		big_unsigned ret(1);
 		auto new_base = base % modulus;
 		while (exp > zero && ret > zero) {
 			if (exp.data[0] % 2 == 1)
@@ -286,7 +275,7 @@ namespace leaf {
 		return ret;
 	}
 
-	var_unsigned var_unsigned::operator%(const var_unsigned& modulus) const {
+	big_unsigned big_unsigned::operator%(const big_unsigned& modulus) const {
 		const auto this_bits = msb_pos() + 1, modulus_bits = modulus.msb_pos() + 1;
 		const auto cmp = this_bits <=> modulus_bits;
 		if (std::is_lt(cmp))
@@ -296,7 +285,7 @@ namespace leaf {
 			m_modulus.resize(this_bits);
 			m_modulus <<= this_bits - modulus_bits;
 		}
-		var_unsigned ret{*this};
+		big_unsigned ret{*this};
 		while (ret >= modulus) {
 			if (ret >= m_modulus)
 				ret -= m_modulus;
@@ -306,14 +295,14 @@ namespace leaf {
 		return ret;
 	}
 
-	void var_unsigned::shrink() {
+	void big_unsigned::shrink() {
 		data.erase(
 				std::ranges::find_if_not(data.rbegin(), data.rend(), [](const auto val){ return !val;}).base(),
 				data.end());
 		bits_ = msb_pos() + 1;
 	}
 
-	std::size_t var_unsigned::msb_pos() const {
+	std::size_t big_unsigned::msb_pos() const {
 		std::size_t pos = data.size() - 1;
 		for (auto it = data.rbegin(), end = data.rend(); it != end; ++it, --pos)
 			if (*it)
@@ -326,7 +315,7 @@ namespace leaf {
 			return other - (- *this);
 		if (other.negative)
 			return operator-(- other);
-		return var_unsigned::operator+(other);
+		return big_unsigned::operator+(other);
 	}
 
 	var_signed var_signed::operator-(const var_signed& other) const {
@@ -337,22 +326,22 @@ namespace leaf {
 		if (other.negative)
 			return *this + (- other);
 		if (*this < other)
-			return {static_cast<var_unsigned>(other) - static_cast<var_unsigned>(*this), true};
-		return var_unsigned::operator-(other);
+			return {from_unsigned_casting, static_cast<big_unsigned>(other) - static_cast<big_unsigned>(*this), true};
+		return big_unsigned::operator-(other);
 	}
 
 	var_signed var_signed::operator*(const var_signed& other) const {
 		if (negative && other.negative)
-			return static_cast<var_unsigned>(- *this) * static_cast<var_unsigned>(- other);
+			return static_cast<big_unsigned>(- *this) * static_cast<big_unsigned>(- other);
 		if (negative)
 			return -((- *this) * other);
 		if (other.negative)
 			return -((*this) * (-other));
-		return var_unsigned::operator*(other);
+		return big_unsigned::operator*(other);
 	}
 
 	var_signed var_signed::operator%(const var_signed& modulus) const {
-		auto ret = static_cast<var_unsigned>(negative ? -*this : *this) % modulus;
+		auto ret = static_cast<big_unsigned>(negative ? -*this : *this) % modulus;
 		if (negative)
 			ret = modulus - ret;
 		return {ret};
@@ -369,7 +358,7 @@ namespace leaf {
 		if (this_neg != other_neg)		// negative values are always less than positive values and zeros
 			return this_neg ? std::strong_ordering::less : std::strong_ordering::greater;
 
-		auto&& ret = var_unsigned::operator<=>(other);
+		auto&& ret = big_unsigned::operator<=>(other);
 		return this_neg ? 0 <=> ret : ret;
 	}
 }

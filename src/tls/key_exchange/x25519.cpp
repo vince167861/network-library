@@ -3,7 +3,7 @@
 
 namespace leaf::network::tls {
 
-	x25519_manager::x25519_manager(const var_unsigned& secret_key)
+	x25519_manager::x25519_manager(const big_unsigned& secret_key)
 			: key_exchange_manager(named_group_t::x25519), has_key(true), secret_key(secret_key), public_key_(ecc::x25519(secret_key, 9)) {
 	}
 
@@ -16,11 +16,11 @@ namespace leaf::network::tls {
 	}
 
 	void x25519_manager::exchange_key(std::string_view remote_public_key) {
-		const var_unsigned remote_key = var_unsigned::from_little_endian_bytes(remote_public_key);
+		const big_unsigned remote_key = big_unsigned(remote_public_key, std::nullopt, std::endian::little);
 		exchange_key(remote_key);
 	}
 
-	void x25519_manager::exchange_key(const var_unsigned& remote_public_key) {
+	void x25519_manager::exchange_key(const big_unsigned& remote_public_key) {
 		shared_key_ = ecc::x25519(secret_key, remote_public_key);
 	}
 

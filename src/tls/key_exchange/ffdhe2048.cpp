@@ -2,9 +2,10 @@
 
 namespace leaf::network::tls {
 
-	ffdhe2048_manager::ffdhe2048_manager(const var_unsigned& secret_key)
+	ffdhe2048_manager::ffdhe2048_manager(const big_unsigned& secret_key)
 			: key_exchange_manager(named_group_t::ffdhe2048), secret_key(secret_key),
-			public_key_(exp_mod(var_unsigned::from_number(2), secret_key, ffdhe2048_p)), has_key(true) {}
+			public_key_(exp_mod(2, secret_key, ffdhe2048_p)), has_key(true) {
+	}
 
 	ffdhe2048_manager::ffdhe2048_manager()
 			: key_exchange_manager(named_group_t::ffdhe2048), has_key(false) {
@@ -15,7 +16,7 @@ namespace leaf::network::tls {
 	}
 
 	void ffdhe2048_manager::exchange_key(std::string_view remote_public_key) {
-		shared_key_ = exp_mod(var_unsigned::from_bytes(remote_public_key), secret_key, ffdhe2048_p);
+		shared_key_ = exp_mod(big_unsigned(remote_public_key), secret_key, ffdhe2048_p);
 	}
 
 	std::string ffdhe2048_manager::shared_key() const {
@@ -29,7 +30,7 @@ namespace leaf::network::tls {
 	void ffdhe2048_manager::generate_private_key(random_number_generator& generator) {
 		for (auto& u: secret_key.data)
 			u = generator.unit();
-		public_key_ = exp_mod(var_unsigned::from_number(2), secret_key, ffdhe2048_p);
+		public_key_ = exp_mod(2, secret_key, ffdhe2048_p);
 		has_key = true;
 	}
 }

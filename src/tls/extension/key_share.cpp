@@ -56,7 +56,7 @@ namespace leaf::network::tls {
 			it = std::ranges::fill_n(it, level + 1, '\t');
 			it = std::format_to(it, "{}", group);
 			if (!key.empty())
-				it = std::format_to(it, ": {}", var_unsigned::from_bytes(key).to_string());
+				it = std::format_to(it, ": {}", big_unsigned(key).to_string());
 		}
 	}
 

@@ -4,15 +4,15 @@
 namespace leaf {
 
 	namespace sha_2 {
-		template<std::size_t block_size>
-		var_unsigned padding(const var_unsigned& val) {
+
+		inline big_unsigned padding(const big_unsigned& val, const std::size_t block_size) {
 			auto ext = (val.bits() + 65) % block_size;
 			auto ret{val};
 			ret.resize(block_size * ((val.bits() + 65) / block_size + 1));
 			if (ext)
 				ret <<= block_size - ext + 65;
 			ret.set(true, block_size - ext + 64);
-            ret.set(var_unsigned::from_number(val.bits()), 64);
+			ret.set(big_unsigned(val.bits(), 64));
 			return ret;
 		}
 
@@ -61,9 +61,9 @@ namespace leaf {
 		}
 
 	public:
-        static var_unsigned hash(const var_unsigned& val) {
+        static big_unsigned hash(const big_unsigned& val) {
             std::uint32_t H[8] {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
-            auto&& D = sha_2::padding<512>(val);
+			auto D = sha_2::padding(val, 512);
             const auto total_blocks = D.data_units() / 16;
             for (std::size_t i = 0; i < total_blocks; ++i) {
                 uint32_t W[64];
@@ -71,8 +71,7 @@ namespace leaf {
                     W[t] = D.value<uint32_t>(16 - t - 1 + (total_blocks - i - 1) * 16);
                 for (std::size_t t = 16; t < 64; ++t)
                     W[t] = sigma_1(W[t - 2]) + W[t - 7] + sigma_0(W[t - 15]) + W[t - 16];
-                auto a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5],
-                        g = H[6], h = H[7];
+				auto a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
                 for (std::size_t t = 0; t < 64; ++t) {
                     auto temp_1 = h + Sigma_1(e) + sha_2::Ch(e, f, g) + K[t] + W[t];
                     auto temp_2 = Sigma_0(a) + sha_2::Maj(a, b, c);
@@ -87,10 +86,10 @@ namespace leaf {
                 }
                 H[0] += a, H[1] += b, H[2] += c, H[3] += d, H[4] += e, H[5] += f, H[6] += g, H[7] += h;
             }
-            var_unsigned ret{256};
+			big_unsigned ret(0, 256);
             for (auto i : H) {
                 ret <<= sizeof i * 8;
-				ret.set(var_unsigned::from_number(i), 32);
+				ret.set(big_unsigned(i), 32);
             }
             return ret;
         }
@@ -138,18 +137,17 @@ namespace leaf {
 		}
 
 	public:
-        static var_unsigned hash(const var_unsigned& val) {
+        static big_unsigned hash(const big_unsigned& val) {
             uint64_t H[8] {0xcbbb9d5dc1059ed8, 0x629a292a367cd507, 0x9159015a3070dd17, 0x152fecd8f70e5939, 0x67332667ffc00b31, 0x8eb44a8768581511, 0xdb0c2e0d64f98fa7, 0x47b5481dbefa4fa4};
-            auto&& D = sha_2::padding<1024>(val);
-            auto total_blocks = D.data_units() / (128 / var_unsigned::unit_bytes);
+			auto D = sha_2::padding(val, 1024);
+            auto total_blocks = D.data_units() / (128 / big_unsigned::unit_bytes);
             for (std::size_t i = 0; i < total_blocks; ++i) {
                 uint64_t W[80];
                 for (std::size_t t = 0; t < 16; ++t)
                     W[t] = D.template value<uint64_t>(16 - t - 1 + (total_blocks - i - 1) * 16);
                 for (std::size_t t = 16; t < 64; ++t)
                     W[t] = sigma_1(W[t - 2]) + W[t - 7] + sigma_0(W[t - 15]) + W[t - 16];
-                auto a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5],
-                        g = H[6], h = H[7];
+				auto a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
                 for (std::size_t t = 0; t < 80; ++t) {
                     auto temp_1 = h + Sigma_1(e) + sha_2::Ch(e, f, g) + K[t] + W[t];
                     auto temp_2 = Sigma_0(a) + sha_2::Maj(a, b, c);
@@ -164,10 +162,10 @@ namespace leaf {
                 }
                 H[0] += a, H[1] += b, H[2] += c, H[3] += d, H[4] += e, H[5] += f, H[6] += g, H[7] += h;
             }
-            var_unsigned ret{384};
+			big_unsigned ret(0, 384);
             for (uint8_t i = 0; i < 6; ++i) {
                 ret <<= 64;
-				ret.set(var_unsigned::from_number(H[i]), 64);
+				ret.set(big_unsigned(H[i]), 64);
             }
             return ret;
         }

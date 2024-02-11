@@ -3,24 +3,25 @@
 namespace leaf::network::tls {
 
 	cipher_suite_gcm::cipher_suite_gcm(std::size_t key_bytes, std::size_t iv_bytes, std::size_t tag_bytes)
-		: gcm(key_bytes * 8, iv_bytes * 8, tag_bytes * 8) {
+			: tag_bits_(tag_bytes * 8), gcm(key_bytes * 8, iv_bytes * 8, tag_bytes * 8) {
 	}
 
-	std::string cipher_suite_gcm::encrypt(const std::string_view nonce, const std::string_view auth, const std::string_view plain_text) const {
-		auto nonce_data = var_unsigned::from_bytes(nonce);
-		nonce_data.resize(iv_size);
-		auto plain_data = var_unsigned::from_bytes(plain_text);
-		auto auth_data = var_unsigned::from_bytes(auth);
-		auto [ciphered, tag] = gcm::encrypt(nonce_data, plain_data, auth_data);
-		return ciphered.to_bytestring(std::endian::big) + tag.to_bytestring(std::endian::big);
+	big_unsigned cipher_suite_gcm::encrypt(big_unsigned nonce, big_unsigned auth, big_unsigned plaintext) const {
+		nonce.resize(iv_bits);
+		auto [ciphered, tag] = gcm::encrypt(nonce, plaintext, auth);
+		ciphered.resize(ciphered.bits() + tag.bits());
+		ciphered <<= tag.bits();
+		ciphered.set(tag);
+		return ciphered;
 	}
 
-	std::string cipher_suite_gcm::decrypt(std::string_view nonce, std::string_view data, std::string_view cipher_text) const {
-		auto nonce_data = var_unsigned::from_bytes(nonce);
-		nonce_data.resize(iv_size);
-		auto cipher_data = var_unsigned::from_bytes({cipher_text.begin(), cipher_text.end() - 16});
-		auto auth_data = var_unsigned::from_bytes(data);
-		auto tag_data = var_unsigned::from_bytes({cipher_text.end() - 16, cipher_text.end()});
-		return gcm::decrypt(nonce_data, cipher_data, auth_data, tag_data).to_bytestring(std::endian::big);
+	big_unsigned
+	cipher_suite_gcm::decrypt(big_unsigned nonce, const big_unsigned auth, const big_unsigned ciphertext) const {
+		nonce.resize(iv_bits);
+		auto tag = ciphertext;
+		tag.resize(tag_bits_);
+		auto ciphered = ciphertext >> tag_bits_;
+		ciphered.resize(ciphered.bits() - tag_bits_);
+		return gcm::decrypt(nonce, ciphered, auth, tag);
 	}
 }

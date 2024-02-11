@@ -6,14 +6,14 @@
 
 namespace leaf::hashing {
 
-	var_unsigned HMAC_hash(
+	big_unsigned HMAC_hash(
 			std::size_t block_size,
-			const std::function<var_unsigned(const number_base&)>& hash,
+			const std::function<big_unsigned(const number_base&)>& hash,
 			const number_base& data,
 			const number_base& key
 			);
 
-	var_unsigned HMAC_sha_256(const number_base& data, const number_base& key);
+	big_unsigned HMAC_sha_256(const number_base& data, const number_base& key);
 
-	var_unsigned HMAC_sha_384(const number_base& data, const number_base& key);
+	big_unsigned HMAC_sha_384(const number_base& data, const number_base& key);
 }

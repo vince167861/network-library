@@ -24,21 +24,21 @@ namespace leaf {
 
 		static std::uint8_t GF_multiply(std::uint8_t, std::uint8_t);
 
-		static void shift_rows(var_unsigned& state);
+		static void shift_rows(big_unsigned& state);
 
-		void inv_shift_rows(var_unsigned& state) const;
+		void inv_shift_rows(big_unsigned& state) const;
 
-		void mix_columns(var_unsigned& state) const;
+		void mix_columns(big_unsigned& state) const;
 
-		void inv_mix_columns(var_unsigned& state) const;
+		void inv_mix_columns(big_unsigned& state) const;
 
-		void add_round_key(var_unsigned& state, const var_unsigned& key_schedule, std::size_t round) const;
+		void add_round_key(big_unsigned& state, const big_unsigned& key_schedule, std::size_t round) const;
 
-		void cipher(var_unsigned& val, const var_unsigned& key_schedule) const;
+		void cipher(big_unsigned& val, const big_unsigned& key_schedule) const;
 
-		void inv_cipher(var_unsigned& val, const var_unsigned& key_schedule) const;
+		void inv_cipher(big_unsigned& val, const big_unsigned& key_schedule) const;
 
-		void key_expansion(const var_unsigned& key, var_unsigned& key_schedule) const;
+		void key_expansion(const big_unsigned& key, big_unsigned& key_schedule) const;
 	};
 
 	constexpr aes aes_128{4, 4, 10}, aes_256{8, 4, 14};

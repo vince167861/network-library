@@ -4,9 +4,9 @@
 
 namespace leaf::hashing {
 
-	var_unsigned HMAC_hash(std::size_t block_size, const std::function<var_unsigned(const number_base&)>& hash, const number_base& data, const number_base& key_) {
-		var_unsigned ipad(block_size * 8, 0x36363636), opad(block_size * 8, 0x5c5c5c5c);
-		var_unsigned key = key_;
+	big_unsigned HMAC_hash(std::size_t block_size, const std::function<big_unsigned(const number_base&)>& hash, const number_base& data, const number_base& key_) {
+		big_unsigned ipad(std::string(block_size, '\x36')), opad(std::string(block_size, '\x5c'));
+		big_unsigned key = key_;
 		auto&& cmp = key.bits() <=> block_size * 8;
 		if (std::is_lt(cmp)) {
 			key.resize(block_size * 8);
@@ -25,11 +25,11 @@ namespace leaf::hashing {
 		return hash(ret);
 	}
 
-	var_unsigned HMAC_sha_256(const number_base& data, const number_base& key) {
+	big_unsigned HMAC_sha_256(const number_base& data, const number_base& key) {
 		return HMAC_hash(64, sha_256::hash, data, key);
 	}
 
-	var_unsigned HMAC_sha_384(const number_base& data, const number_base& key) {
+	big_unsigned HMAC_sha_384(const number_base& data, const number_base& key) {
 		return HMAC_hash(128, sha_384::hash, data, key);
 	}
 }

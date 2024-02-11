@@ -32,7 +32,7 @@ namespace leaf {
 	}
 
 	template<typename T, typename iter>
-	void read(std::endian endian, T& val, iter& src, const std::size_t count = sizeof(T)) {
+	constexpr void read(std::endian endian, T& val, iter& src, const std::size_t count = sizeof(T)) {
 		bool reverse = endian != std::endian::native;
 		uint8_t* dst_ptr = reinterpret_cast<uint8_t *>(&val), * dst_end = dst_ptr + count;
 		if (reverse) {
@@ -44,7 +44,7 @@ namespace leaf {
 	}
 
 	template<typename T, typename iter>
-	T read(std::endian endian, iter& src, const std::size_t count = sizeof(T)) {
+	constexpr T read(std::endian endian, iter& src, const std::size_t count = sizeof(T)) {
 		T val{};
 		read(endian, val, src, count);
 		return val;
@@ -120,6 +120,20 @@ namespace leaf {
 		if (a > b)
 			return {a, b};
 		return {b, a};
+	}
+
+	inline std::size_t divide_ceiling(std::size_t a, std::size_t b) {
+		return a / b + (a % b ? 1 : 0);
+	}
+
+	inline std::size_t mod_not_exceed(std::size_t a, std::size_t b) {
+		const auto c = a % b;
+		return c ? c : b;
+	}
+
+	inline std::size_t divisible_requires(std::size_t a, std::size_t b) {
+		const auto c = a % b;
+		return c ? b - c : 0;
 	}
 }
 

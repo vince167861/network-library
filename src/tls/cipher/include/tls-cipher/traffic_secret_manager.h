@@ -28,7 +28,7 @@ namespace leaf::network::tls {
 			client = 1, server = 2, both = 3
 		};
 
-		var_unsigned server_write_key, server_write_iv, client_write_key, client_write_iv;
+		big_unsigned server_write_key, server_write_iv, client_write_key, client_write_iv;
 
 		std::string server_handshake_traffic_secret, client_handshake_traffic_secret;
 

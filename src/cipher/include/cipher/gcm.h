@@ -4,13 +4,18 @@
 namespace leaf {
 
 	class gcm {
+
+		big_unsigned pre_counter_(const big_unsigned& iv) const;
+
+		big_unsigned tag_(const big_unsigned& ciphertext, const big_unsigned& pre_counter, const big_unsigned& auth_data) const;
+
 	public:
 		static constexpr std::size_t block_size = 128;
 
-		const std::size_t key_size, iv_size, tag_size;
+		const std::size_t key_bits, iv_bits, tag_bits;
 
 	protected:
-		var_unsigned hash_subkey_;
+		big_unsigned hash_subkey_;
 
 		/**
 		 * Initialize hash subkey (per GCM spec).
@@ -22,33 +27,34 @@ namespace leaf {
 		void init();
 
 		gcm(const std::size_t key_size, const std::size_t iv_size, const std::size_t tag_size)
-			: key_size(key_size), iv_size(iv_size), tag_size(tag_size) {
+			: key_bits(key_size), iv_bits(iv_size), tag_bits(tag_size) {
 		}
 
 	public:
 		/**
 		 * Function CIPH of GCM spec. Should at least cipher a `var_unsigned` of `block_size` bits.
 		 */
-		virtual var_unsigned ciph(const var_unsigned& X) const = 0;
+		virtual big_unsigned ciph(const big_unsigned& X) const = 0;
 
 		/**
 		 * Function GCM-AE_k of GCM spec.
 		 * @param iv initialization vector
 		 * @param plain plain text
-		 * @param data additional authentication data
+		 * @param auth_data additional authentication data
 		 * @return pair of ciphered text and authentication tag
 		 */
-		std::pair<var_unsigned, var_unsigned>
-		encrypt(const var_unsigned& iv, const var_unsigned& plain, const var_unsigned& data) const;
+		std::pair<big_unsigned, big_unsigned>
+		encrypt(const big_unsigned& iv, const big_unsigned& plain, const big_unsigned& auth_data) const;
 
-		var_unsigned decrypt(const var_unsigned& iv, const var_unsigned& cipher, const var_unsigned& data, const var_unsigned& tag) const;
+		big_unsigned
+		decrypt(const big_unsigned& iv, const big_unsigned& cipher, const big_unsigned& auth_data, const big_unsigned& tag) const;
 
 		// function GHASH of GCM spec
-		var_unsigned ghash(const var_unsigned& val) const;
+		big_unsigned ghash(const big_unsigned& val) const;
 
 		/** function GCTR of GCM spec. */
-		var_unsigned gctr(var_unsigned ICB, const var_unsigned& X) const;
+		big_unsigned gctr(big_unsigned ICB, const big_unsigned& X) const;
 	};
 
-	var_unsigned increase(const std::size_t bits, var_unsigned val);
+	big_unsigned increase(const std::size_t bits, big_unsigned val);
 }

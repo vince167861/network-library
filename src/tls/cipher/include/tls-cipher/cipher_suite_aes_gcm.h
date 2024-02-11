@@ -10,9 +10,9 @@ namespace leaf::network::tls {
 
 	class aes_128_gcm: public cipher_suite_gcm {
 
-		var_unsigned key_schedule;
+		big_unsigned key_schedule;
 
-		var_unsigned ciph(const var_unsigned& X) const override;
+		big_unsigned ciph(const big_unsigned& X) const override;
 
 	public:
 		void set_key(const number_base& secret_key) override;
@@ -33,9 +33,9 @@ namespace leaf::network::tls {
 
 	class aes_256_gcm: public cipher_suite_gcm {
 
-		var_unsigned key_schedule;
+		big_unsigned key_schedule;
 
-		var_unsigned ciph(const var_unsigned& X) const override;
+		big_unsigned ciph(const big_unsigned& X) const override;
 
 	public:
 		void set_key(const number_base& secret_key) override;

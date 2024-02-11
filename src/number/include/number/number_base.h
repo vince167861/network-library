@@ -6,12 +6,12 @@
 
 namespace leaf {
 
-	inline constexpr unsigned long long hex_to_bits(char c) {
+	inline constexpr std::uintmax_t hex_to_bits(char c) {
 		return '0' <= c && c <= '9' ? c - '0' : 'a' <= c && c <= 'f' ? c - 'a' + 10 : 'A' <= c && c <= 'F' ? c - 'A' + 10 : 0;
 	}
 
-	class number_base: public binary_object {
-	public:
+	struct number_base: binary_object {
+
 		using unit_t = std::uint32_t;
 
 		static constexpr std::size_t unit_bytes = sizeof(unit_t);
