@@ -1,6 +1,7 @@
 add_library(number
 		number_base.cpp
-		var_number.cpp)
+		var_number.cpp
+		big_number.cpp)
 target_include_directories(number
 		PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 target_sources(number

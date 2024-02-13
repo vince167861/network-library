@@ -1,10 +1,13 @@
-if (${CMAKE_SYSTEM_NAME} STREQUAL Windows)
-	find_package(GTest CONFIG REQUIRED)
-	include(GoogleTest)
+ find_package(GTest CONFIG)
 
+if (GTest_FOUND)
+
+	include(GoogleTest)
 	link_libraries(GTest::gtest GTest::gmock)
 
-	add_executable(test-number number.cpp)
+	add_executable(test-number
+			number/number.cpp
+			number/exp_big_number.cpp)
 	target_link_libraries(test-number number)
 
 	add_executable(test-hashing hashing.cpp)

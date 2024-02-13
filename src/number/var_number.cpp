@@ -10,7 +10,7 @@ namespace leaf {
 	}
 
 	big_unsigned::big_unsigned(const std::string_view bitstring, std::optional<std::size_t> bits, std::endian endian)
-			: data(bits ? divide_ceiling(bits.value(), unit_bits) : divide_ceiling(bitstring.size(), unit_bytes)),
+			: data(bits ? div_ceil(bits.value(), unit_bits) : div_ceil(bitstring.size(), unit_bytes)),
 			  bits_(bits ? bits.value() : bitstring.size() * 8) {
 		if (!bits_)
 			return;
@@ -250,7 +250,7 @@ namespace leaf {
 	}
 
 	void big_unsigned::resize(const std::size_t new_bits) {
-		data.resize(divide_ceiling(new_bits, unit_bits));
+		data.resize(div_ceil(new_bits, unit_bits));
 		bits_ = new_bits;
 	}
 	void big_unsigned::set(const bool val, const std::size_t pos) {

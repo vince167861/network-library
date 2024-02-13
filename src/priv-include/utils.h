@@ -122,7 +122,7 @@ namespace leaf {
 		return {b, a};
 	}
 
-	inline std::size_t divide_ceiling(std::size_t a, std::size_t b) {
+	inline std::size_t div_ceil(std::size_t a, std::size_t b) {
 		return a / b + (a % b ? 1 : 0);
 	}
 

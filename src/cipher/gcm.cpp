@@ -43,7 +43,7 @@ namespace leaf {
 			J.set(true, 0);
 			return J;
 		}
-		big_unsigned J_p(0, 128 * divide_ceiling(iv_bits, 128) + 64);
+		big_unsigned J_p(0, 128 * div_ceil(iv_bits, 128) + 64);
 		J_p.set(iv);
 		J_p <<= (iv_bits % 128 ? 128 - iv_bits % 128 : 0) + 128;
 		J_p.set(big_unsigned(iv_bits), 64);
@@ -52,7 +52,7 @@ namespace leaf {
 
 	big_unsigned
 	gcm::tag_(const big_unsigned& ciphertext, const big_unsigned& pre_counter, const big_unsigned& auth_data) const {
-		big_unsigned S_p(0, 128 * (divide_ceiling(auth_data.bits(), 128) + divide_ceiling(ciphertext.bits(), 128) + 1));
+		big_unsigned S_p(0, 128 * (div_ceil(auth_data.bits(), 128) + div_ceil(ciphertext.bits(), 128) + 1));
 		S_p.set(auth_data);
 		S_p <<= divisible_requires(auth_data.bits(), 128) + ciphertext.bits();
 		S_p.set(ciphertext);
@@ -96,7 +96,7 @@ namespace leaf {
 		if (!X.bits())
 			return {};
 		big_unsigned Y(0, X.bits());
-		const auto n = divide_ceiling(X.bits(), block_size), excess = mod_not_exceed(X.bits(), block_size);
+		const auto n = div_ceil(X.bits(), block_size), excess = mod_not_exceed(X.bits(), block_size);
 		for (size_t i = 0; i < n - 1; ++i) {
 			const auto X_i = X >> block_size * (n - i - 2) + excess;
 			Y <<= block_size;

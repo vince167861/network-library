@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "number/flexible.h"
+#include "number/big_number.h"
 
 using namespace leaf;
 
@@ -8,12 +9,10 @@ const auto
 		v_ubig_2 = big_unsigned::from_hex("c953ef9abb3009243f23c6098a9569700a1700b718010c510"),
 		v_ubig_3 = big_unsigned::from_hex("FFFFFFFFFFFFFFFFADF85458A2BB4A9AAFDC5620273D3CF1D8B9C583CE2D3695A9E13641146433FBCC939DCE249B3EF97D2FE363630C75D8F681B202AEC4617AD3DF1ED5D5FD65612433F51F5F066ED0856365553DED1AF3B557135E7F57C935984F0C70E0E68B77E2A689DAF3EFE8721DF158A136ADE73530ACCA4F483A797ABC0AB182B324FB61D108A94BB2C8E3FBB96ADAB760D7F4681D4F42A3DE394DF4AE56EDE76372BB190B07A7C8EE0A6D709E02FCE1CDF7E2ECC03404CD28342F619172FE9CE98583FF8E4F1232EEF28183C3FE3B1B4C6FAD733BB5FCBC2EC22005C58EF1837D1683B2C6F34A26C1B2EFFA886B423861285C97FFFFFFFFFFFFFFFF"),
 		v_ubig_4 = big_unsigned::from_hex("ffffffffffffffffffffffffffffffff31A07D962A192A85702CDDB75EBE474131A07D962A192A85702CDDB75EBE474131A07D962A192A85702CDDB75EBE474131A07D962A192A85702CDDB75EBE474131A07D962A192A85702CDDB75EBE474131A07D962A192A85702CDDB75EBE474131A07D962A192A85702CDDB75EBE4741");
-const auto
-		v_u_78 = big_unsigned::from_hex("78"),
-		v_u_91 = big_unsigned::from_hex("91");
+const big_unsigned u_78(0x78), u_79(0x79), u_91(0x91);
 
 TEST(var_unsigned, add) {
-	EXPECT_EQ(v_u_78 + big_unsigned::from_hex("1"), big_unsigned::from_hex("79"));
+	EXPECT_EQ(u_78 + big_unsigned(1), u_79);
 	EXPECT_EQ(
 			big_unsigned::from_hex("200000000000000") + big_unsigned::from_hex("200000000000000"),
 			big_unsigned::from_hex("400000000000000"));
@@ -25,7 +24,7 @@ TEST(var_signed, add) {
 }
 
 TEST(var_unsigned, minus) {
-	EXPECT_EQ(v_u_78 - big_unsigned::from_hex("1"), big_unsigned::from_hex("77"));
+	EXPECT_EQ(u_78 - big_unsigned::from_hex("1"), big_unsigned::from_hex("77"));
 	EXPECT_EQ(
 			big_unsigned::from_hex("200000000000000") - big_unsigned::from_hex("120000000000000"),
 			big_unsigned::from_hex("e0000000000000"));
@@ -40,7 +39,7 @@ TEST(var_signed, minus) {
 }
 
 TEST(var_unsigned, multiply) {
-	EXPECT_EQ(v_u_78 * big_unsigned::from_hex("2"), big_unsigned::from_hex("f0"));
+	EXPECT_EQ(u_78 * big_unsigned::from_hex("2"), big_unsigned::from_hex("f0"));
 	EXPECT_EQ(big_unsigned::from_hex("ff") * big_unsigned::from_hex("ff"), big_unsigned::from_hex("fe01"));
 	EXPECT_EQ(
 			big_unsigned::from_hex("200000000000000") * big_unsigned::from_hex("120000000000000"),
@@ -96,9 +95,9 @@ TEST(var_unsigned, compare) {
 }
 
 TEST(var_unsigned, modulo_1) {
-	EXPECT_EQ(big_unsigned(0x1243) % v_u_91, big_unsigned(0x23));
-	EXPECT_EQ(big_unsigned(1) % v_u_91, big_unsigned(1));
-	EXPECT_EQ(v_u_91 % v_u_91, big_unsigned(0));
+	EXPECT_EQ(big_unsigned(0x1243) % u_91, big_unsigned(0x23));
+	EXPECT_EQ(big_unsigned(1) % u_91, big_unsigned(1));
+	EXPECT_EQ(u_91 % u_91, big_unsigned(0));
 	EXPECT_EQ(
 			big_unsigned::from_hex("2344b72002994a6c") % big_unsigned::from_hex("09cc3c85ddda6f53"),
 			big_unsigned::from_hex("5E0018E6909FC73"));
