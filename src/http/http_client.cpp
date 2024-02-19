@@ -10,36 +10,36 @@ namespace leaf::network::http {
 
 	client::client(network::client& client): client_(client) {}
 
-	bool client::connect_(const std::string_view host, const uint16_t port) {
-		if (client_.connected()
-				&& connected_remote_.has_value() && connected_remote_.value().first == host
-				&& connected_remote_.value().second == port)
+	bool client::connect_(const std::string_view host, const std::uint16_t port) {
+		if (client_.connected() && connected_host_ == host && connected_port_ == port)
 			return true;
 		client_.close();
 		if (!client_.connect(host, port))
 			return false;
-		connected_remote_.emplace(host, port);
+		connected_host_ = host;
+		connected_port_ = port;
 		return true;
 	}
 
-	void client::send_(const request& request) {
-		std::uint16_t port = request.request_url.port;
-		if (port == 0) {
-			if (request.request_url.scheme == "http")
-				port = 80;
-			else if (request.request_url.scheme == "https")
-				port = 443;
+	void client::send_(const request& __req) {
+		std::uint16_t __p = __req.request_url.port;
+		if (__p == 0) {
+			if (__req.request_url.scheme == "http")
+				__p = 80;
+			else if (__req.request_url.scheme == "https")
+				__p = 443;
 			else
-				throw std::runtime_error{"Scheme unknown; set port explicitly."};
+				throw std::invalid_argument("unknown scheme or set port explicitly");
 		}
-		if (!connect_(request.request_url.host, port))
+		if (!connect_(__req.request_url.host, __p))
 			throw std::runtime_error{"Connection failed."};
-		auto copy = request.headers;
-		copy.set("host", request.request_url.host);
-		if (!request.body.empty())
-			copy.set("content-length", std::to_string(request.body.length()));
-		client_.write(std::format("{} {} HTTP/1.1\r\n{}\r\n{}",
-			request.method, request.request_url.requesting_uri_string(), static_cast<std::string>(copy), request.body));
+		auto copy = __req.headers;
+		copy.set("host", __req.request_url.host);
+		if (!__req.body.empty())
+			copy.set("content-length", std::to_string(__req.body.length()));
+		const auto req_str = std::format("{} {} HTTP/1.1\r\n{}\r\n{}",
+										 __req.method, __req.request_url.requesting_uri_string(), static_cast<std::string>(copy), __req.body);
+		client_.write(reinterpret_cast<const byte_string&>(req_str));
 	}
 
 	std::future<response> client::fetch(const request& request) {
@@ -47,65 +47,71 @@ namespace leaf::network::http {
 		return snd.get_future();
 	}
 
-	response parse_response_header(network::client& client) {
-		response response;
-		auto status_line = client.read_until("\n");
-		if (!status_line.starts_with("HTTP/") || !status_line.ends_with("\r\n"))
+	response parse_response_header(istream& __s) {
+		response __res;
+		const auto __sl = __s.read_line();
+		if (!__sl.starts_with("HTTP/") || !__sl.ends_with('\r') || __s.read() != '\n')
 			throw http_response_syntax_error;
-		auto begin = status_line.begin() + 5;
-		const auto first_whitespace = std::find(begin, status_line.end(), ' ');
-		if (first_whitespace == status_line.end())
+		auto it = __sl.begin() + 5;
+
+		const auto __v = std::find(it, __sl.end(), ' ');
+		if (__v == __sl.end())
 			throw http_response_syntax_error;
-		auto const second_whitespace = std::find(first_whitespace + 1, status_line.end(), ' ');
-		if (second_whitespace == status_line.end())
+
+		auto const __c = std::find(__v + 1, __sl.end(), ' ');
+		if (__c == __sl.end())
 			throw http_response_syntax_error;
-		std::string http_version = {begin, first_whitespace};
+
 		try {
-			response.status = std::stoi(std::string{first_whitespace + 1, second_whitespace});
+			__res.status = std::stoi(std::string(__v + 1, __c));
 		} catch (...) {
 			throw http_response_syntax_error;
 		}
-		response.headers = http_fields::from_http_headers(client);
-		return response;
+		__res.headers = http_fields::from_http_headers(__s);
+		return __res;
 	}
 
-	void parse_response_body(response& response, network::client& client, bool discard = false) {
+	void parse_response_body(response& __res, network::client& __s, bool discard = false) {
 		// no response body for 1XX, 204, 304
-		if (100 <= response.status && response.status <= 199 || response.status == 204 || response.status == 304)
+		if (100 <= __res.status && __res.status <= 199 || __res.status == 204 || __res.status == 304)
 			return;
-		if (response.headers.contains("transfer-encoding")
-			&& response.headers.at("transfer-encoding").contains("chunked")) {
+		if (__res.headers.contains("transfer-encoding") && __res.headers.at("transfer-encoding").contains("chunked")) {
 			while (true) {
-				auto chunk_header = client.read_until("\n");
-				if (!chunk_header.ends_with("\r\n"))
+				const auto __h = __s.read_line();
+				if (!__h.ends_with("\r") || __s.read() != '\n')
 					throw http_response_syntax_error;
-				const auto semicolon
-						= std::find(chunk_header.begin(), chunk_header.end() - 2, ';');
-				int chunk_length;
+				const auto __sep = std::find(__h.begin(), __h.end() - 1, ';');
+				std::size_t __cl;
 				try {
-					chunk_length = std::stoi(std::string{chunk_header.begin(), semicolon}, nullptr, 16);
-				} catch (...) { throw http_response_syntax_error; }
-				if (chunk_length == 0)
+					__cl = std::stoull(std::string{__h.begin(), __sep}, nullptr, 16);
+				} catch (...) {
+					throw http_response_syntax_error;
+				}
+				if (__cl == 0)
 					break;
-				const auto chunk = client.read(chunk_length);
-				if (client.read(2) != "\r\n")
+				const auto chunk = __s.read(__cl);
+				if (__s.read(2) != reinterpret_cast<const std::uint8_t*>("\r\n"))
 					throw http_response_syntax_error;
 				if (!discard)
-					response.body += chunk;
+					__res.body += reinterpret_cast<const std::string&>(chunk);
 			}
-		} else if (response.headers.contains("content-length")) {
-			std::size_t length;
+			return;
+		}
+		if (__res.headers.contains("content-length")) {
+			std::size_t __len;
 			try {
-				length = std::stoull(response.headers.at("content-length"));
+				__len = std::stoull(__res.headers.at("content-length"));
 			} catch (...) { throw http_response_syntax_error; }
-			if (!discard)
-				response.body = client.read(length);
-			else
-				client.skip(length);
-		} else if (!discard)
-			response.body = client.read_all();
-		else
-			client.read_all();
+			if (!discard) {
+				const auto __d = __s.read(__len);
+				__res.body = reinterpret_cast<const std::string&>(__d);
+			} else
+				__s.skip(__len);
+			return;
+		}
+		const auto __c = __s.read_all();
+		if (!discard)
+			__res.body = reinterpret_cast<const std::string&>(__c);
 	}
 
 	event_source client::stream(request request) {
@@ -146,5 +152,4 @@ namespace leaf::network::http {
 		}
 		pending_response_.clear();
 	}
-
 }

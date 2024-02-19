@@ -9,7 +9,8 @@ add_library(tls-record
 		key_update.cpp
 		new_session_ticket.cpp
 		server_hello.cpp
-		handshake.cpp)
+		handshake.cpp
+		certificate_request.cpp)
 target_link_libraries(tls-record
 		PUBLIC tls-utils tls-extension tls-context)
 target_include_directories(tls-record

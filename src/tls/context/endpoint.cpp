@@ -11,13 +11,11 @@ namespace leaf::network::tls {
 			: underlying(endpoint), random_generator(std::move(generator)), cipher_(t, active_cipher_) {
 	}
 
-	std::string endpoint::read(const std::size_t size) {
-		std::string read_data;
+	byte_string endpoint::read(const std::size_t size) {
+		byte_string read_data;
 		while (read_data.size() < size) {
-			char buffer[1024];
-			const auto read
-					= app_data_buffer.readsome(buffer, std::min<std::streamsize>(size - read_data.size(), 1024));
-			if (read == 0) {
+			const auto stored = app_data_buffer.read(size - read_data.size());
+			if (stored.size() == 0) {
 				const auto record = record::extract(underlying, cipher_);
 				switch (record.type) {
 					case content_type_t::alert:
@@ -31,10 +29,10 @@ namespace leaf::network::tls {
 						}
 						break;
 					case content_type_t::application_data:
-						app_data_buffer << record.messages;
+						app_data_buffer.append(record.messages);
 						break;
 					case content_type_t::handshake: {
-						std::string_view handshake_fragments = record.messages;
+						byte_string_view handshake_fragments = record.messages;
 						const auto opt_message = parse_handshake(*this, handshake_fragments, record.encrypted(), true);
 						if (!opt_message)
 							break;
@@ -48,12 +46,12 @@ namespace leaf::network::tls {
 						throw std::runtime_error{"unexpected"};
 				}
 			} else
-				read_data.append(buffer, read);
+				read_data.append(stored);
 		}
 		return read_data;
 	}
 
-	void endpoint::write(const std::string_view buffer) {
+	void endpoint::write(const byte_string_view buffer) {
 		record record{content_type_t::application_data, cipher_};
 		record.messages = buffer;
 		send_(record);
@@ -87,16 +85,16 @@ namespace leaf::network::tls {
 
 	void endpoint::send_(const record& record) {
 		std::cout << std::format("[TLS endpoint] sending {}\n", record);
-		underlying.write(record.to_bytestring());
+		underlying.write(static_cast<byte_string>(record));
 	}
 
 	void endpoint::send_(content_type_t type, bool encrypted, std::initializer_list<std::unique_ptr<message>> msgs) {
 		record record{type, encrypted ? std::optional{std::ref(cipher_)} : std::nullopt};
-		for (auto& ptr: msgs) {
-			std::cout << std::format("[TLS endpoint] sending {}\n", *ptr);
-			record.messages += ptr->to_bytestring();
+		for (auto& __m: msgs) {
+			std::cout << std::format("[TLS endpoint] sending {}\n", *__m);
+			record.messages += *__m;
 		}
-		underlying.write(record.to_bytestring());
+		underlying.write(static_cast<byte_string>(record));
 	}
 
 	std::uint8_t endpoint::read() {
@@ -106,7 +104,7 @@ namespace leaf::network::tls {
 		return data[0];
 	}
 
-	void endpoint::write(std::uint8_t octet) {
-		write({reinterpret_cast<char *>(&octet), 1});
+	void endpoint::write(const std::uint8_t octet) {
+		write({&octet, 1});
 	}
 }

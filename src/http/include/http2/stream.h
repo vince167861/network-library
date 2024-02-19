@@ -1,11 +1,9 @@
 #pragma once
-
 #include "http/message.h"
 #include "http/event_stream.h"
 #include "http2/frame.h"
 #include "http2/context.h"
 #include "task.h"
-
 #include <cstdint>
 #include <sstream>
 
@@ -39,7 +37,7 @@ namespace leaf::network::http2 {
 	public:
 		virtual void notify(const http::http_fields&, const bool end_stream) = 0;
 
-		virtual void notify(std::string_view, bool end_stream) = 0;
+		virtual void notify(byte_string_view, bool end_stream) = 0;
 
 		virtual void reserve(stream_id_t, http::http_fields) = 0;
 
@@ -76,7 +74,7 @@ namespace leaf::network::http2 {
 
 		void notify(const http::http_fields& headers, const bool end_stream) override;
 
-		void notify(std::string_view, bool end_stream) override;
+		void notify(byte_string_view, bool end_stream) override;
 
 		void reserve(stream_id_t, http::http_fields) override;
 
@@ -97,7 +95,7 @@ namespace leaf::network::http2 {
 
 		void notify(const http::http_fields&, const bool end_stream) override;
 
-		void notify(std::string_view, bool end_stream) override;
+		void notify(byte_string_view, bool end_stream) override;
 
 		void reserve(stream_id_t, http::http_fields) override;
 

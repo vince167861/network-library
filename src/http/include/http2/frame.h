@@ -32,11 +32,11 @@ namespace leaf::network::http2 {
 		bool conclude_ = false;
 
 	public:
-		std::string pending_fragments;
+		byte_string pending_fragments;
 
 		explicit headers_based_frame(uint32_t stream_id);
 
-		void add_fragment(std::string_view, bool last_frame);
+		void add_fragment(byte_string_view, bool last_frame);
 
 		http::http_fields get_headers(header_packer& decoder) const;
 
@@ -50,7 +50,7 @@ namespace leaf::network::http2 {
 
 		std::optional<uint8_t> padding;
 
-		std::string data;
+		byte_string data;
 
 		explicit data_frame(uint32_t stream_id, bool end_stream = false);
 	};

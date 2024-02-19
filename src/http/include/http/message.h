@@ -9,7 +9,7 @@ namespace leaf::network::http {
 
 	struct http_field_name_less {
 
-		constexpr bool operator()(const std::string&, const std::string&) const;
+		bool operator()(const std::string&, const std::string&) const;
 	};
 
 
@@ -48,8 +48,6 @@ namespace leaf::network::http {
 		request() = default;
 
 		request(std::string method, url, http_fields headers = {});
-
-		void print(std::ostream&) const;
 	};
 
 

@@ -16,7 +16,7 @@ namespace leaf::network::http2 {
 	task<void> stream_handler::write_to_(stream& s, const frame& frame) {
 		if (std::holds_alternative<headers_frame>(frame)) {
 			auto& casted = std::get<headers_frame>(frame);
-			std::string_view fragments{casted.pending_fragments};
+			byte_string_view fragments{casted.pending_fragments};
 			for (bool first_frame = true; !fragments.empty(); first_frame = false) {
 				auto fragment = fragments.substr(0, window_bytes_);
 				fragments.remove_prefix(fragment.size());
@@ -36,7 +36,7 @@ namespace leaf::network::http2 {
 		}
 		if (std::holds_alternative<data_frame>(frame)) {
 			const auto casted = std::get<data_frame>(frame);
-			std::string_view fragments{casted.data};
+			byte_string_view fragments{casted.data};
 			while (!fragments.empty()) {
 				if (const auto available = get_available_window()) {
 					auto fragment = fragments.substr(available);
@@ -73,7 +73,7 @@ namespace leaf::network::http2 {
 		}
 		if (std::holds_alternative<push_promise_frame>(frame)) {
 			auto& casted = std::get<push_promise_frame>(frame);
-			std::string_view fragments{casted.pending_fragments};
+			byte_string_view fragments{casted.pending_fragments};
 			for (bool first_frame = true; !fragments.empty(); first_frame = false) {
 				auto fragment = fragments.substr(0, window_bytes_);
 				fragments.remove_prefix(fragment.size());
@@ -108,7 +108,7 @@ namespace leaf::network::http2 {
 
 		if (!request_.body.empty()) {
 			data_frame d_f{stream_id_};
-			d_f.data = request_.body;
+			d_f.data = reinterpret_cast<const byte_string&>(request_.body);
 			d_f.end_stream = true;
 			context_.add_task(write_to_(stream, d_f));
 		}
@@ -193,11 +193,11 @@ namespace leaf::network::http2 {
 		}
 	}
 
-	void response_handler::notify(const std::string_view data, const bool end_stream) {
+	void response_handler::notify(const byte_string_view data, bool end_stream) {
 		if (state_ != state_t::open && state_ != state_t::local_half_closed)
 			throw std::runtime_error{"Unexpected DATA at closed/half-closed stream."};
 
-		response_.body += data;
+		response_.body += reinterpret_cast<const std::string_view&>(data);
 		if (end_stream) {
 			pending_promise_.set_value(response_);
 			set_remote_closed_();
@@ -257,8 +257,8 @@ namespace leaf::network::http2 {
 			set_remote_closed_();
 	}
 
-	void event_stream_handler::notify(const std::string_view view, bool end_stream) {
-		buffer_ += view;
+	void event_stream_handler::notify(const byte_string_view view, bool end_stream) {
+		buffer_ += reinterpret_cast<const std::string_view&>(view);
 		if (end_stream)
 			set_remote_closed_();
 	}

@@ -7,7 +7,7 @@
 using namespace leaf::network;
 using leaf::named_group_t, leaf::cipher_suite_t;
 
-int main() {
+int main(int argc, char** argv) {
 	tcp::client tcp_client;
 
 	tls::client tls_client{tcp_client};
@@ -15,8 +15,9 @@ int main() {
 	tls_client.add_group({named_group_t::x25519, named_group_t::ffdhe2048});
 
 	http::client https_client(tls_client);
+	const url request_url(argc > 1 ? argv[1] : "https://www.google.com/");
 
-	auto response = https_client.fetch({"GET", {"https://www.google.com/"}});
+	auto response = https_client.fetch({"GET", request_url});
 
 	https_client.process();
 

@@ -1,5 +1,4 @@
 #pragma once
-
 #include <cstdint>
 #include <format>
 
@@ -15,6 +14,15 @@ namespace leaf {
 		invalid = 0, change_cipher_spec = 20, alert = 21, handshake = 22, application_data = 23
 	};
 
+	enum class handshake_type_t: std::uint8_t {
+		client_hello = 1, server_hello = 2, new_session_ticket = 4, end_of_early_data = 5, encrypted_extensions = 8,
+		certificate = 11, certificate_request = 13, certificate_verify = 15, finished = 20, key_update = 24,
+		message_hash = 254
+	};
+
+	enum class extension_holder_t {
+		client_hello, server_hello, hello_retry_request, other
+	};
 
 	enum class ext_type_t: std::uint16_t {
 		server_name = 0, max_fragment_length = 1, status_request = 5, supported_groups = 10,signature_algorithms = 13,

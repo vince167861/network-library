@@ -1,7 +1,6 @@
 #include "tls-extension/extension.h"
-
-#include "utils.h"
 #include "tls-record/alert.h"
+#include "utils.h"
 
 namespace leaf::network::tls {
 
@@ -9,18 +8,18 @@ namespace leaf::network::tls {
 			: named_group_list{groups.begin(), groups.end()} {
 	}
 
-	supported_groups::supported_groups(std::string_view source) {
-		auto ptr = source.begin();
+	supported_groups::supported_groups(const byte_string_view __f) {
+		auto ptr = __f.begin();
 		const auto end = std::next(ptr, read<std::uint16_t>(std::endian::big, ptr));
-		if (end > source.end())
+		if (end > __f.end())
 			throw alert::decode_error("SupportedGroups.[size]");
 		while (ptr < end)
 			named_group_list.push_back(read<named_group_t>(std::endian::big, ptr));
 	}
 
-	void supported_groups::format(std::format_context::iterator& it, std::size_t level) const {
+	void supported_groups::format(std::format_context::iterator& it, const std::size_t level) const {
 		it = std::ranges::fill_n(it, level, '\t');
-		it = std::ranges::copy("supported_groups: \n", it).out;
+		it = std::ranges::copy("supported_groups:", it).out;
 		if (named_group_list.empty())
 			it = std::ranges::copy(" (empty)", it).out;
 		else for (auto g: named_group_list) {
@@ -30,11 +29,14 @@ namespace leaf::network::tls {
 		}
 	}
 
-	supported_groups::operator raw_extension() const {
-		std::string data;
+	supported_groups::operator byte_string() const {
+		byte_string data;
 		write(std::endian::big, data, named_group_list.size() * sizeof(named_group_t), 2);
 		for (auto g: named_group_list)
 			write(std::endian::big, data, g);
-		return {ext_type_t::supported_groups, std::move(data)};
+		byte_string out;
+		write(std::endian::big, out, ext_type_t::supported_groups);
+		write<ext_data_size_t>(std::endian::big, out, data.size());
+		return out + data;
 	}
 }

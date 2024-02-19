@@ -7,6 +7,8 @@
 
 namespace leaf::network::http2 {
 
+	constexpr std::uint8_t preface[] = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
+
 	bool client::connect(const std::string_view host, const uint16_t port) {
 		if (client_.connected()
 				&& connected_remote_.value().first == host && connected_remote_.value().second == port)
@@ -15,7 +17,7 @@ namespace leaf::network::http2 {
 		if (!client_.connect(host, port))
 			return false;
 		connected_remote_.emplace(host, port);
-		client_.write("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n");
+		client_.write(preface);
 		write_(settings_frame{pack_settings()});
 		const auto first_frame = parse_frame(client_);
 		if (!std::holds_alternative<settings_frame>(first_frame)) {
@@ -88,7 +90,7 @@ namespace leaf::network::http2 {
 		std::cout << std::format("[HTTP/2 client] Sending {}\n", frame);
 		if (std::holds_alternative<settings_frame>(frame)) {
 			auto& casted = std::get<settings_frame>(frame);
-			std::string data;
+			byte_string data;
 			for (auto& [s, v]: casted.values) {
 				write(std::endian::big, data, s);
 				write(std::endian::big, data, v);
@@ -117,7 +119,7 @@ namespace leaf::network::http2 {
 			write(std::endian::big, client_, 0, 4);
 			write(std::endian::big, client_, casted.last_stream_id);
 			write(std::endian::big, client_, casted.error_code);
-			client_.write(casted.additional_data);
+			client_.write(reinterpret_cast<const byte_string&>(casted.additional_data));
 			return;
 		}
 		throw std::runtime_error{"Unimplemented frame write_to_."};

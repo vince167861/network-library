@@ -1,16 +1,13 @@
 #pragma once
-
 #include "byte_stream.h"
-
 #include <bit>
 #include <list>
-#include <string>
 #include <algorithm>
 
 namespace leaf {
 
 	template<typename T>
-	void write(std::endian endian, std::string& dst, const T& src, const std::size_t count = sizeof(T)) {
+	void write(std::endian endian, byte_string& dst, const T& src, const std::size_t count = sizeof(T)) {
 		bool reverse = endian != std::endian::native;
 		const uint8_t* src_ptr = reinterpret_cast<const uint8_t*>(&src), * src_end = src_ptr + count;
 		if (reverse) {
@@ -25,7 +22,7 @@ namespace leaf {
 	void write(std::endian endian, stream& dst, const T& src, const std::size_t count = sizeof(T)) {
 		bool reverse = endian != std::endian::native;
 		const uint8_t* src_ptr = reinterpret_cast<const uint8_t*>(&src), * src_end = src_ptr + count;
-		std::string data{src_ptr, src_end};
+		byte_string data{src_ptr, src_end};
 		if (reverse)
 			std::reverse(data.begin(), data.end());
 		dst.write(data);
@@ -63,7 +60,7 @@ namespace leaf {
 	}
 
 	template<typename iter>
-	std::string read_bytestring(iter& src, const std::size_t count) {
+	byte_string read_bytestring(iter& src, const std::size_t count) {
 		const auto begin = src;
 		std::advance(src, count);
 		return {begin, src};

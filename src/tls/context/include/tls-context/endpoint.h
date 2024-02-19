@@ -22,7 +22,7 @@ namespace leaf::network::tls {
 
 		std::unique_ptr<cipher_suite> active_cipher_;
 
-		std::stringstream app_data_buffer;
+		string_stream app_data_buffer;
 
 		traffic_secret_manager cipher_;
 
@@ -37,19 +37,19 @@ namespace leaf::network::tls {
 
 		random_t random = {0};
 
-		std::string session_id;
+		byte_string session_id;
 
-		std::string pre_shared_key;
+		byte_string pre_shared_key;
 
 		endpoint(network::endpoint& endpoint, endpoint_type_t, std::unique_ptr<random_number_generator> generator = std::make_unique<mt19937_uniform>());
 
-		std::string read(std::size_t size) override;
+		byte_string read(std::size_t size) override;
 
 		std::uint8_t read() override;
 
 		void write(std::uint8_t octet) override;
 
-		void write(std::string_view) override;
+		void write(byte_string_view) override;
 
 		void use_group(named_group_t);
 

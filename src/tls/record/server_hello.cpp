@@ -1,6 +1,7 @@
 #include "tls-record/alert.h"
 #include "tls-record/handshake.h"
 #include "utils.h"
+#include <ranges>
 
 namespace leaf::network::tls {
 
@@ -9,64 +10,56 @@ namespace leaf::network::tls {
 	constexpr const char* TLS1_1_RANDOM_MAGIC = "\x44\x4F\x57\x4E\x47\x52\x44\x00";
 
 
-	server_hello::server_hello(const std::string_view source) {
-		auto ptr = source.begin();
-		read(std::endian::big, version, ptr);
-		read(std::endian::little, random, ptr);
+	server_hello::server_hello(const byte_string_view __v) {
+		auto it = __v.begin();
+		read(std::endian::big, version, it);
+		read(std::endian::little, random, it);
 		is_hello_retry_request = std::ranges::equal(random, retry_magic);
-		session_id_echo = read_bytestring(ptr, read<std::uint8_t>(std::endian::big, ptr));
-		read(std::endian::big, cipher_suite, ptr);
-		read(std::endian::big, compression_method, ptr);
+		session_id_echo = read_bytestring(it, read<std::uint8_t>(std::endian::big, it));
+		read(std::endian::big, cipher_suite, it);
+		read(std::endian::big, compression_method, it);
 
-		const auto size = read<ext_size_t>(std::endian::big, ptr);
-		if (const auto available = std::distance(ptr, source.end()); available != size)
-			throw alert::decode_error_early_end_of_data("ServerHello.extension", available, size);
-		std::string_view ext_fragments{ptr, std::next(ptr, size)};
-		while (!ext_fragments.empty()) {
-			const auto ext = parse_extension(ext_fragments);
-			if (!ext) break;
-			auto& [type, data] = ext.value();
-			extension_order_.push_back(type);
-			extensions.emplace(type, std::move(data));
+		const auto __size = read<ext_size_t>(std::endian::big, it);
+		const auto __end = std::next(it, __size);
+		if (__end > __v)
+			throw std::runtime_error("incomplete ServerHello");
+		byte_string_view __fragment(it, __end);
+		while (!__fragment.empty()) {
+			auto ext = parse_extension(__fragment, is_hello_retry_request ? extension_holder_t::hello_retry_request : extension_holder_t::server_hello);
+			if (!ext)
+				break;
+			add(ext.value().first, std::move(ext.value().second));
 		}
 	}
 
-	std::string server_hello::to_bytestring(std::endian) const {
-		std::string ext_fragment;
-		for (auto type: extension_order_)
-			ext_fragment += generate_extension(type, extensions.at(type));
+	server_hello::operator byte_string() const {
+		byte_string __out_3;
+		for (auto type: extensions_order)
+			__out_3 += *extensions.at(type);
 
-		std::string data;
-		write(std::endian::big, data, version);
-		write(std::endian::little, data, random);
-		write(std::endian::big, data, session_id_echo.size(), 1);
-		data += session_id_echo;
-		write(std::endian::big, data, cipher_suite);
-		write(std::endian::big, data, compression_method);
-		write(std::endian::big, data, ext_fragment.size(), 2);
-		data += ext_fragment;
+		byte_string __out_2;
+		write(std::endian::big, __out_2, version);
+		write(std::endian::little, __out_2, random);
+		write(std::endian::big, __out_2, session_id_echo.size(), 1);
+		__out_2 += session_id_echo;
+		write(std::endian::big, __out_2, cipher_suite);
+		write(std::endian::big, __out_2, compression_method);
+		write(std::endian::big, __out_2, __out_3.size(), 2);
 
-		std::string str;
-		write(std::endian::big, str, handshake_type_t::server_hello);
-		write(std::endian::big, str, data.size(), 3);
-		return str + data;
+		byte_string __out_1;
+		write(std::endian::big, __out_1, handshake_type_t::server_hello);
+		write(std::endian::big, __out_1, __out_2.size() + __out_3.size(), 3);
+		return __out_1 + __out_2 + __out_3;
 	}
 
 	std::format_context::iterator server_hello::format(std::format_context::iterator it) const {
-		it = std::format_to(it, "{}\n\tlegacy_version: {}\n\trandom: 0x",
-			is_hello_retry_request ? "HelloRetryRequest" : "ServerHello", version);
-		for (auto u: random)
-			it = std::format_to(it, "{:02x}", u);
-		it = std::ranges::copy("\n\tlegacy_session_id_echo: ", it).out;
-		if (session_id_echo.empty())
-			it = std::ranges::copy(" (empty)", it).out;
-		else for (auto u: session_id_echo)
-			it = std::format_to(it, "{:02x}", u);
-		it = std::format_to(it, "\n\tcipher_suites: {}\n\tExtensions:", cipher_suite);
+		it = std::format_to(it,
+			"{}\n\tlegacy_version: {}\n\trandom: {}\n\tlegacy_session_id_echo: {}\n\tcipher_suites: {}\n\tExtensions:",
+			is_hello_retry_request ? "HelloRetryRequest" : "ServerHello", version, byte_string_view(random), session_id_echo, cipher_suite);
 		if (extensions.empty())
 			it = std::ranges::copy(" (empty)", it).out;
-		else for (auto& [type, data]: extensions)
-			it = std::format_to(it, "\n\t\t{}", raw_extension{type, data});
+		else for (auto& ext: std::views::values(extensions))
+			it = std::format_to(it, "\n{:2}", *ext);
 		return it;
 	}
 
@@ -74,10 +67,4 @@ namespace leaf::network::tls {
 		std::ranges::copy(retry_magic, random.begin());
 	}
 
-	void server_hello::add_extension(std::initializer_list<raw_extension> exts) {
-		for (auto& [type, data]: exts) {
-			extension_order_.push_back(type);
-			extensions.emplace(type, std::move(data));
-		}
-	}
 }

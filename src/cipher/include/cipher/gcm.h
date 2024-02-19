@@ -1,5 +1,5 @@
 #pragma once
-#include "number/flexible.h"
+#include "number/big_number.h"
 
 namespace leaf {
 
@@ -22,7 +22,7 @@ namespace leaf {
 		 *
 		 * \note
 		 * `init()` _must_ be called after `ciph` function is ready (e.g., key schedule is generated).
-		 * Subclasses must call `init()` once before the use of any function.
+		 * Subclasses must call `init()` once before calling any other function.
 		 */
 		void init();
 
@@ -31,30 +31,30 @@ namespace leaf {
 		}
 
 	public:
-		/**
-		 * Function CIPH of GCM spec. Should at least cipher a `var_unsigned` of `block_size` bits.
-		 */
+		/// Function CIPH of GCM spec. Should at least cipher a `var_unsigned` of `block_size` bits.
 		virtual big_unsigned ciph(const big_unsigned& X) const = 0;
 
 		/**
 		 * Function GCM-AE_k of GCM spec.
 		 * @param iv initialization vector
-		 * @param plain plain text
+		 * @param plaintext plain text
 		 * @param auth_data additional authentication data
 		 * @return pair of ciphered text and authentication tag
 		 */
 		std::pair<big_unsigned, big_unsigned>
-		encrypt(const big_unsigned& iv, const big_unsigned& plain, const big_unsigned& auth_data) const;
+		encrypt(const big_unsigned& iv, const big_unsigned& plaintext, const big_unsigned& auth_data) const;
 
 		big_unsigned
 		decrypt(const big_unsigned& iv, const big_unsigned& cipher, const big_unsigned& auth_data, const big_unsigned& tag) const;
 
-		// function GHASH of GCM spec
+		/// function GHASH of GCM spec
 		big_unsigned ghash(const big_unsigned& val) const;
 
-		/** function GCTR of GCM spec. */
+		/// function GCTR of GCM spec.
 		big_unsigned gctr(big_unsigned ICB, const big_unsigned& X) const;
+
+		static big_unsigned multiply(const big_unsigned&, big_unsigned);
 	};
 
-	big_unsigned increase(const std::size_t bits, big_unsigned val);
+	big_unsigned increase(const std::size_t size, big_unsigned);
 }

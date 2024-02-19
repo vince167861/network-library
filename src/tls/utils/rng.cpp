@@ -6,14 +6,14 @@ namespace leaf {
 		: random_engine(seed) {
 	}
 
-	big_unsigned mt19937_uniform::number(std::size_t bytes) {
-		big_unsigned number(0, bytes * 8);
-		for (auto& u: number.data)
-			u = int_distributor(random_engine);
+	byte_string mt19937_uniform::number(std::size_t bytes) {
+		byte_string number(bytes, 0);
+		for (auto& u: number)
+			u = unit();
 		return number;
 	}
 
-	big_unsigned::unit_t mt19937_uniform::unit() {
+	std::uint8_t mt19937_uniform::unit() {
 		return int_distributor(random_engine);
 	}
 }

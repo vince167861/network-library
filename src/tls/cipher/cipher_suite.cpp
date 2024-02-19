@@ -20,31 +20,31 @@ namespace leaf::network::tls {
 		}
 	}
 
-	std::string cipher_suite::HKDF_expand_label(std::string_view key, std::string_view label, std::string_view context, uint16_t length) const {
+	byte_string
+	cipher_suite::HKDF_expand_label(const byte_string_view key, const byte_string_view label, const byte_string_view context, const std::uint16_t length) const {
 		return HKDF_expand(key, HKDF_info(label, context, length), length);
 	}
 
-	std::string cipher_suite::HKDF_info(std::string_view label, std::string_view context, std::uint16_t length) {
-		std::string info;
-		std::uint8_t label_length = 6 + label.size(), context_length = context.size();
+	byte_string cipher_suite::HKDF_info(const byte_string_view label, const byte_string_view context, const std::uint16_t length) {
+		byte_string info;
+		const std::uint8_t label_length = 6 + label.size(), context_length = context.size();
 		info.reserve(sizeof length + sizeof label_length + label_length + sizeof context_length + context_length);
 		write(std::endian::big, info, length);
 		write(std::endian::big, info, label_length);
-		info += "tls13 ";
+		info += reinterpret_cast<const std::uint8_t*>("tls13 ");
 		info += label;
 		write(std::endian::big, info, context_length);
 		info += context;
 		return info;
 	}
 
-	std::string cipher_suite::HKDF_expand(std::string_view key, std::string_view info, std::size_t length) const {
-		[[maybe_unused]] auto N = length / digest_length + (length % digest_length ? 1 : 0);
-		std::string ret;
+	byte_string cipher_suite::HKDF_expand(const byte_string_view key, const byte_string_view info, std::size_t length) const {
+		byte_string ret;
 		ret.reserve(length + digest_length);
-		std::string T;
+		byte_string T;
 		uint8_t i = 1;
 		while (ret.size() < length) {
-			std::string msg;
+			byte_string msg;
 			msg += T;
 			msg += info;
 			msg.push_back(i++);
@@ -55,7 +55,7 @@ namespace leaf::network::tls {
 		return ret;
 	}
 
-	std::string cipher_suite::derive_secret(std::string_view key, std::string_view label, std::string_view msg) const {
+	byte_string cipher_suite::derive_secret(const byte_string_view key, const byte_string_view label, const byte_string_view msg) const {
 		return HKDF_expand_label(key, label, hash(msg), digest_length);
 	}
 }

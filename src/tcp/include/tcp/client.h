@@ -6,15 +6,15 @@ namespace leaf::network::tcp {
 
 	struct client final: endpoint, network::client {
 
-		bool connect(std::string_view host, std::uint16_t port) override {
+		bool connect(const std::string_view host, const std::uint16_t port) override {
 			close();
 			addrinfo
-					addr_hint{.ai_family = AF_INET, .ai_socktype = SOCK_STREAM, .ai_protocol = IPPROTO_TCP},
-					* result_addr = nullptr;
+					__hint{.ai_family = AF_INET, .ai_socktype = SOCK_STREAM, .ai_protocol = IPPROTO_TCP},
+					* __result = nullptr;
 			if (const std::string host_copy(host);
-					getaddrinfo(host_copy.c_str(), std::to_string(port).c_str(), &addr_hint, &result_addr))
+					getaddrinfo(host_copy.c_str(), std::to_string(port).c_str(), &__hint, &__result))
 				handle_error_("getaddrinfo");
-			for (auto ptr = result_addr; ptr; ptr = ptr->ai_next) {
+			for (auto ptr = __result; ptr; ptr = ptr->ai_next) {
 				socket_ = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
 				if (socket_ == invalid_socket)
 					continue;
@@ -24,7 +24,7 @@ namespace leaf::network::tcp {
 				}
 				break;
 			}
-			freeaddrinfo(result_addr);
+			freeaddrinfo(__result);
 			return socket_ != invalid_socket;
 		}
 

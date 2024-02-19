@@ -36,7 +36,7 @@ namespace leaf::network::tls {
 		void handshake_();
 
 	public:
-		std::optional<std::string> init_session_id;
+		std::optional<byte_string> init_session_id;
 
 		std::optional<random_t> init_random;
 

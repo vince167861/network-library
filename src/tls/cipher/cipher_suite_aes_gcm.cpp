@@ -1,12 +1,16 @@
 #include "tls-cipher/cipher_suite_aes_gcm.h"
-#include "tls-cipher/cipher_suite.h"
-#include "hash/sha2.h"
-#include "hash/hmac.h"
+#include "cipher/sha2.h"
+#include "cipher/hmac.h"
 
 namespace leaf::network::tls {
 
 	aes_128_gcm::aes_128_gcm()
 			: cipher_suite_gcm(16, 12, 16) {
+	}
+
+	void aes_128_gcm::set_key(const big_unsigned& __k) {
+		aes_128.key_expansion(__k, key_schedule);
+		init();
 	}
 
 	big_unsigned aes_128_gcm::ciph(const big_unsigned& X) const {
@@ -15,18 +19,12 @@ namespace leaf::network::tls {
 		return X_copied;
 	}
 
-	void aes_128_gcm::set_key(const number_base& secret_key) {
-		big_unsigned secret_key_(secret_key);
-		aes_128.key_expansion(secret_key_, key_schedule);
-		init();
+	byte_string aes_128_gcm_sha256::hash(const byte_string_view __s) const {
+		return sha_256::hash({__s, std::nullopt, std::endian::big}).to_bytestring(std::endian::big);
 	}
 
-	std::string aes_128_gcm_sha256::hash(const std::string_view hash) const {
-		return sha_256::hash(hash).to_bytestring(std::endian::big);
-	}
-
-	std::string aes_128_gcm_sha256::HMAC_hash(const std::string_view data, const std::string_view key) const {
-		return hashing::HMAC_sha_256(big_unsigned(data), big_unsigned(key)).to_bytestring(std::endian::big);
+	byte_string aes_128_gcm_sha256::HMAC_hash(const byte_string_view data, const byte_string_view key) const {
+		return hashing::HMAC_SHA_256(data, key);
 	}
 
 	aes_128_gcm_sha256::aes_128_gcm_sha256()
@@ -43,18 +41,17 @@ namespace leaf::network::tls {
 		return X_copied;
 	}
 
-	void aes_256_gcm::set_key(const number_base& secret_key) {
-		big_unsigned secret_key_(secret_key);
-		aes_256.key_expansion(secret_key_, key_schedule);
+	void aes_256_gcm::set_key(const big_unsigned& __k) {
+		aes_256.key_expansion(__k, key_schedule);
 		init();
 	}
 
-	std::string aes_256_gcm_sha384::hash(std::string_view hash) const {
-		return sha_384::hash(hash).to_bytestring(std::endian::big);
+	byte_string aes_256_gcm_sha384::hash(const byte_string_view hash) const {
+		return sha_384::hash({hash, std::nullopt, std::endian::big}).to_bytestring(std::endian::big);
 	}
 
-	std::string aes_256_gcm_sha384::HMAC_hash(const std::string_view data, std::string_view key) const {
-		return hashing::HMAC_sha_384(big_unsigned(data), big_unsigned(key)).to_bytestring(std::endian::big);
+	byte_string aes_256_gcm_sha384::HMAC_hash(const byte_string_view data, const byte_string_view key) const {
+		return hashing::HMAC_sha_384(data, key);
 	}
 
 	aes_256_gcm_sha384::aes_256_gcm_sha384()

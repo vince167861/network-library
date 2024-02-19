@@ -6,12 +6,8 @@ if (GTest_FOUND)
 	link_libraries(GTest::gtest GTest::gmock)
 
 	add_executable(test-number
-			number/number.cpp
-			number/exp_big_number.cpp)
+			number/big_number.cpp)
 	target_link_libraries(test-number number)
-
-	add_executable(test-hashing hashing.cpp)
-	target_link_libraries(test-hashing hashing)
 
 	add_executable(test-json json.cpp)
 	target_link_libraries(test-json json)
@@ -23,13 +19,17 @@ if (GTest_FOUND)
 
 	add_executable(test-tcp tcp.cpp)
 	target_link_libraries(test-tcp tcp)
-	gtest_discover_tests(test-tcp)
 
 	add_executable(test-tls
 			tls/key_exchange.cpp
-			tls/cipher.cpp)
+			tls/cipher.cpp
+			tls/record.cpp)
 	target_link_libraries(test-tls tls)
 
-	add_executable(test-cipher cipher.cpp)
+	add_executable(test-cipher
+			cipher/cipher.cpp
+			cipher/aes.cpp
+			cipher/gcm.cpp
+			cipher/hash.cpp)
 	target_link_libraries(test-cipher cipher)
 endif ()

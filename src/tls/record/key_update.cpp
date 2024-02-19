@@ -3,13 +3,20 @@
 
 namespace leaf::network::tls {
 
-	key_update::key_update(std::string_view source) {
-		auto ptr = source.begin();
-		read(std::endian::big, request_update, ptr);
+	key_update::key_update(byte_string_view source) {
+		auto it = source.begin();
+		read(std::endian::big, request_update, it);
 	}
 
 	key_update::key_update(bool request)
 		: request_update(request ? key_update_request::update_requested : key_update_request::update_not_requested) {
+	}
+
+	key_update::operator byte_string() const {
+		byte_string str;
+		write(std::endian::big, str, handshake_type_t::key_update);
+		write(std::endian::big, str, 1, 3);
+		return str + static_cast<std::uint8_t>(request_update);
 	}
 
 	std::format_context::iterator key_update::format(std::format_context::iterator it) const {
@@ -25,12 +32,5 @@ namespace leaf::network::tls {
 				throw std::runtime_error{"unexpected"};
 		}
 		return it;
-	}
-
-	std::string key_update::to_bytestring(std::endian) const {
-		std::string str;
-		write(std::endian::big, str, handshake_type_t::key_update);
-		write(std::endian::big, str, 1, 3);
-		return str + static_cast<char>(request_update);
 	}
 }

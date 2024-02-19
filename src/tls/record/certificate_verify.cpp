@@ -3,28 +3,25 @@
 
 namespace leaf::network::tls {
 
-	certificate_verify::certificate_verify(std::string_view source) {
-		auto ptr = source.begin();
-		read(std::endian::big, signature_scheme, ptr);
-		signature = read_bytestring(ptr, read<std::uint16_t>(std::endian::big, ptr));
+	certificate_verify::certificate_verify(const byte_string_view source) {
+		auto it = source.begin();
+		read(std::endian::big, signature_scheme, it);
+		signature = read_bytestring(it, read<std::uint16_t>(std::endian::big, it));
 	}
 
-	std::string certificate_verify::to_bytestring(std::endian) const {
-		std::string data;
+	certificate_verify::operator byte_string() const {
+		byte_string data;
 		write(std::endian::big, data, signature_scheme);
 		write(std::endian::big, data, signature.size(), 2);
 		data += signature;
 
-		std::string str;
+		byte_string str;
 		write(std::endian::big, str, handshake_type_t::certificate_verify);
 		write(std::endian::big, str, data.size(), 3);
 		return str + data;
 	}
 
 	std::format_context::iterator certificate_verify::format(std::format_context::iterator it) const {
-		it = std::format_to(it, "CertificateVerify\n\tScheme: {}\n\tSignature: ", signature_scheme);
-		for (std::uint8_t c: signature)
-			it = std::format_to(it, "{:02x}", c);
-		return it;
+		return std::format_to(it, "CertificateVerify\n\tScheme: {}\n\tSignature: {}", signature_scheme, signature);
 	}
 }

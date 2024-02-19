@@ -22,7 +22,7 @@ namespace leaf::network::tls {
 				ptr = std::make_unique<unimplemented_group>(group);
 				break;
 		}
-		ptr->generate_private_key(rng);
+		ptr->generate(rng);
 		return ptr;
 	}
 }

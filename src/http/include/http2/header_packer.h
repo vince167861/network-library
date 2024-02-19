@@ -92,8 +92,8 @@ namespace leaf::network::http2 {
 		std::size_t dynamic_table_size_ = 4096;
 
 	public:
-		std::string encode(const http::http_fields&);
+		byte_string encode(const http::http_fields&);
 
-		http::http_fields decode(const std::string_view source);
+		http::http_fields decode(const byte_string_view source);
 	};
 }

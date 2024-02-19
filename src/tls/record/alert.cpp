@@ -12,10 +12,10 @@ namespace leaf::network::tls {
 		return it;
 	}
 
-	std::string alert::to_bytestring(std::endian endian) const {
-		std::string str;
-		write(endian, str, level);
-		write(endian, str, description);
+	alert::operator byte_string() const {
+		byte_string str;
+		write(std::endian::big, str, level);
+		write(std::endian::big, str, description);
 		return str;
 	}
 
@@ -27,10 +27,10 @@ namespace leaf::network::tls {
 		: level(level), description(dsc), debug_string(std::move(debug)) {
 	}
 
-	alert::alert(const std::string_view source) {
-		auto ptr = source.begin();
-		read(std::endian::big, level, ptr);
-		read(std::endian::big, description, ptr);
+	alert::alert(const byte_string_view source) {
+		auto it = source.begin();
+		read(std::endian::big, level, it);
+		read(std::endian::big, description, it);
 	}
 
 	alert alert::bad_record_mac() {

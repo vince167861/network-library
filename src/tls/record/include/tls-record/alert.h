@@ -17,9 +17,9 @@ namespace leaf::network::tls {
 
 		alert(alert_level_t, alert_description_t, std::string debug = "");
 
-		alert(std::string_view);
+		alert(byte_string_view);
 
-		std::string to_bytestring(std::endian) const override;
+		operator byte_string() const override;
 
 		std::format_context::iterator format(std::format_context::iterator) const override;
 

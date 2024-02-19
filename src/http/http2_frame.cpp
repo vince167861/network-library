@@ -147,7 +147,7 @@ namespace leaf::network::http2 {
 		: stream_frame(stream_id) {
 	}
 
-	void headers_based_frame::add_fragment(const std::string_view source, const bool last_frame) {
+	void headers_based_frame::add_fragment(const byte_string_view source, const bool last_frame) {
 		if (conclude_)
 			throw std::runtime_error("Invalid operation: This frame has concluded.");
 		pending_fragments += source;
@@ -189,8 +189,7 @@ namespace leaf::network::http2 {
 	}
 
 	go_away::go_away(const uint32_t last_stream_id, const error_t e, const std::string_view additional_data)
-		: last_stream_id(last_stream_id),
-		error_code(e), additional_data(additional_data) {
+		: last_stream_id(last_stream_id), error_code(e), additional_data(additional_data) {
 	}
 
 	window_update_frame::window_update_frame(const uint32_t stream_id)

@@ -1,43 +1,42 @@
 #include "tls-record/handshake.h"
 #include "utils.h"
 #include "tls-record/alert.h"
+#include <ranges>
 
 namespace leaf::network::tls {
 
-	encrypted_extension::encrypted_extension(std::string_view source) {
-		auto ptr = source.begin();
-		const auto size = read<std::uint16_t>(std::endian::big, ptr);
-		if (const auto available = std::distance(ptr, source.end()); size > available)
-			throw alert::decode_error_early_end_of_data("extensions.size", available, size);
-		for (std::string_view ext_fragments{ptr, std::next(ptr, size)}; !ext_fragments.empty(); ) {
-			auto ext = parse_extension(ext_fragments);
+	encrypted_extension::encrypted_extension(const byte_string_view __s) {
+		auto it = __s.begin();
+		const auto __size = read<std::uint16_t>(std::endian::big, it);
+		const auto end = std::next(it, __size);
+		if (end > __s.end())
+			throw alert::decode_error("incomplete EncryptedExtension");
+		for (byte_string_view ext_fragments(it, end); !ext_fragments.empty(); ) {
+			auto ext = parse_extension(ext_fragments, extension_holder_t::other);
 			if (!ext)
 				break;
-			auto& [type, data] = ext.value();
-			extensions.emplace(type, std::move(data));
-			extension_order_.push_back(type);
+			add(ext.value().first, std::move(ext.value().second));
 		}
 	}
 
-	std::string encrypted_extension::to_bytestring(std::endian) const {
-		std::string data, exts;
+	encrypted_extension::operator byte_string() const {
+		byte_string data, exts;
 		for (auto type: extension_order_)
-			exts += generate_extension(type, extensions.at(type));
+			exts += *extensions.at(type);
 		write(std::endian::big, data, exts.size(), 2);
-		data += exts;
 
-		std::string str;
+		byte_string str;
 		write(std::endian::big, str, handshake_type_t::encrypted_extensions);
-		write(std::endian::big, str, data.size(), 3);
-		return str + data;
+		write(std::endian::big, str, data.size() + exts.size(), 3);
+		return str + data + exts;
 	}
 
 	std::format_context::iterator encrypted_extension::format(std::format_context::iterator it) const {
 		it = std::ranges::copy("EncryptedExtension", it).out;
 		if (extensions.empty())
 			it = std::ranges::copy(" (empty)", it).out;
-		else for (auto& ext: extensions)
-			it = std::format_to(it, "\n\t{}", raw_extension{ext.first, ext.second});
+		else for (auto& ext: std::views::values(extensions))
+			it = std::format_to(it, "\n\t{}", *ext);
 		return it;
 	}
 }

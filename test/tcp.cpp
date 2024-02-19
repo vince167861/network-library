@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-
 #include "tcp/client.h"
 #include "tcp/server.h"
 
@@ -20,15 +19,15 @@ TEST(TCP_CLIENT_SERVER, NORMAL) {
 	std::unique_ptr<endpoint> client_socket;
 	ASSERT_NO_THROW(client_socket = server->accept());
 
-	const std::string_view test_data_1 = "123456767889feikojnfeoafoaei";
+	constexpr std::uint8_t test_data_1[] = "123456767889feikojnfeoafoaei";
 	ASSERT_NO_THROW(client->write(test_data_1));
 	ASSERT_NO_THROW(client->finish());
-	EXPECT_EQ(test_data_1, client_socket->read(test_data_1.size()));
+	EXPECT_EQ(test_data_1, client_socket->read(sizeof test_data_1 - 1));
 
-	const std::string_view test_data_2 = "908765432sgjnkdnkjglsd";
+	constexpr std::uint8_t test_data_2[] = "908765432sgjnkdnkjglsd";
 	ASSERT_NO_THROW(client_socket->write(test_data_2));
 	ASSERT_NO_THROW(client_socket->finish());
-	EXPECT_EQ(test_data_2, client->read(test_data_2.size()));
+	EXPECT_EQ(test_data_2, client->read(sizeof test_data_2 - 1));
 
 	EXPECT_EQ(client->read(1).size(), 0);
 	EXPECT_EQ(client_socket->read(1).size(), 0);

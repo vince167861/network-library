@@ -4,7 +4,7 @@
 
 namespace leaf::network::tls {
 
-	renegotiation_info::renegotiation_info(std::string_view verify_data)
+	renegotiation_info::renegotiation_info(byte_string_view verify_data)
 		: renegotiated_connection(verify_data) {
 	}
 
@@ -13,9 +13,12 @@ namespace leaf::network::tls {
 		it = std::format_to(it, "renegotiation_info: {}", renegotiated_connection);
 	}
 
-	renegotiation_info::operator raw_extension() const {
-		std::string data;
+	renegotiation_info::operator byte_string() const {
+		byte_string data;
 		write(std::endian::big, data, renegotiated_connection.size(), 1);
-		return {ext_type_t::renegotiation_info, std::move(data) + renegotiated_connection};
+		byte_string out;
+		write(std::endian::big, out, ext_type_t::renegotiation_info);
+		write<ext_data_size_t>(std::endian::big, out, data.size() + renegotiated_connection.size());
+		return out + data + renegotiated_connection;
 	}
 }

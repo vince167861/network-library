@@ -11,9 +11,12 @@
 namespace leaf::network::http {
 
 	class client {
+
 		network::client& client_;
 
-		std::optional<std::pair<std::string, uint16_t>> connected_remote_;
+		std::string connected_host_;
+
+		std::uint16_t connected_port_ = 0;
 
 		std::list<std::pair<request, std::promise<response>>>
 		pending_response_;

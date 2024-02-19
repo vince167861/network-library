@@ -4,7 +4,7 @@ add_library(tls-cipher
 		cipher_suite_gcm.cpp
 		traffic_secret_manager.cpp)
 target_link_libraries(tls-cipher
-		PUBLIC tls-utils cipher hashing)
+		PUBLIC tls-utils cipher)
 target_sources(tls-cipher
 		PUBLIC FILE_SET tls_cipher_header TYPE HEADERS BASE_DIRS include FILES
 		include/tls-cipher/cipher_suite_gcm.h

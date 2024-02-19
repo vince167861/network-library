@@ -115,13 +115,13 @@ namespace leaf::network::tcp {
 			return c;
 		}
 
-		std::string read(std::size_t size) override {
+		byte_string read(std::size_t size) override {
 			if (socket_ == invalid_socket)
 				throw closed;
-			std::string read_data;
+			byte_string read_data;
 			while (read_data.size() < size) {
-				char buffer[1024];
-				const auto count = recv(socket_, buffer, std::min<int>(size - read_data.size(), 1024), 0);
+				std::uint8_t buffer[1024];
+				const auto count = recv(socket_, reinterpret_cast<char*>(buffer), std::min<int>(size - read_data.size(), 1024), 0);
 				if (count < 0)
 					handle_error_("recv");
 				if (count == 0) {
@@ -133,18 +133,18 @@ namespace leaf::network::tcp {
 			return read_data;
 		}
 
-		void write(std::string_view buffer) override {
+		void write(const byte_string_view buffer) override {
 			if (socket_ == invalid_socket)
 				throw closed;
-			const auto result = send(socket_, buffer.data(), buffer.size(), 0);
+			const auto result = send(socket_, reinterpret_cast<const char*>(buffer.data()), buffer.size(), 0);
 			if (result < 0)
 				handle_error_("send_");
 			if (result == 0 && !buffer.empty())
 				close();
 		}
 
-		void write(std::uint8_t octet) override {
-			write({reinterpret_cast<char *>(&octet), 1});
+		void write(const std::uint8_t octet) override {
+			write({reinterpret_cast<const std::uint8_t *>(&octet), 1});
 		}
 
 		void finish() override {

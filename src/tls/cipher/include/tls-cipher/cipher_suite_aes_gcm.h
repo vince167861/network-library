@@ -1,12 +1,9 @@
 #pragma once
-
 #include "cipher_suite.h"
 #include "cipher_suite_gcm.h"
 #include "cipher/aes.h"
 
-
 namespace leaf::network::tls {
-
 
 	class aes_128_gcm: public cipher_suite_gcm {
 
@@ -15,17 +12,17 @@ namespace leaf::network::tls {
 		big_unsigned ciph(const big_unsigned& X) const override;
 
 	public:
-		void set_key(const number_base& secret_key) override;
+		void set_key(const big_unsigned&) override;
 
 		aes_128_gcm();
 	};
 
 
-	class aes_128_gcm_sha256 final: public aes_128_gcm {
-	public:
-		std::string hash(std::string_view hash) const override;
+	struct aes_128_gcm_sha256 final: aes_128_gcm {
 
-		std::string HMAC_hash(std::string_view data, std::string_view key) const override;
+		byte_string hash(byte_string_view) const override;
+
+		byte_string HMAC_hash(byte_string_view data, byte_string_view key) const override;
 
 		aes_128_gcm_sha256();
 	};
@@ -38,17 +35,17 @@ namespace leaf::network::tls {
 		big_unsigned ciph(const big_unsigned& X) const override;
 
 	public:
-		void set_key(const number_base& secret_key) override;
+		void set_key(const big_unsigned&) override;
 
 		aes_256_gcm();
 	};
 
 
-	class aes_256_gcm_sha384 final: public aes_256_gcm {
-	public:
-		std::string hash(std::string_view hash) const override;
+	struct aes_256_gcm_sha384 final: public aes_256_gcm {
 
-		std::string HMAC_hash(std::string_view data, std::string_view key) const override;
+		byte_string hash(byte_string_view hash) const override;
+
+		byte_string HMAC_hash(byte_string_view data, byte_string_view key) const override;
 
 		aes_256_gcm_sha384();
 	};

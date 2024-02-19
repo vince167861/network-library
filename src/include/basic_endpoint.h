@@ -15,12 +15,12 @@ namespace leaf::network {
 		/**
 		 * \brief Read until connection closed
 		 */
-		virtual std::string read_all() {
-			std::string str;
+		virtual byte_string read_all() {
+			byte_string str;
 			while (connected()) {
 				try {
 					str += read(50);
-				} catch (const std::exception&) {
+				} catch (...) {
 					break;
 				}
 			}

@@ -1,6 +1,14 @@
 #include "cipher/aes.h"
+#include <vector>
 
 namespace leaf {
+
+	std::uint8_t xtime(std::uint8_t a) {
+		uint8_t ret = a << 1;
+		if (a & 0x80)
+			ret ^= 0x1b;
+		return ret;
+	}
 
 	constexpr std::uint8_t s_box[0x100] {
 			0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -38,58 +46,34 @@ namespace leaf {
 			0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
 	};
 
-	template<class I> requires std::is_integral_v<I>
-	I sub_bytes(I val) {
-		for (std::size_t i = 0; i < sizeof(I); ++i) {
-			I mask = 0xff << i * 8;
-			val = val & ~mask | s_box[static_cast<uint8_t>(val >> i * 8)] << i * 8;
-		}
-		return val;
+	std::uint32_t aes::sub_bytes(std::uint32_t val) {
+		return s_box[(val >> 24) & 0xff] << 24 | s_box[(val >> 16) & 0xff] << 16 | s_box[(val >> 8) & 0xff] << 8 | s_box[val & 0xff];
 	}
 
-	template<class I> requires std::is_integral_v<I>
-	I inv_sub_bytes(I val) {
-		for (std::size_t i = 0; i < sizeof(I); ++i) {
-			I mask = 0xff << i * 8;
-			val = val & ~mask | inv_s_box[val >> i * 8 & 0xff] << i * 8;
-		}
-		return val;
+	void aes::sub_bytes(big_unsigned& state, bool inverse) {
+		for (auto& u: state)
+			u = (inverse ? inv_s_box : s_box)[u];
 	}
 
-	void sub_bytes(big_unsigned& state) {
-		for (auto& u: state.data)
-			u = sub_bytes(u);
-	}
-
-	void inv_sub_bytes(big_unsigned& state) {
-		for (auto& u: state.data)
-			u = inv_sub_bytes(u);
-	}
-
-	std::uint8_t xtime(std::uint8_t a) {
-		uint8_t ret = a << 1;
-		if (a & 0x80)
-			ret ^= 0x1b;
-		return ret;
-	}
-
-	std::uint32_t rotation_left(std::uint32_t val) {
+	std::uint32_t aes::rotation_left(std::uint32_t val) {
 		return val << 8 | val >> 24;
 	}
 
-	void rotation_left(big_unsigned& state, std::size_t row, std::size_t shift) {
-		std::uint32_t mask = ~(0xff << (4 - row - 1) * 8);
-		uint8_t t[shift];
-		for (std::size_t i = 0; i < state.data_units(); ++i) {
+	void aes::rotation_left(big_unsigned& state, const std::size_t row, const std::size_t shift) {
+		const std::uint32_t mask = ~(0xff << (4 - row - 1) * 8);
+		const auto state_units = state.bit_most() / 32;
+		const auto state_ptr = reinterpret_cast<std::uint32_t*>(state.data());
+		std::vector<std::uint8_t> t(shift);
+		for (std::size_t i = 0; i < state_units; ++i) {
 			if (i < shift)
-				t[i] = state.data[state.data_units() - i - 1] >> (4 - row - 1) * 8;
-			state.data[state.data_units() - i - 1] &= mask;
-			uint8_t byte =
-					i + shift >= state.data_units() ?
-					t[(i + shift) % state.data_units()]
+				t[i] = state_ptr[state_units - i - 1] >> (4 - row - 1) * 8;
+			state_ptr[state_units - i - 1] &= mask;
+			std::uint8_t byte =
+					i + shift >= state_units ?
+					t[(i + shift) % state_units]
 					:
-					state.data[state.data_units() - (i + shift) - 1] >> (4 - row - 1) * 8;
-			state.data[state.data_units() - i - 1] |= byte << (4 - row - 1) * 8;
+					state_ptr[state_units - (i + shift) - 1] >> (4 - row - 1) * 8;
+			state_ptr[state_units - i - 1] |= byte << (4 - row - 1) * 8;
 		}
 	}
 
@@ -104,91 +88,82 @@ namespace leaf {
 		return ret;
 	}
 
-	void aes::shift_rows(big_unsigned& state) {
-		rotation_left(state, 1, 1);
-		rotation_left(state, 2, 2);
-		rotation_left(state, 3, 3);
+	void aes::shift_rows(big_unsigned& state, bool inverse) const {
+		rotation_left(state, 1, inverse ? N_b - 1 : 1);
+		rotation_left(state, 2, inverse ? N_b - 2 : 2);
+		rotation_left(state, 3, inverse ? N_b - 3 : 3);
 	}
 
-	void aes::inv_shift_rows(big_unsigned& state) const {
-		rotation_left(state, 1, N_b - 1);
-		rotation_left(state, 2, N_b - 2);
-		rotation_left(state, 3, N_b - 3);
-	}
-
-	void aes::mix_columns(big_unsigned& state) const {
+	void aes::mix_columns(big_unsigned& state, bool inverse) const {
+		const auto state_ptr = reinterpret_cast<std::uint32_t*>(state.data());
 		for (std::size_t i = 0; i < N_b; ++i) {
-			uint8_t b_0 = state.value<uint8_t>((N_b - i - 1) * 4 + 3),
-					b_1 = state.value<uint8_t>((N_b - i - 1) * 4 + 2),
-					b_2 = state.value<uint8_t>((N_b - i - 1) * 4 + 1),
-					b_3 = state.value<uint8_t>((N_b - i - 1) * 4 + 0);
-			uint8_t a = GF_multiply(0x02, b_0) ^ GF_multiply(0x03, b_1) ^ b_2 ^ b_3;
-			uint8_t b = b_0 ^ GF_multiply(0x02, b_1) ^ GF_multiply(0x03, b_2) ^ b_3;
-			uint8_t c = b_0 ^ b_1 ^ GF_multiply(0x02, b_2) ^ GF_multiply(0x03, b_3);
-			uint8_t d = GF_multiply(0x03, b_0) ^ b_1 ^ b_2 ^ GF_multiply(0x02, b_3);
-			state.data[N_b - i - 1] = a << 24 | b << 16 | c << 8 | d;
-		}
-	}
-
-	void aes::inv_mix_columns(big_unsigned& state) const {
-		for (std::size_t i = 0; i < N_b; ++i) {
-			uint8_t b_0 = state.value<uint8_t>((N_b - i - 1) * 4 + 3),
-					b_1 = state.value<uint8_t>((N_b - i - 1) * 4 + 2),
-					b_2 = state.value<uint8_t>((N_b - i - 1) * 4 + 1),
-					b_3 = state.value<uint8_t>((N_b - i - 1) * 4 + 0);
-			uint8_t a = GF_multiply(0x0e, b_0) ^ GF_multiply(0x0b, b_1) ^ GF_multiply(0x0d, b_2) ^ GF_multiply(0x09, b_3);
-			uint8_t b = GF_multiply(0x09, b_0) ^ GF_multiply(0x0e, b_1) ^ GF_multiply(0x0b, b_2) ^ GF_multiply(0x0d, b_3);
-			uint8_t c = GF_multiply(0x0d, b_0) ^ GF_multiply(0x09, b_1) ^ GF_multiply(0x0e, b_2) ^ GF_multiply(0x0b, b_3);
-			uint8_t d = GF_multiply(0x0b, b_0) ^ GF_multiply(0x0d, b_1) ^ GF_multiply(0x09, b_2) ^ GF_multiply(0x0e, b_3);
-			state.data[N_b - i - 1] = a << 24 | b << 16 | c << 8 | d;
+			const auto
+					b_0 = state.at((N_b - i - 1) * 4 + 3),
+					b_1 = state.at((N_b - i - 1) * 4 + 2),
+					b_2 = state.at((N_b - i - 1) * 4 + 1),
+					b_3 = state.at((N_b - i - 1) * 4 + 0);
+			std::uint8_t a =
+					inverse ? GF_multiply(0x0e, b_0) ^ GF_multiply(0x0b, b_1) ^ GF_multiply(0x0d, b_2) ^ GF_multiply(0x09, b_3) : GF_multiply(0x02, b_0) ^ GF_multiply(0x03, b_1) ^ b_2 ^ b_3;
+			std::uint8_t b =
+					inverse ? GF_multiply(0x09, b_0) ^ GF_multiply(0x0e, b_1) ^ GF_multiply(0x0b, b_2) ^ GF_multiply(0x0d, b_3) : b_0 ^ GF_multiply(0x02, b_1) ^ GF_multiply(0x03, b_2) ^ b_3;
+			std::uint8_t c =
+					inverse ? GF_multiply(0x0d, b_0) ^ GF_multiply(0x09, b_1) ^ GF_multiply(0x0e, b_2) ^ GF_multiply(0x0b, b_3) : b_0 ^ b_1 ^ GF_multiply(0x02, b_2) ^ GF_multiply(0x03, b_3);
+			std::uint8_t d =
+					inverse ? GF_multiply(0x0b, b_0) ^ GF_multiply(0x0d, b_1) ^ GF_multiply(0x09, b_2) ^ GF_multiply(0x0e, b_3) : GF_multiply(0x03, b_0) ^ b_1 ^ b_2 ^ GF_multiply(0x02, b_3);
+			state_ptr[N_b - i - 1] = a << 24 | b << 16 | c << 8 | d;
 		}
 	}
 
 	void aes::add_round_key(big_unsigned& state, const big_unsigned& key_schedule, std::size_t round) const {
+		const auto state_ptr = reinterpret_cast<std::uint32_t*>(state.data());
+		const auto key_ptr = reinterpret_cast<const std::uint32_t*>(key_schedule.data());
 		for (std::size_t i = 0; i < N_b; ++i)
-			state[state.data_units() - i - 1] ^= key_schedule[key_schedule.data_units() - (N_b * round + i) - 1];
+			state_ptr[N_b - i - 1] ^= key_ptr[key_schedule_units - (N_b * round + i) - 1];
 	}
 
 	void aes::cipher(big_unsigned& val, const big_unsigned& key_schedule) const {
 		add_round_key(val, key_schedule, 0);
 		for (std::size_t i = 1; i < N_r; ++i) {
-			sub_bytes(val);
-			shift_rows(val);
-			mix_columns(val);
+			sub_bytes(val, false);
+			shift_rows(val, false);
+			mix_columns(val, false);
 			add_round_key(val, key_schedule, i);
 		}
-		sub_bytes(val);
-		shift_rows(val);
+		sub_bytes(val, false);
+		shift_rows(val, false);
 		add_round_key(val, key_schedule, N_r);
 	}
 
 	void aes::inv_cipher(big_unsigned& val, const big_unsigned& key_schedule) const {
 		add_round_key(val, key_schedule, N_r);
 		for (std::size_t i = N_r - 1; i > 0; --i) {
-			inv_shift_rows(val);
-			inv_sub_bytes(val);
+			shift_rows(val, true);
+			sub_bytes(val, true);
 			add_round_key(val, key_schedule, i);
-			inv_mix_columns(val);
+			mix_columns(val, true);
 		}
-		inv_shift_rows(val);
-		inv_sub_bytes(val);
+		shift_rows(val, true);
+		sub_bytes(val, true);
 		add_round_key(val, key_schedule, 0);
 	}
 
 	void aes::key_expansion(const big_unsigned& key, big_unsigned& key_schedule) const {
+		if (key.bit_most() != N_k * 32)
+			throw std::invalid_argument(std::format("key size must be {} bits", N_k * 32));
 		key_schedule = key;
 		key_schedule.resize(key_schedule_units * 32);
-		key_schedule <<= (key_schedule_units * 32 - key.bits());
-		uint8_t xt = 0x01;
+		key_schedule <<= key_schedule_units * 32 - key.bit_most();
+		std::uint8_t xt = 0x01;
+		const auto schedule_ptr = reinterpret_cast<std::uint32_t*>(key_schedule.data());
 		for (std::size_t i = N_k; i < key_schedule_units; ++i) {
-			auto t = key_schedule.value<uint32_t>(key_schedule_units - 1 - (i - 1));
+			auto t = schedule_ptr[key_schedule_units - 1 - (i - 1)];
 			if (i % N_k == 0) {
 				t = sub_bytes(rotation_left(t));
 				t ^= xt << 8 * 3;
 				xt = xtime(xt);
 			} else if (N_k > 6 && i % N_k == 4)
 				t = sub_bytes(t);
-			key_schedule[key_schedule_units - 1 - i] = key_schedule[key_schedule_units - 1 - (i - N_k)] ^ t;
+			schedule_ptr[key_schedule_units - i - 1] = schedule_ptr[key_schedule_units - (i - N_k) - 1] ^ t;
 		}
 	}
 }

@@ -1,11 +1,8 @@
 #pragma once
-
-#include "tls-utils/type.h"
-#include "binary_object.h"
+#include "common.h"
 #include "basic_endpoint.h"
 #include "tls-utils/type.h"
 #include "tls-cipher/traffic_secret_manager.h"
-
 #include <string>
 #include <format>
 
@@ -14,30 +11,34 @@ namespace leaf::network::tls {
 	/**
 	 * \brief A protocol layer message.
 	 */
-	struct message: binary_object {
+	struct message {
 
 		virtual std::format_context::iterator format(std::format_context::iterator) const = 0;
+
+		virtual operator byte_string() const = 0;
+
+		virtual ~message() = default;
 	};
 
 
 	/**
 	 * \brief A record layer packet.
 	 */
-	struct record final: binary_object {
+	struct record final {
 
 		using opt_cipher = std::optional<std::reference_wrapper<traffic_secret_manager>>;
 
 		content_type_t type;
 
-		protocol_version_t legacy_record_version = protocol_version_t::TLS1_2;
+		protocol_version_t version = protocol_version_t::TLS1_2;
 
-		std::string messages;
+		byte_string messages;
 
 		record(content_type_t type, opt_cipher);
 
-		std::string to_bytestring(std::endian = std::endian::big) const override;
+		operator byte_string() const;
 
-		static record extract(endpoint&, traffic_secret_manager&);
+		static record extract(istream&, traffic_secret_manager& cipher);
 
 		static record construct(content_type_t, opt_cipher, const message&);
 

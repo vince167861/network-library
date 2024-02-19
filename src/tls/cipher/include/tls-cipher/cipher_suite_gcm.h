@@ -1,11 +1,8 @@
 #pragma once
-
 #include "cipher_suite.h"
 #include "cipher/gcm.h"
 
-
 namespace leaf::network::tls {
-
 
 	class cipher_suite_gcm: public gcm, virtual public cipher_suite {
 

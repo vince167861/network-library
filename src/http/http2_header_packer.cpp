@@ -72,7 +72,7 @@ namespace leaf::network::http2 {
 		{"www-authenticate", ""},
 	};
 
-	void write_integer(std::string& dest, const uint8_t prefix_size, const uint8_t prefix_value, const uint64_t value) {
+	void write_integer(byte_string& dest, const uint8_t prefix_size, const uint8_t prefix_value, const uint64_t value) {
 		if (prefix_size > 8 or prefix_size < 1)
 			throw std::exception{};
 		if (value < 1 << prefix_size)
@@ -88,12 +88,12 @@ namespace leaf::network::http2 {
 		}
 	}
 
-	void read_integer(std::string_view::const_iterator& ptr, const uint8_t prefix_size, uint8_t& prefix_value, uint64_t& value) {
+	void read_integer(byte_string_view::const_iterator& ptr, const std::uint8_t prefix_size, std::uint8_t& prefix_value, std::uint64_t& value) {
 		value = 0;
-		const uint8_t prefix = *ptr++, mask = ~(~0 << prefix_size);
+		const std::uint8_t prefix = *ptr++, mask = ~(~0 << prefix_size);
 		prefix_value = prefix >> prefix_size;
 		if ((prefix & mask) == mask)
-			for (uint8_t i = 0;;) {
+			for (std::uint8_t i = 0;;) {
 				value += *ptr << 7 * i;
 				if ((*ptr++ & 1 << 7) == 0)
 					break;
@@ -118,8 +118,8 @@ namespace leaf::network::http2 {
 		return lhs.first == rhs.first && lhs.second == rhs.second;
 	}
 
-	std::string header_packer::encode(const http::http_fields& headers) {
-		std::string ret;
+	byte_string header_packer::encode(const http::http_fields& headers) {
+		byte_string ret;
 		for (auto& pair: headers) {
 			auto& [name, value] = pair;
 			uint64_t index = 0;
@@ -140,16 +140,16 @@ namespace leaf::network::http2 {
 			write_integer(ret, 6, 1, index);
 			if (!index) {
 				write_integer(ret, 7, 0, name.size());
-				ret += name;
+				ret += reinterpret_cast<const byte_string&>(name);
 			}
 			write_integer(ret, 7, 0, value.size());
-			ret += value;
+			ret += reinterpret_cast<const byte_string&>(value);
 			emplace_front_(name, value);
 		}
 		return ret;
 	}
 
-	http::http_fields header_packer::decode(const std::string_view source) {
+	http::http_fields header_packer::decode(const byte_string_view source) {
 		http::http_fields members;
 		uint8_t unused;
 		uint64_t value;
