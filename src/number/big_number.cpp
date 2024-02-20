@@ -86,30 +86,29 @@ namespace leaf {
 				this_ptr = reinterpret_cast<const std::uint32_t*>(data()),
 				other_ptr = reinterpret_cast<const std::uint32_t*>(other.data());
 		const auto
-				ret_units = div_ceil(ret.bits_, 32),
-				this_units = div_ceil(bits_, 32),
-				other_units = div_ceil(other.bits_, 32);
+				__ru = div_ceil(ret.bits_, 32),
+				__au = div_ceil(bits_, 32),
+				__bu = div_ceil(other.bits_, 32);
 		bool finally_carry = false;
-		for (std::size_t i = 0; i < this_units; ++i) {
-			const std::uint64_t a = i == this_units - 1 && bits_ % 32 ? this_ptr[i] & ~(~0ull << bits_ % 32) : this_ptr[i];
-			for (std::size_t j = 0; j < other_units && i + j < ret_units; ++j) {
-				const std::uint64_t b = j == other_units - 1 && other.bits_ % 32 ? other_ptr[j] & ~(~0ull << other.bits_ % 32) : other_ptr[j];
+		for (std::size_t i = 0; i < __au; ++i) {
+			const std::uint64_t __a = i == __au - 1 && bits_ % 32 ? this_ptr[i] & ~(~0ull << bits_ % 32) : this_ptr[i];
+			for (std::size_t j = 0; j < __bu && i + j < __ru; ++j) {
+				const std::uint64_t __b = j == __bu - 1 && other.bits_ % 32 ? other_ptr[j] & ~(~0ull << other.bits_ % 32) : other_ptr[j];
 				bool carry = false;
 				auto pos = i + j;
 				do {
 					auto& dst = reinterpret_cast<std::uint64_t&>(ret_ptr[pos]), old = dst;
-					dst += carry ? 1 : a * b;
+					dst += carry ? 1 : __a * __b;
 					carry = dst < old;
 					pos += 2;
-				} while (carry && pos < ret_units);
+				} while (carry && pos < __ru);
 				if (carry)
 					finally_carry = true;
 			}
 		}
 		if (finally_carry)
 			ret.push_back(1);
-		ret.bits_ = ret.bit_used();
-		ret.resize_();
+		ret.resize(ret.bit_used());
 		return ret;
 	}
 
@@ -198,7 +197,6 @@ namespace leaf {
 				__v |= __ptr[__n] << 64 - __b;
 			__ptr[i] = __v;
 		}
-		resize_();
 		return *this;
 	}
 
@@ -230,7 +228,7 @@ namespace leaf {
 	}
 
 	std::size_t big_unsigned::bit_used() const {
-		auto pos = find_last_not_of('\0');
+		const auto pos = find_last_not_of(static_cast<std::uint8_t>(0));
 		return pos == npos ? 0 : pos * 8 + msb(at(pos)) + 1;
 	}
 

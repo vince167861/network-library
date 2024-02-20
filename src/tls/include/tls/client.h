@@ -1,18 +1,8 @@
 #pragma once
-
-#include "basic_endpoint.h"
+#include "endpoint.h"
 #include "tls-record/handshake.h"
 #include "tls-key/manager.h"
-#include "tls-record/record.h"
-#include "tls-context/endpoint.h"
-#include "tls-utils/rng.h"
-#include "tls-cipher/cipher_suite.h"
-#include "tls-cipher/traffic_secret_manager.h"
-
-#include <memory>
-#include <sstream>
 #include <optional>
-#include <list>
 
 namespace leaf::network::tls {
 
@@ -50,7 +40,7 @@ namespace leaf::network::tls {
 
 		std::size_t available() override;
 
-		void add_group(std::initializer_list<named_group_t>);
+		void add_group(named_group_t, bool generate = true);
 
 		void add_cipher_suite(std::initializer_list<cipher_suite_t>);
 

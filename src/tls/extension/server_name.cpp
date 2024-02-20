@@ -9,15 +9,15 @@ namespace leaf::network::tls {
 		: server_name_list(list) {
 	}
 
-	server_name::server_name(const byte_string_view source) {
-		auto ptr = source.begin();
-		const auto snl_size = read<std::uint16_t>(std::endian::big, ptr);
-		auto available = std::distance(ptr, source.end());
-		if (available < snl_size)
-			throw alert::decode_error_early_end_of_data("server_name_list.size", available, snl_size);
-		while (ptr != source.end()) switch (const auto t = read<name_type_t>(std::endian::big, ptr)) {
+	server_name::server_name(const byte_string_view __s) {
+		auto it = __s.begin();
+		const auto __size = read<std::uint16_t>(std::endian::big, it);
+		const auto end = std::next(it, __size);
+		if (end > __s.end())
+			throw alert::decode_error("incomplete ServerName");
+		while (it != end) switch (const auto t = read<name_type_t>(std::endian::big, it)) {
 			case name_type_t::host_name: {
-				const auto _L = read_bytestring(ptr, read<std::uint16_t>(std::endian::big, ptr));
+				const auto _L = read_bytestring(it, read<std::uint16_t>(std::endian::big, it));
 				server_name_list.emplace_back(t, reinterpret_cast<const std::string&>(_L));
 				break;
 			}

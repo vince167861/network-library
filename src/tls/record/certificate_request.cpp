@@ -36,6 +36,11 @@ namespace leaf::network::tls {
 	}
 
 	std::format_context::iterator certificate_request::format(std::format_context::iterator it) const {
-		return std::format_to(it, "CertificateRequest");
+		it = std::format_to(it, "CertificateRequest\n\trequest context: {}\n\textensions:", certificate_request_context);
+		if (extensions.empty())
+			it = std::ranges::copy(" (empty)", it).out;
+		else for (auto& __t: extensions_order)
+			it = std::format_to(it, "\n{:2}", *extensions.at(__t));
+		return it;
 	}
 }

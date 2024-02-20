@@ -44,12 +44,12 @@ namespace leaf::network::tls {
 
 	std::format_context::iterator new_session_ticket::format(std::format_context::iterator it) const {
 		it = std::format_to(it,
-			"NewSessionTicket\n\tLifetime: {}\n\tAge add: {}\n\tNonce: {}\n\tTicket: {}\n\tExtensions:",
+			"NewSessionTicket\n\tlifetime: {}\n\tage add: {}\n\tnonce: {}\n\tticket: {}\n\textensions:",
 			ticket_lifetime, ticket_age_add, ticket_nonce, ticket);
 		if (extensions.empty())
 			it = std::ranges::copy(" (empty)", it).out;
-		else for (auto& ext: std::views::values(extensions))
-			it = std::format_to(it, "\n{}", *ext);
+		else for (auto& ext: extensions | std::views::values)
+			it = std::format_to(it, "\n{:2}", *ext);
 		return it;
 	}
 }

@@ -3,12 +3,12 @@
 
 namespace leaf::network::tls {
 
-	key_update::key_update(byte_string_view source) {
+	key_update::key_update(const byte_string_view source) {
 		auto it = source.begin();
 		read(std::endian::big, request_update, it);
 	}
 
-	key_update::key_update(bool request)
+	key_update::key_update(const bool request)
 		: request_update(request ? key_update_request::update_requested : key_update_request::update_not_requested) {
 	}
 

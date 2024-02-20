@@ -22,7 +22,7 @@ namespace leaf::network::tls {
 		}
 	}
 
-	void alpn::format(std::format_context::iterator& it, std::size_t level) const {
+	void alpn::format(std::format_context::iterator& it, const std::size_t level) const {
 		it = std::ranges::fill_n(it, level, '\t');
 		it = std::ranges::copy("ALPN:", it).out;
 		if (protocol_name_list.empty())

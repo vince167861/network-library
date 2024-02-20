@@ -33,7 +33,7 @@ TEST(handshake, server_hello) {
 	};
 	const byte_string __fragment_str(__fragment);
 	byte_string_view __v(__fragment_str);
-	const auto __handshake = parse_handshake(*reinterpret_cast<endpoint*>(0), __v, false, false);
+	const auto __handshake = parse_handshake(__v, false, false);
 	ASSERT_TRUE(__handshake);
 	ASSERT_TRUE(std::holds_alternative<server_hello>(__handshake.value()));
 	const auto& __msg = std::get<server_hello>(__handshake.value());

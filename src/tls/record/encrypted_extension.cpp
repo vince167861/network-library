@@ -20,9 +20,11 @@ namespace leaf::network::tls {
 	}
 
 	encrypted_extension::operator byte_string() const {
-		byte_string data, exts;
-		for (auto type: extension_order_)
+		byte_string exts;
+		for (auto type: extensions_order)
 			exts += *extensions.at(type);
+
+		byte_string data;
 		write(std::endian::big, data, exts.size(), 2);
 
 		byte_string str;
@@ -36,7 +38,7 @@ namespace leaf::network::tls {
 		if (extensions.empty())
 			it = std::ranges::copy(" (empty)", it).out;
 		else for (auto& ext: std::views::values(extensions))
-			it = std::format_to(it, "\n\t{}", *ext);
+			it = std::format_to(it, "\n{:1}", *ext);
 		return it;
 	}
 }

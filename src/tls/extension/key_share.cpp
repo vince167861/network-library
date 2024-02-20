@@ -19,10 +19,10 @@ namespace leaf::network::tls {
 		auto it = source.begin();
 		switch (type) {
 			case extension_holder_t::client_hello: {
-				const auto cs_size = read<std::uint16_t>(std::endian::big, it);
-				const auto end = std::next(it, cs_size);
+				const auto __size = read<std::uint16_t>(std::endian::big, it);
+				const auto end = std::next(it, __size);
 				if (end > source.end())
-					throw alert::decode_error_early_end_of_data("client_shares.size", std::distance(it, source.end()), cs_size);
+					throw alert::decode_error("incomplete KeyShare");
 				while (it != end) {
 					const auto ng = read<named_group_t>(std::endian::big, it);
 					shares.emplace(ng, read_bytestring(it, read<std::uint16_t>(std::endian::big, it)));
@@ -34,12 +34,12 @@ namespace leaf::network::tls {
 				return;
 			}
 			case extension_holder_t::server_hello: {
-				const auto ng = read<named_group_t>(std::endian::big, it);
-				const auto ke_size = read<std::uint16_t>(std::endian::big, it);
-				const auto end = std::next(it, ke_size);
+				const auto __ng = read<named_group_t>(std::endian::big, it);
+				const auto __size = read<std::uint16_t>(std::endian::big, it);
+				const auto end = std::next(it, __size);
 				if (end > source.end())
-					throw alert::decode_error_early_end_of_data("server_share.public_key.size", std::distance(it, source.end()), ke_size);
-				shares.emplace(ng, byte_string(it, end));
+					throw alert::decode_error("incomplete KeyShare");
+				shares.emplace(__ng, byte_string(it, end));
 				return;
 			}
 			default:

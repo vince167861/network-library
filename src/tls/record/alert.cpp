@@ -1,15 +1,10 @@
 #include "tls-record/alert.h"
 #include "utils.h"
 
-#include <utility>
-
 namespace leaf::network::tls {
 
 	std::format_context::iterator alert::format(std::format_context::iterator it) const {
-		it = std::format_to(it, "Alert\n\tLevel: {}\n\tDescription: {}", level, description);
-		if (!debug_string.empty())
-			it = std::format_to(it, "\n\tDebug: {}", debug_string);
-		return it;
+		return std::format_to(it, "Alert\n\tlevel: {}\n\tdescription: {}\n\tdebug: {}", level, description, what());
 	}
 
 	alert::operator byte_string() const {
@@ -19,53 +14,43 @@ namespace leaf::network::tls {
 		return str;
 	}
 
-	const char* alert::what() const _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW {
-		return debug_string.c_str();
+	alert::alert(const alert_level_t level, const alert_description_t dsc, const std::string_view __d)
+		: std::runtime_error(std::string(__d)), level(level), description(dsc) {
 	}
 
-	alert::alert(const alert_level_t level, const alert_description_t dsc, std::string debug)
-		: level(level), description(dsc), debug_string(std::move(debug)) {
-	}
-
-	alert::alert(const byte_string_view source) {
+	alert::alert(const byte_string_view source)
+		: std::runtime_error("(parsed)"){
 		auto it = source.begin();
 		read(std::endian::big, level, it);
 		read(std::endian::big, description, it);
 	}
 
-	alert alert::bad_record_mac() {
-		return {alert_level_t::fatal, alert_description_t::bad_record_mac};
+	alert alert::unexpected_message(const std::string_view __d) {
+		return {alert_level_t::fatal, alert_description_t::unexpected_message, __d};
 	}
 
-	alert alert::unexpected_message() {
-		return {alert_level_t::fatal, alert_description_t::unexpected_message};
+	alert alert::bad_record_mac(const std::string_view __d) {
+		return {alert_level_t::fatal, alert_description_t::bad_record_mac, __d};
 	}
 
-	alert alert::record_overflow() {
-		return {alert_level_t::fatal, alert_description_t::record_overflow};
+	alert alert::record_overflow(const std::string_view __d) {
+		return {alert_level_t::fatal, alert_description_t::record_overflow, __d};
 	}
 
-	alert alert::handshake_failure() {
-		return {alert_level_t::fatal, alert_description_t::handshake_failure};
+	alert alert::handshake_failure(const std::string_view __d) {
+		return {alert_level_t::fatal, alert_description_t::handshake_failure, __d};
 	}
 
-	alert alert::decode_error(const std::string& debug_description) {
-		return {alert_level_t::fatal, alert_description_t::decode_error, "Decode error: " + debug_description};
+	alert alert::decode_error(const std::string_view __d) {
+		return {alert_level_t::fatal, alert_description_t::decode_error, __d};
 	}
 
-	alert alert::decode_error_early_end_of_data(
-			std::string_view field_name, std::size_t actual_size, std::size_t expected_size) {
-		return decode_error(
-				std::format("{} expect {}, but only {} left (early end of message)",
-							field_name, expected_size, actual_size));
+	alert alert::illegal_parameter(const std::string_view __d) {
+		return {alert_level_t::fatal, alert_description_t::illegal_parameter, __d};
 	}
 
-	alert alert::illegal_parameter() {
-		return {alert_level_t::fatal, alert_description_t::illegal_parameter};
-	}
-
-	alert alert::decrypt_error() {
-		return {alert_level_t::fatal, alert_description_t::decrypt_error};
+	alert alert::decrypt_error(const std::string_view __d) {
+		return {alert_level_t::fatal, alert_description_t::decrypt_error, __d};
 	}
 
 	alert alert::close_notify() {

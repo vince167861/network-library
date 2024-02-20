@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.23)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CXX_STANDARD_REQUIRED ON)
-add_compile_options(-Werror=return-type -Wno-deprecated-declarations -Wextra -Wpessimizing-move -fconcepts-diagnostics-depth=3)
+add_compile_options(
+		-Werror=return-type -Wno-deprecated-declarations -Wextra -Wpessimizing-move -fconcepts-diagnostics-depth=3
+		-Werror=implicit-fallthrough)
 enable_testing()
 
 project(leaf)

@@ -23,7 +23,8 @@ if (GTest_FOUND)
 	add_executable(test-tls
 			tls/key_exchange.cpp
 			tls/cipher.cpp
-			tls/record.cpp)
+			tls/record.cpp
+			tls/extension.cpp)
 	target_link_libraries(test-tls tls)
 
 	add_executable(test-cipher

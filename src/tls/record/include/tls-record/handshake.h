@@ -85,9 +85,6 @@ namespace leaf::network::tls {
 		operator byte_string() const override;
 
 		std::format_context::iterator format(std::format_context::iterator) const override;
-
-	private:
-		std::list<ext_type_t> extension_order_;
 	};
 
 
@@ -142,7 +139,7 @@ namespace leaf::network::tls {
 
 		byte_string verify_data;
 
-		finished(byte_string_view source, cipher_suite&);
+		finished(byte_string_view source);
 
 		operator byte_string() const override;
 
@@ -188,10 +185,8 @@ namespace leaf::network::tls {
 	using handshake = std::variant<client_hello, server_hello, encrypted_extension, certificate, certificate_request,
 			certificate_verify, finished, new_session_ticket, key_update>;
 
-	class endpoint;
-
 	std::expected<handshake, std::string>
-	parse_handshake(endpoint&, byte_string_view& source, bool encrypted, bool established);
+	parse_handshake(byte_string_view& source, bool encrypted, bool established);
 }
 
 

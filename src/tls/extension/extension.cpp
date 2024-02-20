@@ -54,7 +54,8 @@ namespace leaf::network::tls {
 			: type(type), data(data) {
 	}
 
-	void raw_extension::format(std::format_context::iterator& __it, std::size_t) const {
+	void raw_extension::format(std::format_context::iterator& __it, const std::size_t indent) const {
+		__it = std::fill_n(__it, indent, '\t');
 		__it = std::format_to(__it, "{} (raw extension, size={})", type, data.size());
 	}
 

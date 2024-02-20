@@ -4,9 +4,7 @@
 
 namespace leaf::network::tls {
 
-	finished::finished(const byte_string_view source, cipher_suite& suite) {
-		if (suite.digest_length != source.length())
-			throw alert::decrypt_error();
+	finished::finished(const byte_string_view source) {
 		verify_data = source;
 	}
 
