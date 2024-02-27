@@ -33,7 +33,7 @@ namespace leaf::network {
 
 	struct client: virtual endpoint {
 
-		virtual bool connect(std::string_view host, tcp_port_t) = 0;
+		virtual void connect(std::string_view host, tcp_port_t) = 0;
 
 		virtual std::size_t available() = 0;
 	};
@@ -46,5 +46,7 @@ namespace leaf::network {
 		virtual std::unique_ptr<endpoint> accept() = 0;
 
 		virtual void close() = 0;
+
+		virtual ~server() = 0;
 	};
 }

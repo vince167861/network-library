@@ -13,10 +13,11 @@ namespace leaf::network::tls {
 		: endpoint(client, endpoint_type_t::client, std::move(generator)), client_(client) {
 	}
 
-	bool client::connect(const std::string_view host, const uint16_t port) {
+	void client::connect(const std::string_view host, const uint16_t port) {
 		close();
 		reset();
-		return client_.connect(host, port) && (handshake_(), true);
+		client_.connect(host, port);
+		handshake_();
 	}
 
 	std::size_t client::available() {

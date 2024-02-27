@@ -1,12 +1,11 @@
 #pragma once
-
 #include "tcp/endpoint.h"
 
 namespace leaf::network::tcp {
 
 	struct client final: endpoint, network::client {
 
-		bool connect(const std::string_view host, const std::uint16_t port) override {
+		void connect(const std::string_view host, const tcp_port_t port) override {
 			close();
 			addrinfo
 					__hint{.ai_family = AF_INET, .ai_socktype = SOCK_STREAM, .ai_protocol = IPPROTO_TCP},
@@ -25,7 +24,8 @@ namespace leaf::network::tcp {
 				break;
 			}
 			freeaddrinfo(__result);
-			return socket_ != invalid_socket;
+			if (socket_ == invalid_socket)
+				throw std::runtime_error(std::format("{}:{} is unreachable", host, port));
 		}
 
 		std::size_t available() override {

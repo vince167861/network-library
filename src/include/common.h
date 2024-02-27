@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <bit>
 #include <format>
 #include <map>
 #include <unordered_map>

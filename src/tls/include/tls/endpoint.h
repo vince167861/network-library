@@ -6,7 +6,6 @@
 #include "tls-utils/rng.h"
 #include "tls-cipher/traffic_secret_manager.h"
 #include <memory>
-#include <list>
 
 namespace leaf::network::tls {
 
@@ -39,7 +38,8 @@ namespace leaf::network::tls {
 
 		endpoint(network::endpoint&, endpoint_type_t, std::unique_ptr<random_number_generator> = std::make_unique<mt19937_uniform>());
 
-		bool connected() const override {
+		[[nodiscard]] bool
+		connected() const override {
 			return underlying_.connected();
 		}
 
@@ -61,15 +61,18 @@ namespace leaf::network::tls {
 
 		void use_cipher(cipher_suite_t);
 
-		key_exchange_manager& key_exchange() const {
+		[[nodiscard]] key_exchange_manager&
+		key_exchange() const {
 			return *key_exchange_;
 		}
 
-		cipher_suite& cipher() const {
+		[[nodiscard]] cipher_suite&
+		cipher() const {
 			return *cipher_;
 		}
 
-		traffic_secret_manager& secret() {
+		[[nodiscard]] traffic_secret_manager&
+		secret() {
 			return secret_;
 		}
 

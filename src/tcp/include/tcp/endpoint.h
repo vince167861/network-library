@@ -1,7 +1,5 @@
 #pragma once
-
 #include "basic_endpoint.h"
-
 #include <stdexcept>
 #include <string>
 #include <format>
@@ -46,8 +44,6 @@
 
 namespace leaf::network::tcp {
 
-	const std::runtime_error closed("tcp connection closed");
-
 #ifdef PLATFORM_Windows
 	class wsa_control {
 		static inline std::size_t wsa_instances = 0;
@@ -77,7 +73,7 @@ namespace leaf::network::tcp {
 			switch (const int error_no = last_error) {
 				case error_conn_aborted:
 					close();
-					throw closed;
+					throw std::runtime_error("tcp closed");
 				case error_conn_reset:
 					close();
 					throw std::runtime_error("tcp connection reset");
@@ -103,21 +99,21 @@ namespace leaf::network::tcp {
 
 		std::uint8_t read() override {
 			if (socket_ == invalid_socket)
-				throw closed;
+				throw std::runtime_error("tcp not established");
 			char c;
 			const auto count = recv(socket_, &c, 1, 0);
 			if (count < 0)
 				handle_error_("recv");
 			if (count == 0) {
 				close();
-				throw closed;
+				throw std::runtime_error("tcp closed");
 			}
 			return c;
 		}
 
 		byte_string read(std::size_t size) override {
 			if (socket_ == invalid_socket)
-				throw closed;
+				throw std::runtime_error("tcp not established");
 			byte_string read_data;
 			while (read_data.size() < size) {
 				std::uint8_t buffer[1024];
@@ -135,7 +131,7 @@ namespace leaf::network::tcp {
 
 		void write(const byte_string_view buffer) override {
 			if (socket_ == invalid_socket)
-				throw closed;
+				throw std::runtime_error("tcp not established");
 			const auto result = send(socket_, reinterpret_cast<const char*>(buffer.data()), buffer.size(), 0);
 			if (result < 0)
 				handle_error_("send");
@@ -149,7 +145,7 @@ namespace leaf::network::tcp {
 
 		void finish() override {
 			if (socket_ == invalid_socket)
-				throw closed;
+				throw std::runtime_error("tcp not established");
 			if (shutdown(socket_, SHUT_WR))
 				handle_error_("shutdown(write)");
 		}
@@ -162,7 +158,7 @@ namespace leaf::network::tcp {
 			}
 		}
 
-		~endpoint() {
+		~endpoint() override {
 			::closesocket(socket_);
 #ifdef PLATFORM_Windows
 			wsa_control::release();

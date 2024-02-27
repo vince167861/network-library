@@ -36,7 +36,7 @@ namespace leaf::network::tls {
 
 		explicit client(network::client& client, std::unique_ptr<random_number_generator> generator = std::make_unique<mt19937_uniform>());
 
-		bool connect(std::string_view host, std::uint16_t port) override;
+		void connect(std::string_view host, tcp_port_t port) override;
 
 		std::size_t available() override;
 
