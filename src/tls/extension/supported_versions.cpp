@@ -7,6 +7,7 @@ namespace leaf::network::tls {
 			: holder_type(type) {
 		auto it = source.begin();
 		switch (holder_type) {
+			case extension_holder_t::hello_retry_request:
 			case extension_holder_t::server_hello: {
 				const auto end = std::next(it, sizeof(protocol_version_t));
 				if (end > source.end())
@@ -52,6 +53,7 @@ namespace leaf::network::tls {
 					write(std::endian::big, data, ver);
 				break;
 			}
+			case extension_holder_t::hello_retry_request:
 			case extension_holder_t::server_hello:
 				write(std::endian::big, data, versions.front());
 				break;

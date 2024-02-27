@@ -1,6 +1,5 @@
 #include "tcp/client.h"
 #include "http2/client.h"
-#include "http2/stream.h"
 
 #include <iostream>
 
@@ -9,11 +8,13 @@ using namespace leaf::network;
 int main() {
 	tcp::client tcp_client;
 
-	http2::client http2_client{tcp_client};
+	http2::client http2_client(tcp_client);
 
-	http::request request_1{"GET", {"http://nghttp2.org/"}},
-			request_2{"GET", {"http://nghttp2.org/documentation/"}};
-	auto future_1 = http2_client.fetch(request_1), future_2 = http2_client.fetch(request_2);
+	const http::request
+			req_1{"GET", {"http://nghttp2.org/"}},
+			req_2{"GET", {"http://nghttp2.org/documentation/"}};
+
+	auto future_1 = http2_client.fetch(req_1), future_2 = http2_client.fetch(req_2);
 
 	http2_client.process();
 

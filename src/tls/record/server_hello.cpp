@@ -14,14 +14,14 @@ namespace leaf::network::tls {
 		auto it = __v.begin();
 		read(std::endian::big, version, it);
 		read(std::endian::little, random, it);
-		is_hello_retry_request = std::ranges::equal(random, retry_magic);
+		is_hello_retry_request = std::equal(random.begin(), random.end(), retry_magic);
 		session_id_echo = read_bytestring(it, read<std::uint8_t>(std::endian::big, it));
 		read(std::endian::big, cipher_suite, it);
 		read(std::endian::big, compression_method, it);
 
 		const auto __size = read<ext_size_t>(std::endian::big, it);
 		const auto __end = std::next(it, __size);
-		if (__end > __v)
+		if (__end > __v.end())
 			throw std::runtime_error("incomplete ServerHello");
 		byte_string_view __fragment(it, __end);
 		while (!__fragment.empty()) {

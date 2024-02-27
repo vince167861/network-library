@@ -1,21 +1,26 @@
 #pragma once
 #include "basic_endpoint.h"
-#include "url.h"
+#include "http/url.h"
+#include <functional>
 #include <map>
-#include <string>
 #include <format>
 
 namespace leaf::network::http {
 
-	struct http_field_name_less {
+	namespace internal {
 
-		bool operator()(const std::string&, const std::string&) const;
-	};
+		struct http_field_name_less {
+
+			bool operator()(const std::string&, const std::string&) const;
+		};
+
+		using http_field_base = std::map<std::string, std::string, http_field_name_less>;
+	}
 
 
-	struct http_fields: std::map<std::string, std::string, http_field_name_less> {
+	struct http_fields: internal::http_field_base {
 
-		using std::map<std::string, std::string, http_field_name_less>::map;
+		using internal::http_field_base::map;
 
 		std::string& append(std::string_view name, std::string_view value, std::string_view sep = ",");
 
@@ -23,7 +28,7 @@ namespace leaf::network::http {
 
 		void remove(std::string_view name);
 
-		operator std::string();
+		operator std::string() const;
 
 		static http_fields from_http_headers(istream&);
 
@@ -41,25 +46,58 @@ namespace leaf::network::http {
 
 		std::string method;
 
-		url request_url;
+		url target;
 
-		std::string body;
+		std::string content;
 
 		request() = default;
 
 		request(std::string method, url, http_fields headers = {});
+
+		bool operator==(const request&) const;
 	};
 
 
 	struct response final: message {
 
-		long status;
+		unsigned status;
 
-		std::string body;
+		std::string content;
 
-		bool is_redirection() const;
+		bool is_redirection() const {
+			return 300 <= status && status <= 399;
+		}
+	};
+
+
+	struct event {
+
+		std::string event_type;
+
+		std::string data;
+
+		std::optional<std::string> id;
 	};
 }
+
+template<>
+struct std::hash<leaf::network::http::request> {
+
+	std::size_t operator()(const leaf::network::http::request&) const;
+};
+
+
+template<>
+struct std::formatter<leaf::network::http::request> {
+
+	constexpr auto parse(std::format_parse_context& ctx) {
+		return ctx.begin();
+	}
+
+	auto format(const leaf::network::http::request& req, std::format_context& ctx) const {
+		return std::format_to(ctx.out(), "request {} {}\n{}\n{}", req.method, req.target.url_string(), static_cast<std::string>(req.headers), req.content);
+	}
+};
 
 
 template<>
@@ -70,6 +108,6 @@ struct std::formatter<leaf::network::http::response> {
 	}
 
 	auto format(const leaf::network::http::response& response, std::format_context& ctx) const {
-		return std::format_to(ctx.out(), "response (status {})\n{}", response.status, response.body);
+		return std::format_to(ctx.out(), "response ({})\n{}\n{}", response.status, static_cast<std::string>(response.headers), response.content);
 	}
 };

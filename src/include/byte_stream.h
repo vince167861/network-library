@@ -57,6 +57,8 @@ namespace leaf {
 		using byte_string::byte_string, byte_string::operator=;
 
 		std::uint8_t read() override {
+			if (empty())
+				throw std::runtime_error("empty buffer");
 			const auto c = front();
 			erase(0, 1);
 			return c;

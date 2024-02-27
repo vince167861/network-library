@@ -1,6 +1,6 @@
 #pragma once
 
-#include "http/message.h"
+#include "../http/message.h"
 
 #include <cstdint>
 #include <list>
@@ -81,8 +81,31 @@ namespace leaf::network::http2 {
 
 	using header_list_t = std::list<std::pair<std::string, std::string>>;
 
+	union header_field_flag {
+		struct {
+			std::uint8_t indexed_field_index: 7;
+			bool indexed_field: 1;
+		};
+		struct {
+			std::uint8_t literal_index: 6;
+			bool literal_value_field: 1;
+			bool: 1;
+		};
+		struct {
+			std::uint8_t table_max_size: 5;
+			bool table_size_update: 1;
+			bool not_table_size_update: 2;
+		};
+		struct {
+			std::uint8_t literal_w_index: 4;
+			bool never_indexed: 1;
+			bool: 3;
+		};
+	};
+
 
 	class header_packer {
+
 		header_list_t dynamic_header_pairs;
 
 		void shrink_();

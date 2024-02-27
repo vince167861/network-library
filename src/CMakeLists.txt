@@ -6,7 +6,6 @@ target_include_directories(shared
 		PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
 target_sources(shared PUBLIC FILE_SET shared_headers TYPE HEADERS BASE_DIRS include FILES
 		include/common.h
-		include/task.h
 		include/byte_stream.h
 		include/basic_endpoint.h
 )

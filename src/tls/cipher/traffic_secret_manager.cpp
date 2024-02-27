@@ -100,7 +100,7 @@ namespace leaf::network::tls {
 				secret_state_ = secret_state_t::application;
 				break;
 			default:
-				throw std::runtime_error{"unexpected"};
+				throw std::runtime_error("unexpected");
 		}
 	}
 

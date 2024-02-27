@@ -1,12 +1,10 @@
-#include "http/message.h"
+#include "http/include/http/message.h"
 #include "utils.h"
-
 #include <format>
 
 namespace leaf::network::http {
 
-	const std::runtime_error http_field_parse_error{"invalid HTTP fields format"};
-
+	const std::runtime_error http_field_parse_error("invalid HTTP fields format");
 
 	std::string& http_fields::append(const std::string_view name, const std::string_view value, const std::string_view sep) {
 		auto lower_name = to_lower(name);
@@ -21,14 +19,14 @@ namespace leaf::network::http {
 		return operator[](to_lower(name)) = value;
 	}
 
-	http_fields::operator std::string() {
+	http_fields::operator std::string() const {
 		std::string str;
 		for (auto& [field, value]: *this)
 			str += std::format("{}: {}\r\n", field, value);
 		return str;
 	}
 
-	bool http_field_name_less::operator()(const std::string& lhs, const std::string& rhs) const {
+	bool internal::http_field_name_less::operator()(const std::string& lhs, const std::string& rhs) const {
 		const auto result = lhs <=> rhs;
 		return std::is_gt(result) && lhs == "host" || std::is_lt(result);
 	}
@@ -70,10 +68,19 @@ namespace leaf::network::http {
 	}
 
 	request::request(std::string method, url target, http_fields headers)
-			: message{std::move(headers)}, method(std::move(method)), request_url(std::move(target)) {
+			: message{std::move(headers)}, method(std::move(method)), target(std::move(target)) {
 	}
 
-	bool response::is_redirection() const {
-		return 300 <= status && status <= 399;
+	bool request::operator==(const request& o) const {
+		return method == o.method && target == o.target && content == o.content && headers == o.headers;
 	}
+}
+
+std::size_t std::hash<leaf::network::http::request>::operator()(const leaf::network::http::request& req) const {
+	std::size_t result = 0;
+	hash_combine(result, reinterpret_cast<const leaf::network::http::internal::http_field_base&>(req.headers));
+	hash_combine(result, req.method);
+	hash_combine(result, req.target);
+	hash_combine(result, req.content);
+	return result;
 }

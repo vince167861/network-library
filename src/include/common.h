@@ -2,6 +2,9 @@
 #include <cstdint>
 #include <bit>
 #include <format>
+#include <map>
+#include <unordered_map>
+#include <list>
 
 namespace leaf {
 
@@ -9,13 +12,6 @@ namespace leaf {
 
 	using byte_string_view = std::basic_string_view<std::uint8_t>;
 
-
-	struct binary_object {
-
-		virtual byte_string to_bytestring(std::endian = std::endian::big) const = 0;
-
-		virtual ~binary_object() = default;
-	};
 
 	constexpr std::uint64_t to_uint64(const char* & __b, const char* __e) {
 		std::uint64_t __v = 0;
@@ -66,5 +62,65 @@ struct std::formatter<leaf::byte_string_view> {
 		for (auto c: str)
 			it = std::format_to(it, "{:02x}", c);
 		return it;
+	}
+};
+
+template<class K, class V>
+struct std::hash<std::pair<K, V>>;
+
+template<class... Args>
+struct std::hash<std::map<Args...>>;
+
+template<class... Args>
+struct std::hash<std::unordered_map<Args...>>;
+
+template <class T>
+inline void hash_combine(std::size_t& seed, const T& v)
+{
+	static std::hash<T> hash;
+	seed ^= hash(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+}
+
+template<class K, class V>
+struct std::hash<std::pair<K, V>> {
+
+	std::size_t operator()(const std::pair<K, V>& val) {
+		std::size_t result;
+		hash_combine(result, val.first);
+		hash_combine(result, val.second);
+		return result;
+	}
+};
+
+template<class... Args>
+struct std::hash<std::map<Args...>> {
+
+	std::size_t operator()(const std::map<Args...>& val) const {
+		std::size_t result;
+		for (auto& p: val)
+			hash_combine(result, p);
+		return result;
+	}
+};
+
+template<class... Args>
+struct std::hash<std::list<Args...>> {
+
+	std::size_t operator()(const std::list<Args...>& val) const {
+		std::size_t result;
+		for (auto& p: val)
+			hash_combine(result, p);
+		return result;
+	}
+};
+
+template<class... Args>
+struct std::hash<std::unordered_map<Args...>> {
+
+	std::size_t operator()(const std::unordered_map<Args...>& val) const {
+		std::size_t result;
+		for (auto& p: val)
+			hash_combine(result, p);
+		return result;
 	}
 };

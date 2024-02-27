@@ -23,7 +23,6 @@ int main(const int argc, char** argv) {
 
 	http2_client.process();
 
-	const auto response = future.get();
-	std::cout << std::format("{}\n", response);
+	std::cout << std::format("{}", future.get());
 	return 0;
 }

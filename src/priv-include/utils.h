@@ -19,7 +19,7 @@ namespace leaf {
 	}
 
 	template<typename T>
-	void write(std::endian endian, stream& dst, const T& src, const std::size_t count = sizeof(T)) {
+	void write(std::endian endian, ostream& dst, const T& src, const std::size_t count = sizeof(T)) {
 		bool reverse = endian != std::endian::native;
 		const uint8_t* src_ptr = reinterpret_cast<const uint8_t*>(&src), * src_end = src_ptr + count;
 		byte_string data{src_ptr, src_end};

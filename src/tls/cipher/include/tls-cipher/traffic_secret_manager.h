@@ -50,5 +50,9 @@ namespace leaf::network::tls {
 		void update_application_key();
 
 		void update_entropy_secret(byte_string_view source = {});
+
+		void reset() {
+			secret_state_ = secret_state_t::init;
+		}
 	};
 }

@@ -45,5 +45,13 @@ namespace leaf::network {
 		std::string uri_string() const;
 
 		std::string requesting_uri_string() const;
+
+		bool operator==(const url&) const;
 	};
 }
+
+template<>
+struct std::hash<leaf::network::url> {
+
+	std::size_t operator()(const leaf::network::url&) const;
+};

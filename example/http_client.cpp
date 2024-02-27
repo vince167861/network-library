@@ -1,22 +1,20 @@
 #include "tcp/client.h"
-#include "http/client.h"
-
+#include "http1_1/client.h"
 #include <iostream>
 
 using namespace leaf::network;
 
-int main() {
-	tcp::client client;
+int main(int argc, const char* const* const argv) {
+	const url request_target(argc > 1 ? argv[1] : "http://example.com");
+	tcp::client tcp_client;
+	http::client http_client(tcp_client);
 
-	http::client http_client{client};
+	http::request request("GET", request_target, {{"accept", "text/html"}});
+	http::response_parser response;
+	http_client.fetch(request, response);
 
-	http::request
-			request_1("GET", {"http://example.com"}, {{"accept", "text/html"}}),
-			request_2{"GET", {"http://example.com/1"}};
-
-	auto future_1 = http_client.fetch(request_1), future_2 = http_client.fetch(request_2);
-	http_client.process();
-	std::cout << std::format("response of request 1:\n{}\nresponse of request 2:\n{}", future_1.get(), future_2.get());
-
+	for (auto& [req, res]: response.parsed) {
+		std::cout << std::format("{}\n{}\n", req, res);
+	}
 	return 0;
 }

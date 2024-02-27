@@ -46,7 +46,7 @@
 
 namespace leaf::network::tcp {
 
-	const std::runtime_error closed{"Connection closed."};
+	const std::runtime_error closed("tcp connection closed");
 
 #ifdef PLATFORM_Windows
 	class wsa_control {
@@ -80,12 +80,12 @@ namespace leaf::network::tcp {
 					throw closed;
 				case error_conn_reset:
 					close();
-					throw std::runtime_error{"Connection reset."};
+					throw std::runtime_error("tcp connection reset");
 				case error_conn_refused:
 					close();
-					throw std::runtime_error{"Connection refused."};
+					throw std::runtime_error("tcp connection refused");
 				default:
-					throw std::runtime_error{std::format("{} gives error {}", function, error_no)};
+					throw std::runtime_error(std::format("{} gives error {}", function, error_no));
 			}
 		}
 
@@ -138,7 +138,7 @@ namespace leaf::network::tcp {
 				throw closed;
 			const auto result = send(socket_, reinterpret_cast<const char*>(buffer.data()), buffer.size(), 0);
 			if (result < 0)
-				handle_error_("send_");
+				handle_error_("send");
 			if (result == 0 && !buffer.empty())
 				close();
 		}

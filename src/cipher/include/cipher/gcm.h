@@ -48,7 +48,7 @@ namespace leaf {
 		decrypt(const big_unsigned& iv, const big_unsigned& cipher, const big_unsigned& auth_data, const big_unsigned& tag) const;
 
 		/// function GHASH of GCM spec
-		big_unsigned ghash(const big_unsigned& val) const;
+		big_unsigned ghash(const big_unsigned&) const;
 
 		/// function GCTR of GCM spec.
 		big_unsigned gctr(big_unsigned ICB, const big_unsigned& X) const;

@@ -62,8 +62,7 @@ namespace leaf::network::tls {
 	byte_string message_hash(const cipher_suite& cipher, const byte_string_view data) {
 		byte_string msg;
 		write(std::endian::big, msg, handshake_type_t::message_hash);
-		msg.append({0, 0});
-		write(std::endian::big, msg, cipher.digest_length, 1);
+		write(std::endian::big, msg, cipher.digest_length, 3);
 		msg += cipher.hash(data);
 		return msg;
 	}

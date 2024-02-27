@@ -1,7 +1,6 @@
 #include "http2/header_packer.h"
-
+#include "http2/huffman.h"
 #include "utils.h"
-
 #include <ranges>
 
 namespace leaf::network::http2 {
@@ -72,34 +71,31 @@ namespace leaf::network::http2 {
 		{"www-authenticate", ""},
 	};
 
-	void write_integer(byte_string& dest, const uint8_t prefix_size, const uint8_t prefix_value, const uint64_t value) {
-		if (prefix_size > 8 or prefix_size < 1)
-			throw std::exception{};
-		if (value < 1 << prefix_size)
-			dest.push_back(static_cast<char>(prefix_value << prefix_size | value));
-		else {
-			dest.push_back(static_cast<char>(prefix_value << prefix_size | ~0 >> 8 - prefix_size));
-			constexpr std::size_t bytes = sizeof value * 8 / 7;
-			for (std::size_t i = 0; i < bytes; ++i) {
-				const bool last = value >> 7 * (i + 1) == 0;
-				dest.push_back(static_cast<char>(value >> 7 * i | (last ? 0 : 1 << 7)));
-				if (last) break;
-			}
+	void write_integer(byte_string& dst, const std::uint8_t prefix_size, std::uintmax_t value) {
+		const auto max_value = (1u << prefix_size) - 1;
+		if (value < max_value) {
+			dst.back() = dst.back() & ~max_value | value;
+			return;
 		}
+		dst.back() &= max_value;
+		for (value -= max_value; value >= 128; value >>= 7)
+			dst.push_back(value & 127 | 128);
+		dst.push_back(value);
 	}
 
-	void read_integer(byte_string_view::const_iterator& ptr, const std::uint8_t prefix_size, std::uint8_t& prefix_value, std::uint64_t& value) {
-		value = 0;
-		const std::uint8_t prefix = *ptr++, mask = ~(~0 << prefix_size);
-		prefix_value = prefix >> prefix_size;
-		if ((prefix & mask) == mask)
-			for (std::uint8_t i = 0;;) {
-				value += *ptr << 7 * i;
-				if ((*ptr++ & 1 << 7) == 0)
-					break;
-			}
-		else
-			value = prefix & mask;
+	void read_integer(auto& it, const std::uint8_t prefix_size, std::uintmax_t& value) {
+		const auto max_value = (1u << prefix_size) - 1;
+		value = *it++ & max_value;
+		if (value < max_value)
+			return;
+		std::size_t i = 0;
+		while (true) {
+			const auto octet = *it++;
+			value += octet & 127 << i;
+			if (!(octet & 128))
+				break;
+			i += 7;
+		}
 	}
 
 	void header_packer::shrink_() {
@@ -128,21 +124,25 @@ namespace leaf::network::http2 {
 			else if (auto iter = std::ranges::find(dynamic_header_pairs, pair); iter != dynamic_header_pairs.end())
 				index = std::distance(dynamic_header_pairs.begin(), iter) + 62;
 			if (index) {
-				write_integer(ret, 7, 1, index);
+				ret.push_back(128);
+				write_integer(ret, 7, index);
 				continue;
 			}
-			auto&& static_keys = std::views::keys(static_header_pairs);
-			auto&& dynamic_keys = std::views::keys(dynamic_header_pairs);
-			if (auto iter = std::ranges::find(static_keys, pair.first); iter != static_keys.end())
-				index = std::distance(static_keys.begin(), iter);
-			else if (auto iter = std::ranges::find(dynamic_keys, pair.first); iter != dynamic_keys.end())
+			auto static_keys = std::views::keys(static_header_pairs);
+			auto dynamic_keys = std::views::keys(dynamic_header_pairs);
+			if (auto it = std::ranges::find(static_keys, pair.first), end = static_keys.end(); it != end)
+				index = std::distance(static_keys.begin(), it);
+			else if (auto iter = std::ranges::find(dynamic_keys, pair.first), end = dynamic_keys.end(); iter != end)
 				index = std::distance(dynamic_keys.begin(), iter) + 62;
-			write_integer(ret, 6, 1, index);
+			ret.push_back(64);
+			write_integer(ret, 6, index);
 			if (!index) {
-				write_integer(ret, 7, 0, name.size());
+				ret.push_back(0);
+				write_integer(ret, 7, name.size());
 				ret += reinterpret_cast<const byte_string&>(name);
 			}
-			write_integer(ret, 7, 0, value.size());
+			ret.push_back(0);
+			write_integer(ret, 7, value.size());
 			ret += reinterpret_cast<const byte_string&>(value);
 			emplace_front_(name, value);
 		}
@@ -151,43 +151,57 @@ namespace leaf::network::http2 {
 
 	http::http_fields header_packer::decode(const byte_string_view source) {
 		http::http_fields members;
-		uint8_t unused;
 		uint64_t value;
-		auto ptr = source.begin();
-		if (const uint8_t header = *ptr; header & 1 << 7) {
-			read_integer(ptr, 7, unused, value);
-			std::pair<std::string, std::string> pair;
-			if (value < 62) {
-				auto& [name, field] = static_header_pairs[value];
-				members.append(name, field);
+		for (auto it = source.begin(), end = source.end(); it != end;) {
+			if (const auto header = reinterpret_cast<const header_field_flag&>(*it); header.indexed_field) {
+				read_integer(it, 7, value);
+				std::pair<std::string, std::string> pair;
+				if (value < 62) {
+					auto& [name, field] = static_header_pairs[value];
+					members.append(name, field);
+				} else {
+					const auto ind = value - 62;
+					if (ind > dynamic_header_pairs.size())
+						throw std::out_of_range("dynamic header table");
+					auto& [name, field] = *std::next(dynamic_header_pairs.begin(), ind);
+					members.append(name, field);
+				}
+			} else if (!header.not_table_size_update && header.table_size_update) {
+				read_integer(it, 5, value);
+				dynamic_table_size_ = value;
+				shrink_();
 			} else {
-				auto& [name, field] = *std::next(dynamic_header_pairs.begin(), value - 62);
-				members.append(name, field);
+				if (header.literal_value_field)
+					read_integer(it, 6, value);
+				else
+					// TODO: never-indexed(0001) and without-indexed(0000) is processed identically
+					read_integer(it, 4, value);
+				std::string name;
+				if (value == 0) {
+					const bool huffman = *it & 0x80;
+					read_integer(it, 7, value);
+					const auto begin = it;
+					std::advance(it, value);
+					if (huffman)
+						name = internal::from_huffman({begin, it});
+					else
+						name = {begin, it};
+				} else if (value < 62)
+					name = std::next(static_header_pairs.begin(), value)->first;
+				else
+					name = std::next(dynamic_header_pairs.begin(), value - 62)->first;
+				const bool huffman = *it & 0x80;
+				read_integer(it, 7, value);
+				const auto begin = it;
+				std::advance(it, value);
+				const auto field = [&] -> std::string {
+					if (huffman)
+						return internal::from_huffman({begin, it});
+					return {begin, it};
+				}();
+				emplace_front_(name, field);
+				members.append(std::move(name), std::move(field));
 			}
-		} else if (header & 1 << 5) {
-			read_integer(ptr, 5, unused, value);
-			dynamic_table_size_ = value;
-			shrink_();
-		} else {
-			if (header & 1 << 6)
-				read_integer(ptr, 6, unused, value);
-			else
-				read_integer(ptr, 4, unused, value);
-			/* TODO: never-indexed(0001) and without-indexed(0000) is processed identically */
-			std::string name;
-			if (value == 0) {
-				read_integer(ptr, 7, unused, value);
-				auto begin = ptr;
-				std::advance(ptr, value);
-				name = {begin, ptr};
-			} else if (value < 62)
-				name = std::next(static_header_pairs.begin(), value)->first;
-			else
-				name = std::next(dynamic_header_pairs.begin(), value - 62)->first;
-			read_integer(ptr, 7, unused, value);
-			const auto begin = ptr;
-			std::advance(ptr, value);
-			members.append(std::move(name), std::string{begin, ptr});
 		}
 		return members;
 	}

@@ -12,15 +12,15 @@ TEST(header_packer, encode) {
 	http::http_fields headers;
 
 	headers.set("custom-key", "custom-header");
-	ASSERT_EQ(packer.encode(headers), packed_1);
+	ASSERT_EQ(packer.encode(headers), leaf::byte_string_view(packed_1));
 
 	headers.set(":method", "GET");
-	ASSERT_EQ(packer.encode(headers), packed_2);
+	ASSERT_EQ(packer.encode(headers), leaf::byte_string_view(packed_2));
 
 	headers.set(":scheme", "http");
 	headers.set(":path", "/");
 	headers.set(":authority", "www.example.com");
-	ASSERT_EQ(packer.encode(headers), packed_3);
+	ASSERT_EQ(packer.encode(headers), leaf::byte_string_view(packed_3));
 }
 
 int main() {

@@ -72,6 +72,8 @@ namespace leaf::network::tls {
 	}
 
 	void endpoint::use_group(const named_group_t ng) {
+		if (key_exchange_ && key_exchange_->group == ng)
+			return;
 		key_exchange_ = get_key_manager(ng, *random_);
 	}
 
@@ -95,6 +97,7 @@ namespace leaf::network::tls {
 		if (connected())
 			finish();
 		underlying_.close();
+		key_exchange_.reset();
 	}
 
 	void endpoint::send_(const record& record) {

@@ -102,8 +102,7 @@ namespace leaf::network::tls {
 								auto& [group, key] = *__s_ks.shares.begin();
 								std::cout << std::format("[TLS client] using group {} for key exchange\n", group);
 								if (available_managers_.contains(group)) {
-									std::unique_ptr<key_exchange_manager> mgr;
-									std::swap(available_managers_.at(group), mgr);
+									auto mgr = std::move(available_managers_.extract(group).mapped());
 									use_group(std::move(mgr));
 								} else
 									use_group(group);
@@ -217,5 +216,6 @@ namespace leaf::network::tls {
 			session_id = random_->number(32);
 		else
 			session_id.clear();
+		secret_.reset();
 	}
 }

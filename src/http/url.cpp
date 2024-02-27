@@ -1,5 +1,4 @@
 #include "http/url.h"
-
 #include "utils.h"
 #include <format>
 
@@ -160,6 +159,11 @@ namespace leaf::network {
 			fragment = {query_ends + 1, uri.end()};
 	}
 
+	bool url::operator==(const url& u) const {
+		return scheme == u.scheme && username == u.username && password == u.password && host == u.host
+			&& port == u.port && path == u.path && query == u.query && fragment == u.fragment;
+	}
+
 	std::string to_percent_encoding(const std::string_view string) {
 		std::string str;
 		for (auto c: string) {
@@ -190,4 +194,17 @@ namespace leaf::network {
 		}
 		return result;
 	}
+}
+
+std::size_t std::hash<leaf::network::url>::operator()(const leaf::network::url& u) const {
+	std::size_t result;
+	hash_combine(result, u.scheme);
+	hash_combine(result, u.username);
+	hash_combine(result, u.password);
+	hash_combine(result, u.host);
+	hash_combine(result, u.port);
+	hash_combine(result, u.path);
+	hash_combine(result, u.query);
+	hash_combine(result, u.fragment);
+	return result;
 }

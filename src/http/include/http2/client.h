@@ -1,24 +1,23 @@
 #pragma once
-
 #include "basic_endpoint.h"
-#include "http2/context.h"
-#include "http2/frame.h"
 #include "http/message.h"
-#include "http/event_stream.h"
-
+#include "http2/state.h"
+#include "http2/frame.h"
 #include <future>
 
 namespace leaf::network::http2 {
 
-	class client: public context {
+	class client final {
 
 		network::client& client_;
 
-		std::optional<std::pair<std::string, uint16_t>> connected_remote_;
+		connection_state state_;
 
-		std::optional<uint32_t> closing_;
+		std::optional<std::pair<std::string, tcp_port_t>> connected_remote_;
 
-		bool connect(std::string_view host, uint16_t port);
+		std::unordered_map<http::request, std::future<http::response>> pushed_;
+
+		void connect(std::string_view host, tcp_port_t);
 
 		bool connected() const;
 
@@ -26,19 +25,10 @@ namespace leaf::network::http2 {
 
 		void process_settings(const setting_values_t& settings_f);
 
-		/**
-		 * \brief Send connection frames.
-		 *
-		 * \details Blocking `write_` to write_to_ critical frames of HTTP/2 connections.
-		 */
-		void write_(const frame& frame) const;
-
 	public:
 		explicit client(network::client&);
 
-		std::future<http::response> fetch(const http::request&);
-
-		http::event_source stream(const http::request&);
+		std::future<http::response> fetch(http::request);
 
 		void process();
 

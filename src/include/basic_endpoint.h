@@ -28,10 +28,12 @@ namespace leaf::network {
 		}
 	};
 
+	using tcp_port_t = std::uint16_t;
+
 
 	struct client: virtual endpoint {
 
-		virtual bool connect(std::string_view host, std::uint16_t port) = 0;
+		virtual bool connect(std::string_view host, tcp_port_t) = 0;
 
 		virtual std::size_t available() = 0;
 	};
@@ -39,7 +41,7 @@ namespace leaf::network {
 
 	struct server {
 
-		virtual void listen(std::uint16_t port, std::size_t max_connection) = 0;
+		virtual void listen(tcp_port_t, std::size_t max_connection) = 0;
 
 		virtual std::unique_ptr<endpoint> accept() = 0;
 
