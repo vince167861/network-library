@@ -1,5 +1,5 @@
 #include "number/big_number.h"
-#include "utils.h"
+#include "internal/utils.h"
 #include <format>
 #include <ranges>
 #include <utility>

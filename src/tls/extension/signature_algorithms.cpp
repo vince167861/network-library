@@ -1,5 +1,5 @@
 #include "tls-extension/extension.h"
-#include "utils.h"
+#include "internal/utils.h"
 
 #define EXT_NAME "SignatureAlgorithms"
 

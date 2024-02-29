@@ -4,6 +4,11 @@
 
 namespace leaf::network {
 
+	enum class endpoint_type_t {
+		server, client
+	};
+
+
 	struct endpoint: virtual stream {
 
 		virtual bool connected() const = 0;

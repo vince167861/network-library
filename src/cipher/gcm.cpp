@@ -1,5 +1,5 @@
 #include "cipher/gcm.h"
-#include "utils.h"
+#include "internal/utils.h"
 #include <stdexcept>
 
 namespace leaf {

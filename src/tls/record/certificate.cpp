@@ -1,6 +1,6 @@
 #include "tls-record/handshake.h"
 #include "tls-record/alert.h"
-#include "utils.h"
+#include "internal/utils.h"
 #include <ranges>
 
 namespace leaf::network::tls {

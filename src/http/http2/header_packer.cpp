@@ -1,6 +1,6 @@
 #include "http2/header_packer.h"
 #include "http2/huffman.h"
-#include "utils.h"
+#include "internal/utils.h"
 #include <ranges>
 
 namespace leaf::network::http2 {

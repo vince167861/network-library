@@ -2,7 +2,7 @@
 #include "tls-record/record.h"
 #include "tls-record/alert.h"
 #include "tls-record/handshake.h"
-#include "utils.h"
+#include "internal/utils.h"
 #include <iostream>
 
 namespace leaf::network::tls {

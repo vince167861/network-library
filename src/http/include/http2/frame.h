@@ -61,6 +61,7 @@ namespace leaf::network::http2 {
 
 	struct connection_frame: virtual basic_frame {
 
+		// second parameter is reserved for future potential uses
 		virtual void generator(ostream&, connection_state&) const = 0;
 	};
 

@@ -1,7 +1,7 @@
 #include "tls-cipher/cipher_suite.h"
 
 #include "tls-cipher/cipher_suite_aes_gcm.h"
-#include "utils.h"
+#include "internal/utils.h"
 
 namespace leaf::network::tls {
 

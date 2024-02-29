@@ -1,6 +1,6 @@
 #include "http2/frame.h"
 #include "http2/state.h"
-#include "utils.h"
+#include "internal/utils.h"
 #include <format>
 
 namespace leaf::network::http2 {
@@ -33,7 +33,7 @@ namespace leaf::network::http2 {
 						read(std::endian::big, __s, it);
 						read(std::endian::big, __v, it);
 					}
-					return {{__t, std::make_unique<settings>(__vs)}};
+					return {{__t, std::make_unique<settings>(std::move(__vs))}};
 				}
 				case frame_type_t::data: {
 					if (__pending)

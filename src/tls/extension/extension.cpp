@@ -1,6 +1,6 @@
 #include "tls-extension/extension.h"
 
-#include "utils.h"
+#include "internal/utils.h"
 
 namespace leaf::network::tls {
 

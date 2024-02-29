@@ -1,6 +1,5 @@
 #include "http2/type.h"
-
-#include "macro.h"
+#include "internal/macro.h"
 
 std::format_context::iterator
 std::formatter<leaf::network::http2::error_t>::format(const leaf::network::http2::error_t& error, format_context& context) const {

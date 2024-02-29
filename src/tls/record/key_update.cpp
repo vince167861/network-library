@@ -1,5 +1,5 @@
 #include "tls-record/handshake.h"
-#include "utils.h"
+#include "internal/utils.h"
 
 namespace leaf::network::tls {
 
