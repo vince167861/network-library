@@ -16,7 +16,7 @@ int main(int argc, char** argv) {
 	tls_client.add_group(named_group_t::ffdhe2048, false);
 
 	http::client https_client(tls_client);
-	const url request_url(argc > 1 ? argv[1] : "https://www.google.com/");
+	const uri request_url(argc > 1 ? argv[1] : "https://www.google.com/");
 
 	auto response = https_client.fetch({"GET", request_url});
 

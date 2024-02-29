@@ -190,10 +190,11 @@ struct std::formatter<leaf::network::tls::extension_base> {
 
 	std::size_t indent = 0;
 
-	constexpr auto parse(std::format_parse_context& context) {
-		auto it = context.begin(), end = context.end();
-		if (it != context.end())
-			indent = leaf::to_uint64(it, end);
+	constexpr auto parse(std::format_parse_context& ctx) {
+		const auto it = ctx.begin(), end = ctx.end();
+		if (it != end)
+			if (std::from_chars(it, end, indent).ec != std::errc())
+				throw std::format_error("formatting extension: indent error");
 		return it;
 	}
 

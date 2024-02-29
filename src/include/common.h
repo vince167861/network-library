@@ -10,18 +10,12 @@ namespace leaf {
 	using byte_string = std::basic_string<std::uint8_t>;
 
 	using byte_string_view = std::basic_string_view<std::uint8_t>;
-
-
-	constexpr std::uint64_t to_uint64(const char* & __b, const char* __e) {
-		std::uint64_t __v = 0;
-		for (; __b != __e; ++__b) {
-			if (*__b < '0' || *__b > '9')
-				break;
-			__v = __v * 10 + (*__b - '0');
-		}
-		return __v;
-	}
 }
+
+
+// The following explicit template specializations are to stop std::make_format_args to
+// store leaf::byte_string/_view as std::basic_string/_view. The current problem is that
+// GCC implementation does not check whether TD::char_type == Context::char_type.
 
 template<>
 constexpr bool std::__is_specialization_of<leaf::byte_string, std::basic_string> = false;
@@ -74,7 +68,7 @@ template<class... Args>
 struct std::hash<std::unordered_map<Args...>>;
 
 template <class T>
-inline void hash_combine(std::size_t& seed, const T& v)
+void hash_combine(std::size_t& seed, const T& v)
 {
 	static std::hash<T> hash;
 	seed ^= hash(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);

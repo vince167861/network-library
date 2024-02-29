@@ -67,7 +67,7 @@ namespace leaf::network::http {
 		return fields;
 	}
 
-	request::request(std::string method, url target, http_fields headers)
+	request::request(std::string method, uri target, http_fields headers)
 			: message{std::move(headers)}, method(std::move(method)), target(std::move(target)) {
 	}
 

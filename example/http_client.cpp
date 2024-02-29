@@ -5,7 +5,7 @@
 using namespace leaf::network;
 
 int main(int argc, const char* const* const argv) {
-	const url request_target(argc > 1 ? argv[1] : "http://example.com");
+	const uri request_target(argc > 1 ? argv[1] : "http://example.com");
 	tcp::client tcp_client;
 	http::client http_client(tcp_client);
 

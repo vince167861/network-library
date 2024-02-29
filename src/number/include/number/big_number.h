@@ -18,9 +18,9 @@ namespace leaf {
 				: big_unsigned(byte_string_view{reinterpret_cast<const std::uint8_t *>(&val), sizeof(T)}, bits, std::endian::native) {
 		}
 
-		big_unsigned(const byte_string_view bitstring, std::optional<std::size_t> bits = std::nullopt, std::endian = std::endian::little);
+		big_unsigned(byte_string_view bitstring, std::optional<std::size_t> bits = std::nullopt, std::endian = std::endian::little);
 
-		big_unsigned(const std::string_view hexstring, std::optional<std::size_t> bits = std::nullopt);
+		big_unsigned(std::string_view hexstring, std::optional<std::size_t> bits = std::nullopt);
 
 		big_unsigned& operator+=(const big_unsigned&);
 

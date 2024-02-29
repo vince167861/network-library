@@ -37,7 +37,6 @@ namespace leaf::network::http2 {
 		std::uint32_t max_frame_size: 24 = 16384;
 		uint32_t header_table_size = 4096;
 		uint32_t init_window_size = 65535;
-		uint32_t current_window_bytes = init_window_size;
 		bool enable_push = true;
 	};
 

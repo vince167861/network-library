@@ -5,7 +5,7 @@
 
 namespace leaf::network::http2 {
 
-	const std::vector<std::pair<std::string_view, std::string>>
+	const std::vector<std::pair<std::string_view, std::string_view>>
 	static_header_pairs {
 		{"", ""},
 		{":authority", ""},
@@ -109,8 +109,7 @@ namespace leaf::network::http2 {
 	}
 
 	template<class T1, class T2, class U1, class U2>
-	constexpr inline bool operator==(
-			const std::pair<T1, T2>& lhs, const std::pair<U1, U2>& rhs) {
+	constexpr bool operator==(const std::pair<T1, T2>& lhs, const std::pair<U1, U2>& rhs) {
 		return lhs.first == rhs.first && lhs.second == rhs.second;
 	}
 
@@ -118,25 +117,27 @@ namespace leaf::network::http2 {
 		byte_string ret;
 		for (auto& pair: headers) {
 			auto& [name, value] = pair;
-			uint64_t index = 0;
-			if (auto iter = std::ranges::find(static_header_pairs, pair); iter != static_header_pairs.end())
-				index = std::distance(static_header_pairs.begin(), iter);
-			else if (auto iter = std::ranges::find(dynamic_header_pairs, pair); iter != dynamic_header_pairs.end())
-				index = std::distance(dynamic_header_pairs.begin(), iter) + 62;
-			if (index) {
+			const auto [ind, indexed] = [&] -> std::pair<std::uintmax_t, bool> {
+				if (const auto it = std::ranges::find(static_header_pairs, pair); it != static_header_pairs.end())
+					return {static_cast<std::uintmax_t>(std::distance(static_header_pairs.begin(), it)), true};
+				if (const auto it = std::ranges::find(dynamic_header_pairs, pair); it != dynamic_header_pairs.end())
+					return {static_cast<std::uintmax_t>(std::distance(dynamic_header_pairs.begin(), it) + 62), true};
+				const auto static_keys = static_header_pairs | std::views::keys;
+				if (const auto it = std::ranges::find(static_keys, pair.first); it != static_keys.end())
+					return {static_cast<std::uintmax_t>(std::distance(static_keys.begin(), it)), false};
+				const auto dynamic_keys = dynamic_header_pairs | std::views::keys;
+				if (const auto it = std::ranges::find(dynamic_keys, pair.first); it != dynamic_keys.end())
+					return {static_cast<std::uintmax_t>(std::distance(dynamic_keys.begin(), it) + 62), false};
+				return {0, false};
+			}();
+			if (indexed) {
 				ret.push_back(128);
-				write_integer(ret, 7, index);
+				write_integer(ret, 7, ind);
 				continue;
 			}
-			auto static_keys = std::views::keys(static_header_pairs);
-			auto dynamic_keys = std::views::keys(dynamic_header_pairs);
-			if (auto it = std::ranges::find(static_keys, pair.first), end = static_keys.end(); it != end)
-				index = std::distance(static_keys.begin(), it);
-			else if (auto iter = std::ranges::find(dynamic_keys, pair.first), end = dynamic_keys.end(); iter != end)
-				index = std::distance(dynamic_keys.begin(), iter) + 62;
 			ret.push_back(64);
-			write_integer(ret, 6, index);
-			if (!index) {
+			write_integer(ret, 6, ind);
+			if (!ind) {
 				ret.push_back(0);
 				write_integer(ret, 7, name.size());
 				ret += reinterpret_cast<const byte_string&>(name);

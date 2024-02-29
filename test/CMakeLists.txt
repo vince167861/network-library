@@ -14,7 +14,7 @@ if (GTest_FOUND)
 
 	add_executable(test-http
 			http/header_packer.cpp
-			http/url.cpp)
+			http/uri.cpp)
 	target_link_libraries(test-http http_common http2)
 
 	add_executable(test-tcp tcp.cpp)

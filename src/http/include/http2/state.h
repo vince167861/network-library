@@ -8,24 +8,21 @@
 #include <memory>
 #include <future>
 
-
 namespace leaf::network::http2 {
-
 
 	struct stream_state;
 
-
 	struct connection_state {
 
-		const enum class endpoint_type_t {
-			server, client
-		} endpoint_type;
+		const endpoint_type_t endpoint_type;
 
 		endpoint_state_t local_config, remote_config;
 
+		std::size_t remote_window_size, local_window_size;
+
 		header_packer local_packer, remote_packer;
 
-		explicit connection_state(endpoint_type_t, stream&);
+		connection_state(endpoint_type_t, stream&);
 
 		std::future<http::response> remote_reserve(stream_id_t, http::http_fields);
 
@@ -72,8 +69,12 @@ namespace leaf::network::http2 {
 			idle, local_reserved, remote_reserved, open, local_half_closed, remote_half_closed, closed
 		};
 
-		stream_state(stream_id_t, ostream&, connection_state&, const http::request&);
+		const stream_id_t stream_id;
 
+		/// constructor for local open (request) stream
+		stream_state(stream_id_t, ostream&, connection_state&, http::request);
+
+		/// constructor for remote reserve (server push) stream
 		stream_state(stream_id_t, ostream&, connection_state&, http::http_fields);
 
 		void notify(http::http_fields, bool end_stream);
@@ -86,13 +87,11 @@ namespace leaf::network::http2 {
 
 		void increase_window(std::uint32_t);
 
-		std::uint32_t available_window() const;
+		std::size_t available_window() const;
 
-		bool request_window(std::uint32_t);
+		bool request_window(std::size_t);
 
 		state_t state() const;
-
-		stream_id_t stream_id() const;
 
 		void write(const stream_frame&);
 
@@ -101,7 +100,6 @@ namespace leaf::network::http2 {
 		}
 
 	private:
-		stream_id_t stream_id_;
 
 		state_t state_;
 
@@ -115,7 +113,7 @@ namespace leaf::network::http2 {
 
 		std::promise<http::response> response_promise_;
 
-		std::uint32_t window_bytes_;
+		std::uint32_t window_size_;
 
 		std::list<std::reference_wrapper<stream_state>> promised_stream_;
 
@@ -123,6 +121,5 @@ namespace leaf::network::http2 {
 
 		void set_remote_closed_();
 
-		void write_request_();
 	};
 }

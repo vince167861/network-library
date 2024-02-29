@@ -1,12 +1,11 @@
 #include "http1_1/client.h"
-#include <list>
 #include <algorithm>
 #include <ranges>
 #include <iostream>
 
 namespace leaf::network::http {
 
-	constexpr std::string safe_methods[] {"GET", "HEAD", "OPTIONS", "TRACE"}, idempotent_methods[] {"PUT", "DELETE"};
+	constexpr std::string_view safe_methods[] {"GET", "HEAD", "OPTIONS", "TRACE"}, idempotent_methods[] {"PUT", "DELETE"};
 	constexpr auto ill_form_status_line = "ill-formed http status line";
 	constexpr auto literal_location = "location";
 	constexpr auto literal_transfer_encoding = "transfer-encoding";
@@ -25,22 +24,22 @@ namespace leaf::network::http {
 
 	response client::fetch(request _req) try {
 		for (std::size_t redirection_count = 0; redirection_count < 7; ++redirection_count) {
-			auto __p = _req.target.port;
-			if (!__p) {
+			const auto __p = [&] -> tcp_port_t {
+				if (_req.target.port)
+					return _req.target.port;
 				if (_req.target.scheme == "http")
-					__p = 80;
-				else if (_req.target.scheme == "https")
-					__p = 443;
-				else
-					throw std::invalid_argument("unknown scheme or set port explicitly");
-			}
+					return 80;
+				if (_req.target.scheme == "https")
+					return 443;
+				throw std::invalid_argument("unknown scheme or set port explicitly");
+			}();
 			connect_(_req.target.host, __p);
 			auto copy = _req.headers;
 			copy.set("host", _req.target.host);
 			if (!_req.content.empty())
 				copy.set("content-length", std::to_string(_req.content.length()));
 			const auto req_str
-					= std::format("{} {} HTTP/1.1\r\n{}\r\n{}", _req.method, _req.target.requesting_uri_string(),
+					= std::format("{} {} HTTP/1.1\r\n{}\r\n{}", _req.method, _req.target.origin_form(),
 								static_cast<std::string>(copy), _req.content);
 			underlying_.write(reinterpret_cast<const byte_string&>(req_str));
 			auto status_line = underlying_.read_line();
@@ -104,7 +103,7 @@ namespace leaf::network::http {
 			}
 			if (!res.is_redirection() || !res.headers.contains(literal_location))
 				return res;
-			_req.target.replace(res.headers.at(literal_location));
+			_req.target.from_relative({res.headers.at(literal_location)});
 		}
 		return {};
 	} catch (const std::exception& e) {

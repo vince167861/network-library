@@ -1,7 +1,6 @@
 #pragma once
 #include "basic_endpoint.h"
 #include "http/message.h"
-#include <list>
 
 namespace leaf::network::http {
 

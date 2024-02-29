@@ -4,10 +4,6 @@
 
 namespace leaf {
 
-	enum class endpoint_type_t {
-		server, client
-	};
-
 	using random_t = std::array<std::uint8_t, 32>;
 
 	enum class content_type_t: std::uint8_t {

@@ -1,6 +1,6 @@
 #pragma once
 #include "basic_endpoint.h"
-#include "http/url.h"
+#include "http/uri.h"
 #include <functional>
 #include <map>
 #include <format>
@@ -46,13 +46,13 @@ namespace leaf::network::http {
 
 		std::string method;
 
-		url target;
+		uri target;
 
 		std::string content;
 
 		request() = default;
 
-		request(std::string method, url, http_fields headers = {});
+		request(std::string method, uri, http_fields headers = {});
 
 		bool operator==(const request&) const;
 	};
@@ -95,7 +95,7 @@ struct std::formatter<leaf::network::http::request> {
 	}
 
 	auto format(const leaf::network::http::request& req, std::format_context& ctx) const {
-		return std::format_to(ctx.out(), "request {} {}\n{}\n{}", req.method, req.target.url_string(), static_cast<std::string>(req.headers), req.content);
+		return std::format_to(ctx.out(), "request {} {}\n{}\n{}", req.method, req.target.to_absolute(), static_cast<std::string>(req.headers), req.content);
 	}
 };
 

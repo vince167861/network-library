@@ -2,7 +2,6 @@
 #include "basic_endpoint.h"
 #include "http/message.h"
 #include "http2/state.h"
-#include "http2/frame.h"
 #include <future>
 
 namespace leaf::network::http2 {
@@ -13,8 +12,6 @@ namespace leaf::network::http2 {
 
 		connection_state state_;
 
-		std::optional<std::pair<std::string, tcp_port_t>> connected_remote_;
-
 		std::unordered_map<http::request, std::future<http::response>> pushed_;
 
 		void connect(std::string_view host, tcp_port_t);
@@ -22,8 +19,6 @@ namespace leaf::network::http2 {
 		bool connected() const;
 
 		void close(error_t error_code = error_t::no_error, std::string_view additional = "");
-
-		void process_settings(const setting_values_t& settings_f);
 
 	public:
 		explicit client(network::client&);
@@ -33,5 +28,12 @@ namespace leaf::network::http2 {
 		void process();
 
 		~client();
+
+	private:
+		std::string connected_host_;
+
+		tcp_port_t connected_port_ = 0;
+
+		void handle_(const setting_values_t& settings_f);
 	};
 }

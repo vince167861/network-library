@@ -2,10 +2,9 @@
 #include <ranges>
 #include <iostream>
 
-namespace leaf::network::http2 {
+constexpr auto illegal_stream_id("illegal stream id");
 
-	const std::runtime_error
-	illegal_stream_id{"Illegal stream identifier."};
+namespace leaf::network::http2 {
 
 	connection_state::connection_state(const endpoint_type_t __t, stream& __s)
 		: endpoint_type(__t), pipe_(__s) {
@@ -14,7 +13,7 @@ namespace leaf::network::http2 {
 	std::future<http::response> connection_state::remote_reserve(const stream_id_t __id, http::http_fields __f) {
 		if (next_remote_stream_id() != __id)
 			throw connection_error(error_t::protocol_error, "remote reserved invalid stream");
-		auto __state = std::make_unique<stream_state>(next_local_stream_id(), pipe_, *this, std::move(__f));
+		auto __state = std::make_unique<stream_state>(__id, pipe_, *this, std::move(__f));
 		auto f = __state->response();
 		streams_.emplace(__id, std::move(__state));
 		return f;
@@ -23,7 +22,7 @@ namespace leaf::network::http2 {
 	std::future<http::response> connection_state::local_open(http::request __req) {
 		auto __state = std::make_unique<stream_state>(next_local_stream_id(), pipe_, *this, std::move(__req));
 		auto f = __state->response();
-		const auto __id = __state->stream_id();
+		const auto __id = __state->stream_id;
 		streams_.emplace(__id, std::move(__state));
 		return f;
 	}
@@ -67,7 +66,7 @@ namespace leaf::network::http2 {
 	stream_state& connection_state::operator[](const stream_id_t __id) {
 		if (streams_.contains(__id))
 			return *streams_.at(__id);
-		throw illegal_stream_id;
+		throw std::runtime_error(illegal_stream_id);
 	}
 
 	void connection_state::remote_close(const stream_id_t __last) {
@@ -90,8 +89,8 @@ namespace leaf::network::http2 {
 		__f.generator(pipe_, *this);
 	}
 
-	void connection_state::task_add(frame_generator handle) {
-		tasks_.push_back(std::move(handle));
+	void connection_state::task_add(const frame_generator handle) {
+		tasks_.push_back(handle);
 	}
 
 	bool connection_state::task_process() {

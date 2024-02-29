@@ -25,7 +25,7 @@ namespace leaf::network::tcp {
 			}
 			freeaddrinfo(__result);
 			if (socket_ == invalid_socket)
-				throw std::runtime_error(std::format("{}:{} is unreachable", host, port));
+				throw std::runtime_error(std::format("tcp: {}:{} is unreachable", host, port));
 		}
 
 		std::size_t available() override {

@@ -2,16 +2,33 @@
 #include "http2/state.h"
 #include "internal/utils.h"
 #include <iostream>
+#include <utility>
 
 namespace leaf::network::http2 {
 
-	stream_state::stream_state(const stream_id_t __id, ostream& __s, connection_state& context, const http::request& __req)
-		: stream_id_(__id), state_(state_t::idle), connection_(context), out_(__s), request_(__req), window_bytes_(connection_.remote_config.init_window_size) {
-		write_request_();
+	stream_state::stream_state(const stream_id_t __id, ostream& __s, connection_state& context, http::request __req)
+	: stream_id(__id), state_(state_t::open), connection_(context), out_(__s), request_(std::move(__req)), window_size_(connection_.remote_config.init_window_size) {
+		auto& __h = request_.headers;
+		__h.set(":path", request_.target.origin_form());
+		__h.set(":method", request_.method);
+		__h.set(":authority", request_.target.host);
+		__h.set(":scheme", request_.target.scheme);
+
+		headers _hf(stream_id);
+		_hf.end_stream = request_.content.empty();
+		_hf.set_header(connection_.local_packer, __h);
+		write(_hf);
+		if (!request_.content.empty()) {
+			data _df(stream_id);
+			_df.content = reinterpret_cast<const byte_string&>(request_.content);
+			_df.end_stream = true;
+			write(_df);
+		}
+		set_local_closed_();
 	}
 
 	stream_state::stream_state(const stream_id_t __id, ostream& __s, connection_state& __c, http::http_fields __h)
-		: stream_id_(__id), state_(state_t::remote_reserved), connection_(__c), out_(__s), window_bytes_(connection_.remote_config.init_window_size) {
+		: stream_id(__id), state_(state_t::remote_reserved), connection_(__c), out_(__s), window_size_(connection_.remote_config.init_window_size) {
 		request_.headers = std::move(__h);
 	}
 
@@ -40,29 +57,24 @@ namespace leaf::network::http2 {
 		}
 	}
 
-	void stream_state::remote_reset(error_t err) {
+	void stream_state::remote_reset(const error_t err) {
 		response_promise_.set_exception(std::make_exception_ptr(std::runtime_error(std::format("remote reset stream: {}", err))));
 		state_ = state_t::closed;
 	}
 
 	void stream_state::increase_window(const std::uint32_t size) {
-		window_bytes_ += size;
+		window_size_ += size;
 	}
 
-	std::uint32_t stream_state::available_window() const {
-		return std::min(connection_.remote_config.max_frame_size, window_bytes_);
+	std::size_t stream_state::available_window() const {
+		return std::min(std::min<std::size_t>(connection_.remote_config.max_frame_size, window_size_), connection_.remote_window_size);
 	}
 
-	bool stream_state::request_window(std::uint32_t __s) {
-		if (__s < window_bytes_ && __s < connection_.remote_config.max_frame_size) {
-			window_bytes_ -= __s;
-			return true;
-		}
-		return false;
-	}
-
-	stream_id_t stream_state::stream_id() const {
-		return stream_id_;
+	bool stream_state::request_window(const std::size_t _s) {
+		if (_s > window_size_ && _s > connection_.remote_window_size && _s > connection_.remote_config.max_frame_size)
+			return false;
+		window_size_ -= _s;
+		return true;
 	}
 
 	stream_state::state_t stream_state::state() const {
@@ -71,7 +83,7 @@ namespace leaf::network::http2 {
 
 	void stream_state::local_close() {
 		if (state_ == state_t::remote_half_closed || state_ == state_t::open)
-			write(data(stream_id_, true));
+			write(data(stream_id, true));
 		set_local_closed_();
 	}
 
@@ -106,30 +118,4 @@ namespace leaf::network::http2 {
 		}
 	}
 
-	void stream_state::write_request_() {
-		if (state_ != state_t::idle && state_ != state_t::local_reserved)
-			throw std::runtime_error(std::format("stream {} is in use", stream_id_));
-
-		state_ = state_t::open;
-
-		auto& __h = request_.headers;
-		__h.set(":path", request_.target.requesting_uri_string());
-		__h.set(":method", request_.method);
-		__h.set(":authority", request_.target.host);
-		__h.set(":scheme", request_.target.scheme);
-
-		headers __hf(stream_id_);
-		__hf.end_stream = request_.content.empty();
-		__hf.set_header(connection_.local_packer, __h);
-		write(__hf);
-
-		if (!request_.content.empty()) {
-			data d_f(stream_id_);
-			d_f.content = reinterpret_cast<const byte_string&>(request_.content);
-			d_f.end_stream = true;
-			write(d_f);
-		}
-
-		set_local_closed_();
-	}
 }

@@ -7,18 +7,17 @@ namespace leaf::network::http2 {
 
 	constexpr std::uint8_t preface[] = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
 
-	client::client(network::client& client_)
-		: state_(connection_state::endpoint_type_t::client, client_), client_(client_) {
+	client::client(network::client& _c)
+		: client_(_c), state_(endpoint_type_t::client, _c) {
 	}
 
 	void client::connect(const std::string_view host, const tcp_port_t port) {
-		if (client_.connected()
-				&& connected_remote_.value().first == host && connected_remote_.value().second == port)
+		if (client_.connected() && connected_host_ == host && connected_port_ == port)
 			return;
 		close();
-		if (!client_.connect(host, port))
-			throw std::runtime_error(std::format("cannot connect to {}:{}", host, port));
-		connected_remote_.emplace(host, port);
+		client_.connect(host, port);
+		connected_host_ = host;
+		connected_port_ = port;
 		client_.write(preface);
 		state_.write(settings(state_.pack_local_settings()));
 		const auto parse_result = parse_frame(client_);
@@ -28,36 +27,36 @@ namespace leaf::network::http2 {
 		std::cout << std::format("[HTTP/2 client] got {}\n", *__f);
 		if (__t != frame_type_t::settings)
 			throw connection_error(error_t::protocol_error, "first frame must be SETTINGS");
-		process_settings(reinterpret_cast<settings&>(*__f).values);
+		handle_(reinterpret_cast<settings&>(*__f).values);
 	}
 
 	bool client::connected() const {
-		return connected_remote_.has_value() && client_.connected();
+		return client_.connected();
 	}
 
 	void client::close(const error_t __c, const std::string_view __a) {
 		if (connected())
 			state_.write(go_away(state_.remote_config.last_open_stream, __c, __a));
 		client_.close();
-		connected_remote_.reset();
+		connected_host_ = "";
+		connected_port_ = 0;
 	}
 
-	void client::process_settings(const setting_values_t& settings_f) {
+	void client::handle_(const setting_values_t& settings_f) {
 		state_.update_remote_settings(settings_f);
 		state_.write(settings());
 	}
 
 	std::future<http::response> client::fetch(http::request req) {
-		auto port = req.target.port;
-		if (port == 0) {
+		connect(req.target.host, [&] -> tcp_port_t {
+			if (req.target.port)
+				return req.target.port;
 			if (req.target.scheme == "http")
-				port = 80;
-			else if (req.target.scheme == "https")
-				port = 443;
-		}
-		if (!port)
+				return 80;
+			if (req.target.scheme == "https")
+				return 443;
 			throw std::runtime_error("unknown scheme; assign port explicitly.");
-		connect(req.target.host, port);
+		}());
 		return state_.local_open(std::move(req));
 	}
 
@@ -78,11 +77,11 @@ namespace leaf::network::http2 {
 							if (const auto& __c = dynamic_cast<window_update&>(*__frame); __c.stream_id)
 								state_[__c.stream_id].increase_window(__c.window_size_increment);
 							else
-								state_.remote_config.current_window_bytes += __c.window_size_increment;
+								state_.remote_window_size += __c.window_size_increment;
 							break;
 						case frame_type_t::settings:
 							if (const auto& __c = reinterpret_cast<settings&>(*__frame); !__c.ack)
-								process_settings(__c.values);
+								handle_(__c.values);
 							break;
 						case frame_type_t::go_away:
 							state_.remote_close(reinterpret_cast<go_away&>(*__frame).last_stream_id);
