@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "cipher/aes.h"
+#include "../../src/crypto"
 
 using namespace leaf;
 

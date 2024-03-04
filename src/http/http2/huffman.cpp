@@ -16,9 +16,9 @@ constexpr char
 	bit_20[] {static_cast<char>(128), static_cast<char>(130), static_cast<char>(131), static_cast<char>(162), static_cast<char>(184), static_cast<char>(194), static_cast<char>(224), static_cast<char>(226)},
 	bit_21[] {static_cast<char>(153), static_cast<char>(161), static_cast<char>(167), static_cast<char>(172), static_cast<char>(176), static_cast<char>(177), static_cast<char>(179), static_cast<char>(209), static_cast<char>(216), static_cast<char>(217), static_cast<char>(227), static_cast<char>(229), static_cast<char>(230)};
 
-namespace leaf::network::http2::internal {
+namespace network::http2::internal {
 
-	std::uint32_t get_bits_ex(const std::basic_string_view<std::uint8_t> str, std::size_t used, std::uint8_t need) {
+	std::uint32_t get_bits_ex(const byte_string_view str, std::size_t used, std::uint8_t need) {
 		auto bytes_used = used / 8;
 		used %= 8;
 		if (used + need < 8)
@@ -32,7 +32,7 @@ namespace leaf::network::http2::internal {
 		return result << need | str[bytes_used + 1] >> 8 - need;
 	}
 
-	std::string from_huffman(const std::basic_string_view<std::uint8_t> str) {
+	std::string from_huffman(const byte_string_view str) {
 		std::string result;
 		const std::size_t str_bits = str.size() * 8;
 		std::size_t used = 0;

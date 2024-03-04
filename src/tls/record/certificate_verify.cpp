@@ -1,7 +1,9 @@
 #include "tls-record/handshake.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	certificate_verify::certificate_verify(const byte_string_view source) {
 		auto it = source.begin();
@@ -21,7 +23,7 @@ namespace leaf::network::tls {
 		return str + data;
 	}
 
-	std::format_context::iterator certificate_verify::format(std::format_context::iterator it) const {
-		return std::format_to(it, "CertificateVerify\n\tScheme: {}\n\tSignature: {}", signature_scheme, signature);
+	std::format_context::iterator certificate_verify::format(const std::format_context::iterator it) const {
+		return std::format_to(it, "CertificateVerify\n\tscheme: {}\n\tsignature: {}", signature_scheme, signature);
 	}
 }

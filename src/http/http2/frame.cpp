@@ -3,7 +3,9 @@
 #include "internal/utils.h"
 #include <format>
 
-namespace leaf::network::http2 {
+using namespace internal;
+
+namespace network::http2 {
 
 	std::expected<std::pair<frame_type_t, std::unique_ptr<basic_frame>>, frame_parsing_error> parse_frame(istream& __s) {
 		std::optional<std::pair<frame_type_t, std::unique_ptr<basic_frame>>> __pending;
@@ -169,11 +171,11 @@ namespace leaf::network::http2 {
 			conclude_ = true;
 	}
 
-	http::http_fields headers_holder::get_headers(header_packer& decoder) const {
+	http::fields headers_holder::get_headers(header_packer& decoder) const {
 		return decoder.decode(fragments);
 	}
 
-	void headers_holder::set_header(header_packer& encoder, const http::http_fields& list) {
+	void headers_holder::set_header(header_packer& encoder, const http::fields& list) {
 		fragments = encoder.encode(list);
 		conclude_ = true;
 	}

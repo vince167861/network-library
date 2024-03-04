@@ -1,16 +1,15 @@
 #pragma once
-#include "byte_stream.h"
+#include "basic_stream.h"
 #include <bit>
 #include <list>
 #include <algorithm>
 
-namespace leaf {
+namespace internal {
 
 	template<typename T>
-	void write(std::endian endian, byte_string& dst, const T& src, const std::size_t count = sizeof(T)) {
-		bool reverse = endian != std::endian::native;
+	void write(const std::endian endian, byte_string& dst, const T& src, const std::size_t count = sizeof(T)) {
 		const uint8_t* src_ptr = reinterpret_cast<const uint8_t*>(&src), * src_end = src_ptr + count;
-		if (reverse) {
+		if (endian != std::endian::native) {
 			std::swap(--src_ptr, --src_end);
 			for (; src_ptr != src_end; --src_ptr)
 				dst.push_back(*src_ptr);
@@ -19,20 +18,18 @@ namespace leaf {
 	}
 
 	template<typename T>
-	void write(std::endian endian, ostream& dst, const T& src, const std::size_t count = sizeof(T)) {
-		bool reverse = endian != std::endian::native;
+	void write(const std::endian endian, ostream& dst, const T& src, const std::size_t count = sizeof(T)) {
 		const uint8_t* src_ptr = reinterpret_cast<const uint8_t*>(&src), * src_end = src_ptr + count;
 		byte_string data{src_ptr, src_end};
-		if (reverse)
+		if (endian != std::endian::native)
 			std::reverse(data.begin(), data.end());
 		dst.write(data);
 	}
 
-	template<typename T, typename iter>
-	constexpr void read(std::endian endian, T& val, iter& src, const std::size_t count = sizeof(T)) {
-		bool reverse = endian != std::endian::native;
+	template<typename T>
+	constexpr void read(const std::endian endian, T& val, auto& src, const std::size_t count = sizeof(T)) {
 		uint8_t* dst_ptr = reinterpret_cast<uint8_t *>(&val), * dst_end = dst_ptr + count;
-		if (reverse) {
+		if (endian != std::endian::native) {
 			std::swap(--dst_ptr, --dst_end);
 			while (dst_ptr != dst_end)
 				*dst_ptr-- = *src++;
@@ -40,18 +37,17 @@ namespace leaf {
 			*dst_ptr++ = *src++;
 	}
 
-	template<typename T, typename iter>
-	constexpr T read(std::endian endian, iter& src, const std::size_t count = sizeof(T)) {
+	template<typename T>
+	constexpr T read(const std::endian endian, auto& src, const std::size_t count = sizeof(T)) {
 		T val{};
 		read(endian, val, src, count);
 		return val;
 	}
 
 	template<class T>
-	void read(std::endian endian, T& val, istream& src, const std::size_t count = sizeof(T)) {
-		bool reverse = endian != std::endian::native;
+	void read(const std::endian endian, T& val, istream& src, const std::size_t count = sizeof(T)) {
 		std::uint8_t* dst_ptr = reinterpret_cast<uint8_t *>(&val), * dst_end = dst_ptr + count;
-		if (reverse) {
+		if (endian != std::endian::native) {
 			std::swap(--dst_ptr, --dst_end);
 			while (dst_ptr != dst_end)
 				*dst_ptr-- = src.read();
@@ -85,15 +81,15 @@ namespace leaf {
 		return ret;
 	}
 
-	inline std::string_view trim_begin(const std::string_view str) {
+	constexpr std::string_view trim_begin(const std::string_view str) {
 		return {std::ranges::find_if(str, [](char c) { return std::isspace(c) == 0; }), str.end()};
 	}
 
-	inline std::string_view trim_end(const std::string_view str) {
+	constexpr std::string_view trim_end(const std::string_view str) {
 		return {str.begin(), std::find_if(str.rbegin(), str.rend(), [](char c) { return std::isspace(c) == 0; }).base()};
 	}
 
-	inline std::string_view trim(const std::string_view str) {
+	constexpr std::string_view trim(const std::string_view str) {
 		return trim_end(trim_begin(str));
 	}
 
@@ -119,7 +115,7 @@ namespace leaf {
 		return {b, a};
 	}
 
-	inline std::size_t div_ceil(std::size_t a, std::size_t b) {
+	inline std::size_t div_ceil(const std::size_t a, const std::size_t b) {
 		return a / b + (a % b ? 1 : 0);
 	}
 

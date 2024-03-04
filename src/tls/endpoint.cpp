@@ -1,22 +1,20 @@
 #include "tls/endpoint.h"
-#include "tls-record/record.h"
 #include "tls-record/alert.h"
 #include "tls-record/handshake.h"
 #include "internal/utils.h"
 #include <iostream>
 
-namespace leaf::network::tls {
+namespace network::tls {
 
-	endpoint::endpoint(network::endpoint& __u, const endpoint_type_t __t, std::unique_ptr<random_number_generator> __g)
-			: underlying_(__u), secret_(__t, cipher_), random_(std::move(__g)) {
+	endpoint::endpoint(stream_endpoint& __u, const endpoint_type __t, std::unique_ptr<random_source> __g)
+			: base_(__u), secret_(__t, cipher_), random_(std::move(__g)) {
 	}
 
 	byte_string endpoint::read(const std::size_t size) {
 		byte_string read_data;
 		while (read_data.size() < size) {
-			const auto stored = app_data_.read(size - read_data.size());
-			if (stored.size() == 0) {
-				const auto record = record::extract(underlying_, secret_);
+			if (const auto stored = app_data_.read(size - read_data.size()); stored.empty()) {
+				const auto record = record::extract(base_, secret_);
 				switch (record.type) {
 					case content_type_t::alert:
 						switch (alert alert{record.messages}; alert.description) {
@@ -90,19 +88,19 @@ namespace leaf::network::tls {
 	void endpoint::finish() {
 		auto close_alert = alert::close_notify();
 		send_(record::construct(content_type_t::alert, std::nullopt, close_alert));
-		underlying_.finish();
+		base_.finish();
 	}
 
 	void endpoint::close() {
 		if (connected())
 			finish();
-		underlying_.close();
+		base_.close();
 		key_exchange_.reset();
 	}
 
 	void endpoint::send_(const record& record) {
 		std::cout << std::format("[TLS endpoint] sending {}\n", record);
-		underlying_.write(static_cast<byte_string>(record));
+		base_.write(static_cast<byte_string>(record));
 	}
 
 	void endpoint::send_(content_type_t type, bool encrypted, std::initializer_list<std::unique_ptr<message>> msgs) {
@@ -111,7 +109,7 @@ namespace leaf::network::tls {
 			std::cout << std::format("[TLS endpoint] sending {}\n", *__m);
 			record.messages += *__m;
 		}
-		underlying_.write(static_cast<byte_string>(record));
+		base_.write(static_cast<byte_string>(record));
 	}
 
 	std::uint8_t endpoint::read() {

@@ -1,8 +1,9 @@
 #include "tls-extension/extension.h"
-
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+namespace network::tls {
+
+	using internal::read, internal::write;
 
 	std::expected<std::pair<ext_type_t, std::unique_ptr<extension_base>>, std::string>
 	parse_extension(byte_string_view& __s, const extension_holder_t __ht) {

@@ -1,9 +1,11 @@
 #include "tls-record/handshake.h"
-#include "internal/utils.h"
 #include "tls-record/alert.h"
+#include "internal/utils.h"
 #include <ranges>
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	encrypted_extension::encrypted_extension(const byte_string_view __s) {
 		auto it = __s.begin();
@@ -37,7 +39,7 @@ namespace leaf::network::tls {
 		it = std::ranges::copy("EncryptedExtension", it).out;
 		if (extensions.empty())
 			it = std::ranges::copy(" (empty)", it).out;
-		else for (auto& ext: std::views::values(extensions))
+		else for (auto& ext: extensions | std::views::values)
 			it = std::format_to(it, "\n{:1}", *ext);
 		return it;
 	}

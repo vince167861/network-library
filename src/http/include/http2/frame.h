@@ -1,14 +1,13 @@
 #pragma once
-#include "byte_stream.h"
+#include "basic_stream.h"
 #include "http/message.h"
 #include "http2/type.h"
 #include "http2/header_packer.h"
-#include <variant>
 #include <expected>
 #include <coroutine>
+#include <memory>
 
-
-namespace leaf::network::http2 {
+namespace network::http2 {
 
 	struct frame_generator_promise {
 
@@ -87,9 +86,9 @@ namespace leaf::network::http2 {
 
 		void add_fragment(byte_string_view, bool last_frame);
 
-		http::http_fields get_headers(header_packer& decoder) const;
+		http::fields get_headers(header_packer& decoder) const;
 
-		void set_header(header_packer& encoder, const http::http_fields&);
+		void set_header(header_packer& encoder, const http::fields&);
 
 	private:
 		bool conclude_ = false;
@@ -233,13 +232,13 @@ namespace leaf::network::http2 {
 
 
 template<>
-struct std::formatter<leaf::network::http2::basic_frame> {
+struct std::formatter<network::http2::basic_frame> {
 
 	auto constexpr parse(const std::format_parse_context& context) {
 		return context.begin();
 	}
 
-	auto format(const leaf::network::http2::basic_frame& __f, format_context& ctx) const {
+	auto format(const network::http2::basic_frame& __f, format_context& ctx) const {
 		return __f.format(ctx.out());
 	}
 };

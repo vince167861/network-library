@@ -2,8 +2,8 @@
 #include "internal/macro.h"
 
 std::format_context::iterator
-std::formatter<leaf::network::http2::error_t>::format(const leaf::network::http2::error_t& error, format_context& context) const {
-	using leaf::network::http2::error_t;
+std::formatter<network::http2::error_t>::format(const network::http2::error_t& error, format_context& context) const {
+	using network::http2::error_t;
 	auto it = context.out();
 	switch (error) {
 		build_enum_item2(it, error_t, no_error);
@@ -19,8 +19,8 @@ std::formatter<leaf::network::http2::error_t>::format(const leaf::network::http2
 }
 
 std::format_context::iterator
-std::formatter<leaf::network::http2::settings_t>::format(const leaf::network::http2::settings_t& type, format_context& context) const {
-	using leaf::network::http2::settings_t;
+std::formatter<network::http2::settings_t>::format(const network::http2::settings_t& type, format_context& context) const {
+	using network::http2::settings_t;
 	auto it = context.out();
 	switch (type) {
 		build_enum_item2(it, settings_t, header_table_size);

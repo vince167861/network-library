@@ -1,21 +1,23 @@
-#include "tls-cipher/cipher_suite_aes_gcm.h"
-#include "cipher/sha2.h"
-#include "cipher/hmac.h"
+#include "tls/cipher/cipher_suite_aes_gcm.h"
+#include "crypto/aes.h"
+#include "crypto/hmac.h"
+#include "crypto/sha2.h"
+#include "tls/util/type.h"
 
-namespace leaf::network::tls {
+namespace network::tls {
 
 	aes_128_gcm::aes_128_gcm()
 			: cipher_suite_gcm(16, 12, 16) {
 	}
 
 	void aes_128_gcm::set_key(const big_unsigned& __k) {
-		aes_128.key_expansion(__k, key_schedule);
+		encrypt::aes_128.key_expansion(__k, key_schedule);
 		init();
 	}
 
 	big_unsigned aes_128_gcm::ciph(const big_unsigned& X) const {
 		auto X_copied = X;
-		aes_128.cipher(X_copied, key_schedule);
+		encrypt::aes_128.cipher(X_copied, key_schedule);
 		return X_copied;
 	}
 
@@ -37,12 +39,12 @@ namespace leaf::network::tls {
 
 	big_unsigned aes_256_gcm::ciph(const big_unsigned& X) const {
 		auto X_copied = X;
-		aes_256.cipher(X_copied, key_schedule);
+		encrypt::aes_256.cipher(X_copied, key_schedule);
 		return X_copied;
 	}
 
 	void aes_256_gcm::set_key(const big_unsigned& __k) {
-		aes_256.key_expansion(__k, key_schedule);
+		encrypt::aes_256.key_expansion(__k, key_schedule);
 		init();
 	}
 

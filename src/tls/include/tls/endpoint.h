@@ -1,17 +1,17 @@
 #pragma once
-#include "basic_endpoint.h"
-#include "tls-key/manager.h"
-#include "tls-cipher/cipher_suite.h"
+#include "stream_endpoint.h"
+#include "random_source.h"
+#include "key/manager.h"
 #include "tls-record/record.h"
-#include "tls-utils/rng.h"
-#include "tls-cipher/traffic_secret_manager.h"
+#include "cipher/cipher_suite.h"
+#include "cipher/traffic_secret_manager.h"
 #include <memory>
 
-namespace leaf::network::tls {
+namespace network::tls {
 
-	class endpoint: virtual public network::endpoint {
+	class endpoint: virtual public stream_endpoint {
 	protected:
-		network::endpoint& underlying_;
+		stream_endpoint& base_;
 
 		std::unique_ptr<key_exchange_manager> key_exchange_;
 
@@ -19,7 +19,7 @@ namespace leaf::network::tls {
 
 		traffic_secret_manager secret_;
 
-		const std::unique_ptr<random_number_generator> random_;
+		const std::unique_ptr<random_source> random_;
 
 		string_stream app_data_;
 
@@ -36,11 +36,11 @@ namespace leaf::network::tls {
 
 		byte_string pre_shared_key;
 
-		endpoint(network::endpoint&, endpoint_type_t, std::unique_ptr<random_number_generator> = std::make_unique<mt19937_uniform>());
+		endpoint(stream_endpoint&, endpoint_type, std::unique_ptr<random_source> = std::make_unique<::mt19937_uniform>());
 
 		[[nodiscard]] bool
 		connected() const override {
-			return underlying_.connected();
+			return base_.connected();
 		}
 
 		byte_string read(std::size_t size) override;

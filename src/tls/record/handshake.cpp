@@ -2,7 +2,9 @@
 #include "tls-record/alert.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	void extension_holder::add(const ext_type_t __t, std::unique_ptr<extension_base> __e) {
 		if (extensions.insert_or_assign(__t, std::move(__e)).second)
@@ -66,9 +68,4 @@ namespace leaf::network::tls {
 		msg += cipher.hash(data);
 		return msg;
 	}
-}
-
-std::format_context::iterator
-std::formatter<leaf::network::tls::handshake>::format(const leaf::network::tls::handshake& msg, std::format_context& ctx) const {
-	return std::visit([&](const auto& typed_msg){ return typed_msg.format(ctx.out()); }, msg);
 }

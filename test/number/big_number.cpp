@@ -1,7 +1,5 @@
 #include <gtest/gtest.h>
-#include "number/big_number.h"
-
-using namespace leaf;
+#include "big_number.h"
 
 TEST(big_unsigned, bit_used) {
 	EXPECT_EQ(big_unsigned(123u).bit_used(), 7);
@@ -32,6 +30,8 @@ TEST(big_unsigned, subtract) {
 	EXPECT_EQ(
 			big_unsigned(0x100000000u) - big_unsigned(0x100000001u),
 			big_unsigned(0xffffffffffffffff));
+	EXPECT_EQ(
+		big_unsigned("f4") - big_unsigned("5f3"), big_unsigned("01"));
 }
 
 TEST(big_unsigned, multiply) {

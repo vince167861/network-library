@@ -3,7 +3,7 @@
 #include <list>
 #include <format>
 
-namespace leaf::network::http2 {
+namespace network::http2 {
 
 	using stream_id_t = std::uint32_t;
 
@@ -79,21 +79,21 @@ namespace leaf::network::http2 {
 }
 
 template<>
-struct std::formatter<leaf::network::http2::error_t> {
+struct std::formatter<network::http2::error_t> {
 
 	constexpr format_parse_context::iterator parse(const format_parse_context& context) {
 		return context.begin();
 	}
 
-	format_context::iterator format(const leaf::network::http2::error_t&, format_context&) const;
+	format_context::iterator format(const network::http2::error_t&, format_context&) const;
 };
 
 template<>
-struct std::formatter<leaf::network::http2::settings_t> {
+struct std::formatter<network::http2::settings_t> {
 
 	constexpr format_parse_context::iterator parse(const format_parse_context& context) {
 		return context.begin();
 	}
 
-	format_context::iterator format(const leaf::network::http2::settings_t&, format_context&) const;
+	format_context::iterator format(const network::http2::settings_t&, format_context&) const;
 };

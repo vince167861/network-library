@@ -1,11 +1,10 @@
-#include "tls-cipher/cipher_suite.h"
-
-#include "tls-cipher/cipher_suite_aes_gcm.h"
+#include "tls/cipher/cipher_suite.h"
+#include "tls/cipher/cipher_suite_aes_gcm.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+namespace network::tls {
 
-	cipher_suite::cipher_suite(cipher_suite_t cs, std::size_t digest_length, std::size_t key_length, std::size_t iv_length)
+	cipher_suite::cipher_suite(const cipher_suite_t cs, std::size_t digest_length, std::size_t key_length, std::size_t iv_length)
 			: value(cs), digest_length(digest_length), key_length(key_length), iv_length(iv_length) {
 	}
 
@@ -26,6 +25,7 @@ namespace leaf::network::tls {
 	}
 
 	byte_string cipher_suite::HKDF_info(const byte_string_view label, const byte_string_view context, const std::uint16_t length) {
+		using internal::write;
 		byte_string info;
 		const std::uint8_t label_length = 6 + label.size(), context_length = context.size();
 		info.reserve(sizeof length + sizeof label_length + label_length + sizeof context_length + context_length);

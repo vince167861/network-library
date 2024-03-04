@@ -3,16 +3,16 @@
 #include "http/uri.h"
 
 using namespace testing;
-using namespace leaf::network;
+using namespace network;
 
 TEST(uri, remove_dot_segments) {
 	EXPECT_THAT(
-		uri("/a/b/c/./../../g"),
+		uri::from("/a/b/c/./../../g"),
 		FieldsAre("", "", "", 0, "/a/g", "", ""));
 }
 
 TEST(uri, relative) {
-	const uri base_uri("http://a/b/c/d;p?q");
+	const auto base_uri = uri::from("http://a/b/c/d;p?q");
 	const std::map<std::string_view, std::string_view> test_vector{
 		{"g:h",			"g:h"},
 		{"g",				"http://a/b/c/g"},
@@ -45,25 +45,25 @@ TEST(uri, relative) {
 		{"..g",			"http://a/b/c/..g"}
 	};
 	for (auto& [from, target]: test_vector)
-		EXPECT_EQ(base_uri.from_relative(from).to_absolute(), uri(target).to_absolute());
+		EXPECT_EQ(base_uri.from_relative(from).to_absolute(), target) << "from: " << from;
 }
 
 TEST(uri, parse_valid) {
 	EXPECT_THAT(
-			uri("http://www.example.com"),
+			uri::from("http://www.example.com"),
 			FieldsAre("http", "", "www.example.com", 0, "", "", ""));
 	EXPECT_THAT(
-			uri("https://example.com:79?a20=b39"),
+			uri::from("https://example.com:79?a20=b39"),
 			FieldsAre("https", "", "example.com", 79, "", "a20=b39", ""));
 	EXPECT_THAT(
-			uri("happy+face://a%40b:c@www.gookle.com.lla:/ppa/aap?df=fd#ddddd"),
+			uri::from("happy+face://a%40b:c@www.gookle.com.lla:/ppa/aap?df=fd#ddddd"),
 			FieldsAre("happy+face", "a@b:c", "www.gookle.com.lla", 0, "/ppa/aap", "df=fd", "ddddd"));
 	EXPECT_THAT(
-			uri("urn:example:ffghj:435"),
+			uri::from("urn:example:ffghj:435"),
 			FieldsAre("urn", "", "", 0, "example:ffghj:435", "", ""));
 }
 
 TEST(uri, parse_invalid) {
-	EXPECT_THROW(uri("1hts:urk:aldjf?aa"), std::invalid_argument);
-	EXPECT_THROW(uri("ht^s:urk:aldjf#45"), std::invalid_argument);
+	EXPECT_THROW(uri::from("1hts:urk:aldjf?aa"), std::invalid_argument);
+	EXPECT_THROW(uri::from("ht^s:urk:aldjf#45"), std::invalid_argument);
 }

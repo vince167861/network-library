@@ -1,23 +1,18 @@
 #include "http1_1/client.h"
-#include <algorithm>
+#include "http1_1/common.h"
 #include <ranges>
 #include <iostream>
 
-namespace leaf::network::http {
+namespace network::http {
 
 	constexpr std::string_view safe_methods[] {"GET", "HEAD", "OPTIONS", "TRACE"}, idempotent_methods[] {"PUT", "DELETE"};
-	constexpr auto ill_form_status_line = "ill-formed http status line";
 	constexpr auto literal_location = "location";
-	constexpr auto literal_transfer_encoding = "transfer-encoding";
-	constexpr auto literal_content_length = "content-length";
-	constexpr auto literal_chunked = "chunked";
 
 	void client::connect_(const std::string_view host, const tcp_port_t port) {
-		if (underlying_.connected() && connected_host_ == host && connected_port_ == port)
+		if (base_.connected() && connected_host_ == host && connected_port_ == port)
 			return;
-		underlying_.close();
-		if (!underlying_.connect(host, port))
-			throw std::runtime_error("connection failed");
+		base_.close();
+		base_.connect(host, port);
 		connected_host_ = host;
 		connected_port_ = port;
 	}
@@ -41,69 +36,31 @@ namespace leaf::network::http {
 			const auto req_str
 					= std::format("{} {} HTTP/1.1\r\n{}\r\n{}", _req.method, _req.target.origin_form(),
 								static_cast<std::string>(copy), _req.content);
-			underlying_.write(reinterpret_cast<const byte_string&>(req_str));
-			auto status_line = underlying_.read_line();
-			if (!status_line.starts_with("HTTP/") || !status_line.ends_with('\r') || underlying_.read() != '\n')
-				throw std::runtime_error(ill_form_status_line);
-			auto it = std::next(status_line.begin(), 5);
-			const auto version_it = std::find(it, status_line.end(), ' ');
-			if (version_it == status_line.end())
-				throw std::runtime_error(ill_form_status_line);
-			const auto code_it = std::find(std::next(version_it), status_line.end(), ' ');
-			if (code_it == status_line.end())
-				throw std::runtime_error(ill_form_status_line);
+			base_.write(reinterpret_cast<const byte_string&>(req_str));
+			const auto stat_l = base_.read_line();
+			if (!stat_l.ends_with('\r') || base_.read() != '\n')
+				throw client_error("fetch(request): status-line: invalid line folding");
+			if (!stat_l.starts_with("HTTP/"))
+				throw client_error("fetch(request): invalid HTTP response");
+			const auto ws1 = stat_l.find(' ', 5);
+			if (ws1 == std::string::npos)
+				throw client_error("fetch(request): invalid HTTP response");
+			const auto ws2 = stat_l.find(' ', ws1 + 1);
+			if (ws2 == std::string::npos)
+				throw client_error("fetch(request): invalid HTTP response");
 			response res;
-			try {
-				auto ptr = code_it.base();
-				res.status = std::strtoul(std::next(version_it).base(), &ptr, 10);
-			} catch (const std::invalid_argument&) {
-				throw std::runtime_error(ill_form_status_line);
-			}
-			res.headers = http_fields::from_http_headers(underlying_);
-			if (100 <= res.status && res.status <= 199 || res.status == 204 || res.status == 304)
+			const auto stat_code = stat_l.substr(ws1 + 1, ws2 - ws1 - 1);
+			const auto begin = stat_code.data(), end = begin + stat_code.size();
+			if (std::from_chars(begin, end, reinterpret_cast<std::uint16_t&>(res.code)).ec != std::errc{})
+				throw client_error("fetch(request): ill-formed status code");
+			res.headers = fields::from_http_headers(base_).value();
+			if (informational(res.code) || res.code == status::no_content || res.code == status::not_modified)
 				// no response body for 1XX, 204, 304
 				return res;
-			if (res.headers.contains(literal_transfer_encoding)) {
-				if (res.headers.at(literal_transfer_encoding).contains(literal_chunked)) {
-					while (true) {
-						auto chunk_head = underlying_.read_line();
-						if (!chunk_head.ends_with('\r') || underlying_.read() != '\n')
-							throw std::runtime_error("ill-formed chuck header");
-						auto colon = std::find(chunk_head.begin(), chunk_head.end() - 1, ';').base();
-						std::size_t chunk_len;
-						try {
-							chunk_len = std::strtoull(chunk_head.begin().base(), &colon, 16);
-						} catch (const std::invalid_argument&) {
-							throw std::runtime_error("ill-formed chunk length");
-						}
-						if (chunk_len == 0)
-							break;
-						const auto chunk_data = underlying_.read(chunk_len);
-						res.content.append(chunk_data.begin(), chunk_data.end());
-						if (underlying_.read(2) != reinterpret_cast<const std::uint8_t*>("\r\n"))
-							throw std::runtime_error("ill-formed chunk data");
-					}
-				} else {
-					// other transfer encodings are not implemented
-					const auto content = underlying_.read_all();
-					res.content = reinterpret_cast<const std::string&>(content);
-				}
-			} else if (res.headers.contains(literal_content_length)) {
-				std::size_t content_length;
-				try {
-					content_length = std::stoull(res.headers.at(literal_content_length));
-				} catch (const std::invalid_argument&) {
-					throw std::runtime_error("ill-formed Content-Length");
-				}
-				const auto content = underlying_.read(content_length);
-				res.content = reinterpret_cast<const std::string&>(content);
-			} else {
-				const auto content = underlying_.read_all();
-				res.content = reinterpret_cast<const std::string&>(content);
-			}
-			if (!res.is_redirection() || !res.headers.contains(literal_location))
+			res.content = read_message_content(base_, res.headers, message_type::response).value();
+			if (!redirection(res.code) || !res.headers.contains(literal_location))
 				return res;
-			_req.target.from_relative({res.headers.at(literal_location)});
+			_req.target = _req.target.from_relative(res.headers.at(literal_location));
 		}
 		return {};
 	} catch (const std::exception& e) {

@@ -1,20 +1,16 @@
 #pragma once
-
 #include "tcp/endpoint.h"
-#include "basic_endpoint.h"
 
-#include <unordered_set>
+namespace network::tcp {
 
-namespace leaf::network::tcp {
+	class server final: public stream_server {
 
-	class server final: public network::server {
-
-		socket_t socket_;
+		socket_t socket_{invalid_socket};
 
 		[[noreturn]] void handle_error_(std::string_view function) {
 			switch (const int error_no = last_error) {
 				case error_conn_aborted:
-					throw closed;
+					throw std::runtime_error("tcp closed");
 				case error_conn_reset:
 					throw std::runtime_error{"Connection reset."};
 				case error_conn_refused:
@@ -54,7 +50,7 @@ namespace leaf::network::tcp {
 				handle_error_("listen()");
 		}
 
-		std::unique_ptr<network::endpoint> accept() override {
+		std::unique_ptr<stream_endpoint> accept() override {
 			const socket_t socket = ::accept(socket_, nullptr, nullptr);
 			if (socket == invalid_socket)
 				handle_error_("accept()");

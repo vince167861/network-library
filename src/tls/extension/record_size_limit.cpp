@@ -1,7 +1,9 @@
 #include "tls-extension/extension.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	record_size_limit::record_size_limit(uint16_t l)
 			: limit(l) {

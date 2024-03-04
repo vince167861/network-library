@@ -4,7 +4,7 @@
 #include <iostream>
 #include <utility>
 
-namespace leaf::network::http2 {
+namespace network::http2 {
 
 	stream_state::stream_state(const stream_id_t __id, ostream& __s, connection_state& context, http::request __req)
 	: stream_id(__id), state_(state_t::open), connection_(context), out_(__s), request_(std::move(__req)), window_size_(connection_.remote_config.init_window_size) {
@@ -27,19 +27,23 @@ namespace leaf::network::http2 {
 		set_local_closed_();
 	}
 
-	stream_state::stream_state(const stream_id_t __id, ostream& __s, connection_state& __c, http::http_fields __h)
+	stream_state::stream_state(const stream_id_t __id, ostream& __s, connection_state& __c, http::fields __h)
 		: stream_id(__id), state_(state_t::remote_reserved), connection_(__c), out_(__s), window_size_(connection_.remote_config.init_window_size) {
 		request_.headers = std::move(__h);
 	}
 
-	void stream_state::notify(http::http_fields __f, const bool __es) {
+	void stream_state::notify(http::fields __f, const bool __es) {
 		if (state_ != state_t::open && state_ != state_t::local_half_closed && state_ != state_t::remote_reserved)
 			throw std::runtime_error{"unexpected HEADERS"};
 
 		if (state_ == state_t::remote_reserved)
 			state_ = state_t::local_half_closed;
-		if (const auto __n = __f.extract(":status"))
-			pending_response_.status = std::stol(__n.mapped());
+		if (const auto __n = __f.extract(":status")) {
+			const auto& code = __n.mapped();
+			const auto src = code.data(), src_end = src + code.size();
+			if (std::from_chars(src, src_end, reinterpret_cast<std::uint16_t&>(pending_response_.code)).ptr != src_end)
+				throw http::error(http::status::bad_request, "invalid http status code");
+		}
 		pending_response_.headers = std::move(__f);
 		if (__es) {
 			response_promise_.set_value(std::move(pending_response_));

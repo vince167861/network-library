@@ -4,13 +4,9 @@
 
 constexpr auto illegal_stream_id("illegal stream id");
 
-namespace leaf::network::http2 {
+namespace network::http2 {
 
-	connection_state::connection_state(const endpoint_type_t __t, stream& __s)
-		: endpoint_type(__t), pipe_(__s) {
-	}
-
-	std::future<http::response> connection_state::remote_reserve(const stream_id_t __id, http::http_fields __f) {
+	std::future<http::response> connection_state::remote_reserve(const stream_id_t __id, http::fields __f) {
 		if (next_remote_stream_id() != __id)
 			throw connection_error(error_t::protocol_error, "remote reserved invalid stream");
 		auto __state = std::make_unique<stream_state>(__id, pipe_, *this, std::move(__f));
@@ -106,9 +102,9 @@ namespace leaf::network::http2 {
 
 	stream_id_t connection_state::next_remote_stream_id() {
 		if (remote_config.last_open_stream == 0)
-			switch (endpoint_type) {
-				case endpoint_type_t::client: remote_config.last_open_stream = 2; break;
-				case endpoint_type_t::server: remote_config.last_open_stream = 1; break;
+			switch (type) {
+				case endpoint_type::client: remote_config.last_open_stream = 2; break;
+				case endpoint_type::server: remote_config.last_open_stream = 1; break;
 				default: throw std::runtime_error{"unimplemented"};
 			}
 		else
@@ -118,11 +114,11 @@ namespace leaf::network::http2 {
 
 	stream_id_t connection_state::next_local_stream_id() {
 		if (local_config.last_open_stream == 0)
-			switch (endpoint_type) {
-				case endpoint_type_t::client:
+			switch (type) {
+				case endpoint_type::client:
 					local_config.last_open_stream = 1;
 				break;
-				case endpoint_type_t::server:
+				case endpoint_type::server:
 					local_config.last_open_stream = 2;
 				break;
 			}

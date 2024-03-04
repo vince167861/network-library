@@ -3,23 +3,19 @@
 #include <list>
 #include <string>
 
-namespace leaf::network {
+namespace network {
 
 	struct uri {
 
 		std::string scheme, userinfo, host;
 
-		std::uint16_t port = 0;
+		std::uint16_t port{};
 
 		std::string path, query, fragment;
 
-		uri() = default;
+		static uri from(std::string_view);
 
-		uri(std::string_view);
-
-		void normalize();
-
-		uri from_relative(const uri&) const;
+		[[nodiscard]] uri from_relative(std::string_view) const;
 
 		std::string to_absolute() const;
 
@@ -42,7 +38,7 @@ namespace leaf::network {
 }
 
 template<>
-struct std::hash<leaf::network::uri> {
+struct std::hash<network::uri> {
 
-	std::size_t operator()(const leaf::network::uri&) const;
+	std::size_t operator()(const network::uri&) const noexcept;
 };

@@ -2,7 +2,9 @@
 #include "tls-record/alert.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	finished::finished(const byte_string_view source) {
 		verify_data = source;

@@ -2,7 +2,9 @@
 #include "tls-record/alert.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	key_share::key_share(const extension_holder_t type, const std::map<named_group_t, std::unique_ptr<key_exchange_manager>>& managers)
 			: holder_type(type) {

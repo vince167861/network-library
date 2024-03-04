@@ -1,19 +1,19 @@
-#include "tls-cipher/traffic_secret_manager.h"
+#include "tls/cipher/traffic_secret_manager.h"
 
-namespace leaf::network::tls {
+namespace network::tls {
 
-	traffic_secret_manager::traffic_secret_manager(const endpoint_type_t type, std::unique_ptr<cipher_suite>& active)
+	traffic_secret_manager::traffic_secret_manager(const endpoint_type type, std::unique_ptr<cipher_suite>& active)
 			: endpoint_type_(type), active_cipher_(active) {
 	}
 
 	byte_string traffic_secret_manager::encrypt(const byte_string_view header, const byte_string_view fragment) {
 		big_unsigned record_nonce(write_nonce++, active_cipher_->iv_length * 8);
 		switch (endpoint_type_) {
-			case endpoint_type_t::client:
+			case endpoint_type::client:
 				active_cipher_->set_key(client_write_key);
 				record_nonce ^= client_write_iv;
 				break;
-			case endpoint_type_t::server:
+			case endpoint_type::server:
 				active_cipher_->set_key(server_write_key);
 				record_nonce ^= server_write_iv;
 				break;
@@ -26,11 +26,11 @@ namespace leaf::network::tls {
 	byte_string traffic_secret_manager::decrypt(const byte_string_view header, const byte_string_view fragment) {
 		big_unsigned record_nonce(read_nonce++, active_cipher_->iv_length * 8);
 		switch (endpoint_type_) {
-			case endpoint_type_t::client:
+			case endpoint_type::client:
 				active_cipher_->set_key(server_write_key);
 				record_nonce ^= server_write_iv;
 				break;
-			case endpoint_type_t::server:
+			case endpoint_type::server:
 				active_cipher_->set_key(client_write_key);
 				record_nonce ^= client_write_iv;
 				break;
@@ -57,13 +57,13 @@ namespace leaf::network::tls {
 
 	void traffic_secret_manager::reset_nonce_(const bool __s, const bool __c) {
 		switch (endpoint_type_) {
-			case endpoint_type_t::client:
+			case endpoint_type::client:
 				if (__c)
 					write_nonce = 0;
 				if (__s)
 					read_nonce = 0;
 				break;
-			case endpoint_type_t::server:
+			case endpoint_type::server:
 				if (__c)
 					read_nonce = 0;
 				if (__s)

@@ -3,18 +3,19 @@
 #include "http2/frame.h"
 #include "http2/type.h"
 #include "http2/header_packer.h"
+#include "basic_endpoint.h"
 #include <list>
 #include <map>
 #include <memory>
 #include <future>
 
-namespace leaf::network::http2 {
+namespace network::http2 {
 
 	struct stream_state;
 
 	struct connection_state {
 
-		const endpoint_type_t endpoint_type;
+		const endpoint_type type;
 
 		endpoint_state_t local_config, remote_config;
 
@@ -22,13 +23,15 @@ namespace leaf::network::http2 {
 
 		header_packer local_packer, remote_packer;
 
-		connection_state(endpoint_type_t, stream&);
+		connection_state(const endpoint_type __t, stream& __s)
+				: type(__t), pipe_(__s) {
+		}
 
-		std::future<http::response> remote_reserve(stream_id_t, http::http_fields);
+		std::future<http::response> remote_reserve(stream_id_t, http::fields);
 
-		void local_reserve(http::http_fields);
+		void local_reserve(http::fields);
 
-		void remote_open(http::http_fields);
+		void remote_open(http::fields);
 
 		std::future<http::response> local_open(http::request);
 
@@ -75,9 +78,9 @@ namespace leaf::network::http2 {
 		stream_state(stream_id_t, ostream&, connection_state&, http::request);
 
 		/// constructor for remote reserve (server push) stream
-		stream_state(stream_id_t, ostream&, connection_state&, http::http_fields);
+		stream_state(stream_id_t, ostream&, connection_state&, http::fields);
 
-		void notify(http::http_fields, bool end_stream);
+		void notify(http::fields, bool end_stream);
 
 		void notify(byte_string_view, bool end_stream);
 

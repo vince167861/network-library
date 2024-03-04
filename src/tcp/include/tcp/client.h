@@ -1,9 +1,9 @@
 #pragma once
 #include "tcp/endpoint.h"
 
-namespace leaf::network::tcp {
+namespace network::tcp {
 
-	struct client final: endpoint, network::client {
+	struct client final: stream_client, endpoint {
 
 		void connect(const std::string_view host, const tcp_port_t port) override {
 			close();

@@ -5,10 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace leaf::network::http2 {
-
-	extern const std::vector<std::pair<std::string_view, std::string_view>>
-	static_header_pairs;
+namespace network::http2 {
 
 	union header_field_flag {
 		struct {
@@ -46,8 +43,8 @@ namespace leaf::network::http2 {
 		std::size_t dynamic_table_size_ = 4096;
 
 	public:
-		byte_string encode(const http::http_fields&);
+		byte_string encode(const http::fields&);
 
-		http::http_fields decode(byte_string_view source);
+		http::fields decode(byte_string_view source);
 	};
 }

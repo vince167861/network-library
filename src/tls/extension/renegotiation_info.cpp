@@ -1,7 +1,9 @@
 #include "tls-extension/extension.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	renegotiation_info::renegotiation_info(byte_string_view verify_data)
 		: renegotiated_connection(verify_data) {

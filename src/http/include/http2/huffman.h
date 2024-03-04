@@ -1,8 +1,7 @@
 #pragma once
-#include <string>
-#include <cstdint>
+#include "byte_string.h"
 
-namespace leaf::network::http2::internal {
+namespace network::http2::internal {
 
-	std::string from_huffman(std::basic_string_view<std::uint8_t> str);
+	std::string from_huffman(byte_string_view str);
 }

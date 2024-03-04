@@ -2,7 +2,9 @@
 #include "tls-record/alert.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	supported_groups::supported_groups(const std::set<named_group_t>& groups)
 			: named_group_list{groups.begin(), groups.end()} {

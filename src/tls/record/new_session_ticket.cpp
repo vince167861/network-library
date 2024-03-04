@@ -2,7 +2,9 @@
 #include "internal/utils.h"
 #include <ranges>
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	new_session_ticket::new_session_ticket(const byte_string_view source) {
 		auto it = source.begin();

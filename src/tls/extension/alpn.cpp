@@ -2,7 +2,9 @@
 #include "tls-record/alert.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	alpn::alpn(std::list<std::string> protocols)
 			: protocol_name_list(std::move(protocols)) {
@@ -38,7 +40,7 @@ namespace leaf::network::tls {
 		byte_string __lstr;
 		for (auto& p: protocol_name_list) {
 			write(std::endian::big, __lstr, p.size(), 1);
-			__lstr += reinterpret_cast<const byte_string&>(p);
+			__lstr.append(reinterpret_cast<const byte_string&>(p));
 		}
 		byte_string data;
 		write(std::endian::big, data, __lstr.size(), 2);

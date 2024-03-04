@@ -14,13 +14,17 @@ install(TARGETS http_common EXPORT leaf
 
 add_library(http1_1
 		http1_1/client.cpp
+		http1_1/server.cpp
+		http1_1/common.cpp
 )
 target_include_directories(http1_1
 	PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>
 )
 target_sources(http1_1
 		PUBLIC FILE_SET http_headers TYPE HEADERS BASE_DIRS include FILES
+		include/http1_1/common.h
 		include/http1_1/client.h
+		include/http1_1/server.h
 )
 target_link_libraries(http1_1
 		http_common)

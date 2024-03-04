@@ -2,7 +2,9 @@
 #include "tls-record/alert.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	record::record(const content_type_t type, opt_cipher cipher)
 		: type(type), cipher_(cipher) {
@@ -60,10 +62,4 @@ namespace leaf::network::tls {
 		}
 		return str;
 	}
-
-}
-
-std::format_context::iterator
-std::formatter<leaf::network::tls::record>::format(const leaf::network::tls::record& record, format_context& ctx) const {
-	return std::format_to(ctx.out(), "record [{}, payload size = {}]", record.type, record.messages.size());
 }

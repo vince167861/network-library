@@ -1,13 +1,13 @@
 #pragma once
 #include "tls-extension/extension.h"
 #include "tls-record/record.h"
-#include "tls-cipher/cipher_suite.h"
+#include "tls/cipher/cipher_suite.h"
 #include <map>
 #include <list>
 #include <set>
 #include <expected>
 
-namespace leaf::network::tls {
+namespace network::tls {
 
 	struct handshake_base: message {};
 
@@ -191,11 +191,13 @@ namespace leaf::network::tls {
 
 
 template<>
-struct std::formatter<leaf::network::tls::handshake> {
+struct std::formatter<network::tls::handshake> {
 
 	constexpr auto parse(std::format_parse_context& ctx) {
 		return ctx.begin();
 	}
 
-	std::format_context::iterator format(const leaf::network::tls::handshake&, std::format_context& ctx) const;
+	std::format_context::iterator format(const network::tls::handshake& msg, std::format_context& ctx) const {
+		return std::visit([&](const auto& typed_msg){ return typed_msg.format(ctx.out()); }, msg);
+	}
 };

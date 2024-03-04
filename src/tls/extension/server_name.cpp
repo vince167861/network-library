@@ -2,10 +2,11 @@
 #include "tls-record/alert.h"
 #include "internal/utils.h"
 
+using namespace internal;
 
-namespace leaf::network::tls {
+namespace network::tls {
 
-	server_name::server_name(std::initializer_list<std::pair<name_type_t, std::string>> list)
+	server_name::server_name(const std::initializer_list<std::pair<name_type_t, std::string>> list)
 		: server_name_list(list) {
 	}
 

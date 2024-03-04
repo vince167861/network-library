@@ -1,8 +1,13 @@
 if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL Generic)
 
 	add_executable(example-http_client
-			http_client.cpp)
+			http/client.cpp)
 	target_link_libraries(example-http_client
+			tcp http1_1)
+
+	add_executable(example-http_server
+			http/server.cpp)
+	target_link_libraries(example-http_server
 			tcp http1_1)
 
 	add_executable(example-https_client

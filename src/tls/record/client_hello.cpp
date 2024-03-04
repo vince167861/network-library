@@ -3,7 +3,9 @@
 #include "internal/utils.h"
 #include <ranges>
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	client_hello::client_hello(std::set<cipher_suite_t> suites)
 			: cipher_suites(suites.begin(), suites.end()), compression_methods(reinterpret_cast<const std::uint8_t*>("\0"), 1) {

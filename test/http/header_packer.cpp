@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "http2/header_packer.h"
 
-using namespace leaf::network;
+using namespace network;
 
 TEST(header_packer, encode) {
 	constexpr std::uint8_t
@@ -9,18 +9,18 @@ TEST(header_packer, encode) {
 			packed_2[] = "\x82\xbe",
 			packed_3[] = "\x41\x{0f}www.example.com\x82\x84\x86\xbf";
 	http2::header_packer packer;
-	http::http_fields headers;
+	http::fields headers;
 
 	headers.set("custom-key", "custom-header");
-	ASSERT_EQ(packer.encode(headers), leaf::byte_string_view(packed_1));
+	ASSERT_EQ(packer.encode(headers), byte_string_view(packed_1));
 
 	headers.set(":method", "GET");
-	ASSERT_EQ(packer.encode(headers), leaf::byte_string_view(packed_2));
+	ASSERT_EQ(packer.encode(headers), byte_string_view(packed_2));
 
 	headers.set(":scheme", "http");
 	headers.set(":path", "/");
 	headers.set(":authority", "www.example.com");
-	ASSERT_EQ(packer.encode(headers), leaf::byte_string_view(packed_3));
+	ASSERT_EQ(packer.encode(headers), byte_string_view(packed_3));
 }
 
 int main() {

@@ -1,12 +1,9 @@
 #include "http2/header_packer.h"
 #include "http2/huffman.h"
-#include "internal/utils.h"
 #include <ranges>
 
-namespace leaf::network::http2 {
-
-	const std::vector<std::pair<std::string_view, std::string_view>>
-	static_header_pairs {
+const std::vector<std::pair<std::string_view, std::string_view>>
+static_header_pairs {
 		{"", ""},
 		{":authority", ""},
 		{":method", "GET"},
@@ -71,6 +68,8 @@ namespace leaf::network::http2 {
 		{"www-authenticate", ""},
 	};
 
+namespace network::http2 {
+
 	void write_integer(byte_string& dst, const std::uint8_t prefix_size, std::uintmax_t value) {
 		const auto max_value = (1u << prefix_size) - 1;
 		if (value < max_value) {
@@ -113,20 +112,20 @@ namespace leaf::network::http2 {
 		return lhs.first == rhs.first && lhs.second == rhs.second;
 	}
 
-	byte_string header_packer::encode(const http::http_fields& headers) {
+	byte_string header_packer::encode(const http::fields& headers) {
 		byte_string ret;
 		for (auto& pair: headers) {
 			auto& [name, value] = pair;
 			const auto [ind, indexed] = [&] -> std::pair<std::uintmax_t, bool> {
-				if (const auto it = std::ranges::find(static_header_pairs, pair); it != static_header_pairs.end())
+				if (const auto it = std::ranges::find_if(static_header_pairs, [&](auto& lhs){ return lhs == pair; }); it != static_header_pairs.end())
 					return {static_cast<std::uintmax_t>(std::distance(static_header_pairs.begin(), it)), true};
-				if (const auto it = std::ranges::find(dynamic_header_pairs, pair); it != dynamic_header_pairs.end())
+				if (const auto it = std::ranges::find_if(dynamic_header_pairs, [&](auto& lhs){ return lhs == pair; }); it != dynamic_header_pairs.end())
 					return {static_cast<std::uintmax_t>(std::distance(dynamic_header_pairs.begin(), it) + 62), true};
 				const auto static_keys = static_header_pairs | std::views::keys;
-				if (const auto it = std::ranges::find(static_keys, pair.first); it != static_keys.end())
+				if (const auto it = std::ranges::find(static_keys, name); it != static_keys.end())
 					return {static_cast<std::uintmax_t>(std::distance(static_keys.begin(), it)), false};
 				const auto dynamic_keys = dynamic_header_pairs | std::views::keys;
-				if (const auto it = std::ranges::find(dynamic_keys, pair.first); it != dynamic_keys.end())
+				if (const auto it = std::ranges::find(dynamic_keys, name); it != dynamic_keys.end())
 					return {static_cast<std::uintmax_t>(std::distance(dynamic_keys.begin(), it) + 62), false};
 				return {0, false};
 			}();
@@ -137,7 +136,7 @@ namespace leaf::network::http2 {
 			}
 			ret.push_back(64);
 			write_integer(ret, 6, ind);
-			if (!ind) {
+			if (ind == 0) {
 				ret.push_back(0);
 				write_integer(ret, 7, name.size());
 				ret += reinterpret_cast<const byte_string&>(name);
@@ -150,8 +149,8 @@ namespace leaf::network::http2 {
 		return ret;
 	}
 
-	http::http_fields header_packer::decode(const byte_string_view source) {
-		http::http_fields members;
+	http::fields header_packer::decode(const byte_string_view source) {
+		http::fields members;
 		uint64_t value;
 		for (auto it = source.begin(), end = source.end(); it != end;) {
 			if (const auto header = reinterpret_cast<const header_field_flag&>(*it); header.indexed_field) {

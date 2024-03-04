@@ -1,7 +1,9 @@
 #include "tls-record/handshake.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	certificate_request::certificate_request(const byte_string_view source) {
 		auto it = source.begin();

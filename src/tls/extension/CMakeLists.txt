@@ -12,7 +12,9 @@ add_library(tls-extension
 		alpn.cpp)
 target_link_libraries(tls-extension tcp tls-utils tls-record tls-key)
 target_include_directories(tls-extension PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include>)
-set_property(TARGET tls-extension PROPERTY PUBLIC_HEADER include/tls-extension/extension.h)
+target_sources(tls-extension PUBLIC FILE_SET tls_ext_h TYPE HEADERS BASE_DIRS include FILES
+		include/tls-extension/extension.h
+)
 install(TARGETS tls-extension EXPORT leaf
-        PUBLIC_HEADER DESTINATION include/tls-extension
-        LIBRARY)
+		FILE_SET tls_ext_h
+		LIBRARY)

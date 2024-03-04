@@ -3,13 +3,15 @@
 
 #define EXT_NAME "SignatureAlgorithms"
 
-namespace leaf::network::tls {
+using namespace internal;
 
-	signature_algorithms::signature_algorithms(std::initializer_list<signature_scheme_t> list)
+namespace network::tls {
+
+	signature_algorithms::signature_algorithms(const std::initializer_list<signature_scheme_t> list)
 			: list(list) {
 	}
 
-	void signature_algorithms::format(std::format_context::iterator& it, std::size_t level) const {
+	void signature_algorithms::format(std::format_context::iterator& it, const std::size_t level) const {
 		it = std::ranges::fill_n(it, level, '\t');
 		it = std::ranges::copy("signature_algorithms:", it).out;
 		for (auto& g: list) {
@@ -24,7 +26,7 @@ namespace leaf::network::tls {
 			throw std::runtime_error(EXT_NAME " requires at least one signature scheme.");
 		byte_string data;
 		write(std::endian::big, data, list.size() * sizeof(signature_scheme_t), 2);
-		for (auto& s: list)
+		for (const auto s: list)
 			write(std::endian::big, data, s);
 		byte_string out;
 		write(std::endian::big, out, ext_type_t::signature_algorithms);

@@ -1,7 +1,9 @@
 #include "tls-record/alert.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	std::format_context::iterator alert::format(std::format_context::iterator it) const {
 		return std::format_to(it, "Alert\n\tlevel: {}\n\tdescription: {}\n\tdebug: {}", level, description, what());

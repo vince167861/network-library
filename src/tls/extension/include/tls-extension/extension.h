@@ -1,14 +1,13 @@
 #pragma once
-#include "common.h"
-#include "tls-key/manager.h"
-#include "tls-utils/type.h"
+#include "tls/key/manager.h"
+#include "tls/util/type.h"
 #include <memory>
 #include <set>
 #include <map>
 #include <list>
 #include <expected>
 
-namespace leaf::network::tls {
+namespace network::tls {
 
 	struct extension_base {
 
@@ -186,20 +185,23 @@ namespace leaf::network::tls {
 
 
 template<>
-struct std::formatter<leaf::network::tls::extension_base> {
+struct std::formatter<network::tls::extension_base> {
 
 	std::size_t indent = 0;
 
 	constexpr auto parse(std::format_parse_context& ctx) {
 		const auto it = ctx.begin(), end = ctx.end();
-		if (it != end)
-			if (std::from_chars(it, end, indent).ec != std::errc())
+		if (it != end) {
+			const auto parse_r = std::from_chars(it, end, indent);
+			if (parse_r.ec != std::errc())
 				throw std::format_error("formatting extension: indent error");
+			return parse_r.ptr;
+		}
 		return it;
 	}
 
 	std::format_context::iterator
-	format(const leaf::network::tls::extension_base& extension, std::format_context& ctx) const {
+	format(const network::tls::extension_base& extension, std::format_context& ctx) const {
 		auto it = ctx.out();
 		extension.format(it, indent);
 		return it;

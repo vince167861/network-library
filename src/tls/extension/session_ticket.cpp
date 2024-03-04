@@ -1,7 +1,9 @@
 #include "tls-extension/extension.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	session_ticket::session_ticket(const byte_string_view data)
 			: data(data) {

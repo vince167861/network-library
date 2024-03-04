@@ -10,7 +10,7 @@ using namespace leaf::network;
 int main(const int argc, const char * const * const argv) {
 	if (argc <= 1)
 		throw std::invalid_argument(std::format("usage: {} <request url>\n", argc == 1 ? argv[0] : "client"));
-	const uri request_target(argv[1]);
+	const auto request_target = uri::from(argv[1]);
 
 	tcp::client tcp_client;
 

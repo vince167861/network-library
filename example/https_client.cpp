@@ -4,19 +4,18 @@
 
 #include <iostream>
 
-using namespace leaf;
-using namespace leaf::network;
+using namespace network;
 
-int main(int argc, char** argv) {
+int main(const int argc, const char* const* const argv) {
 	tcp::client tcp_client;
 
 	tls::client tls_client(tcp_client);
-	tls_client.add_cipher_suite({cipher_suite_t::AES_128_GCM_SHA256});
-	tls_client.add_group(named_group_t::x25519, true);
-	tls_client.add_group(named_group_t::ffdhe2048, false);
+	tls_client.add_cipher_suite({tls::cipher_suite_t::AES_128_GCM_SHA256});
+	tls_client.add_group(tls::named_group_t::x25519, true);
+	tls_client.add_group(tls::named_group_t::ffdhe2048, false);
 
-	http::client https_client(tls_client);
-	const uri request_url(argc > 1 ? argv[1] : "https://www.google.com/");
+	http::client https_client(tls_client, true);
+	const auto request_url = uri::from(argc > 1 ? argv[1] : "https://www.google.com/");
 
 	auto response = https_client.fetch({"GET", request_url});
 

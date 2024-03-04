@@ -1,8 +1,8 @@
 #pragma once
 #include "record.h"
-#include "tls-utils/type.h"
+#include "tls/util/type.h"
 
-namespace leaf::network::tls {
+namespace network::tls {
 
 	struct alert final: message, std::runtime_error {
 

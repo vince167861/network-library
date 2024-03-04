@@ -3,7 +3,9 @@
 #include "internal/utils.h"
 #include <ranges>
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	certificate::certificate(const byte_string_view __s) {
 		auto it = __s.begin();

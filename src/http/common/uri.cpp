@@ -1,28 +1,30 @@
 #include "http/uri.h"
 #include "internal/utils.h"
+#include "stl_hash.h"
 #include <format>
 #include <charconv>
+#include <utility>
 
-namespace leaf::network {
+using namespace internal;
+
+namespace network {
 
 	std::string from_pct_encoding(const std::string_view __i) {
-		std::string result;
-		result.reserve(__i.length());
+		std::string __r;
+		__r.reserve(__i.length());
 		const auto end = __i.end();
 		for (auto it = __i.begin(); it != end; ++it) {
 			if (*it == '%') {
 				char c;
 				if (std::from_chars(it + 1, it + 3, c, 16).ptr != it + 3)
 					throw std::runtime_error("invalid percent encoding");
-				result.push_back(c);
+				__r.push_back(c);
 				std::advance(it, 2);
 			} else
-				result += *it;
+				__r.push_back(*it);
 		}
-		return result;
+		return __r;
 	}
-
-	std::runtime_error invalid_url{"url provided is invalid."};
 
 	std::string
 	to_url_encoded(const std::list<std::pair<std::string, std::string>>& values) {
@@ -60,13 +62,13 @@ namespace leaf::network {
 		return __r;
 	}
 
-	std::string parse_scheme(auto& begin, const auto end) {
+	std::optional<std::string> parse_scheme(auto& begin, const auto end) {
 		bool valid = true;
 		for (auto it = begin; it != end; ++it) {
 			if (*it == ':') {
 				if (!valid)
 					throw std::invalid_argument("scheme accepts only /[A-Za-z][A-Za-z0-9+-.]*/");
-				const auto __r = to_lower({begin, it});
+				auto __r = to_lower({begin, it});
 				begin = it + 1;
 				return __r;
 			}
@@ -77,7 +79,7 @@ namespace leaf::network {
 				continue;
 			valid = false;
 		}
-		return {};
+		return std::nullopt;
 	}
 
 	constexpr std::string_view unreserved("-_.~"), subdelims("!$&'()*+,;=");
@@ -118,7 +120,7 @@ namespace leaf::network {
 		return __r;
 	}
 
-	unsigned parse_port(auto& __b, const auto __e) {
+	std::uint16_t parse_port(auto& __b, const auto __e) {
 		if (*__b != ':')
 			return {};
 		auto it = ++__b;
@@ -137,6 +139,17 @@ namespace leaf::network {
 		throw std::runtime_error("port parse error");
 	}
 
+	std::optional<std::tuple<std::string, std::string, std::uint16_t>>
+	parse_authority(auto& __begin, const auto __end) {
+		if (*__begin != '/' || *(__begin + 1) != '/')
+			return std::nullopt;
+		std::advance(__begin, 2);
+		auto userinfo = from_pct_encoding(parse_userinfo(__begin, __end));
+		auto host = from_pct_encoding(parse_host(__begin, __end));
+		auto port = parse_port(__begin, __end);
+		return {{std::move(userinfo), std::move(host), port}};
+	}
+
 	bool path_char(auto& it) {
 		return std::isalnum(*it) || unreserved.contains(*it) || subdelims.contains(*it) || *it == ':' || *it == '@' || pct_encoded(it);
 	}
@@ -148,9 +161,15 @@ namespace leaf::network {
 				path.remove_prefix(3);
 			else if (path.starts_with("./") || path.starts_with("/./"))
 				path.remove_prefix(2);
-			else if (path.starts_with("/../") || path == "/..") {
-				__r.erase(__r.find_last_of('/'));
+			else if (path.starts_with("/../")) {
+				if (const auto pos = __r.find_last_of('/'); pos == std::string::npos)
+					__r.clear();
+				else
+					__r.erase(pos);
  				path.remove_prefix(3);
+			} else if (path == "/..") {
+				__r.erase(__r.find_last_of('/') + 1);
+				break;
 			} else if (path == "." || path == "..")
 				path = {};
 			else if (path == "/.") {
@@ -167,11 +186,11 @@ namespace leaf::network {
 		return __r;
 	}
 
-	std::string parse_path(auto& begin, const auto end) {
-		if (begin == end)
+	std::string_view parse_path(auto& __begin, const auto __end) {
+		if (__begin == __end)
 			return {};
-		auto it = begin;
-		for (; it != end; ++it) {
+		auto it = __begin;
+		for (; it != __end; ++it) {
 			const auto c = *it;
 			if (path_end.contains(c))
 				break;
@@ -179,15 +198,14 @@ namespace leaf::network {
 				continue;
 			throw std::invalid_argument("invalid charater in path component");
 		}
-		std::string __r(begin, it);
-		begin = it;
-		return __r;
+		const auto begin = std::exchange(__begin, it);
+		return {begin, it};
 	}
 
-	std::string parse_query(auto& begin, const auto end) {
-		if (*begin != '?')
-			return {};
-		auto it = begin + 1;
+	std::optional<std::string_view> parse_query(auto& __begin, const auto end) {
+		if (*__begin != '?')
+			return std::nullopt;
+		auto it = __begin + 1;
 		for (; it != end; ++it) {
 			const auto c = *it;
 			if (c == '#')
@@ -196,42 +214,34 @@ namespace leaf::network {
 				continue;
 			throw std::invalid_argument("invalid charater in query component");
 		}
-		std::string __r(begin + 1, it);
-		begin = it;
-		return __r;
+		const auto begin = std::exchange(__begin, it) + 1;
+		return {{begin, it}};
 	}
 
-	std::string parse_fragment(auto& begin, const auto end) {
-		if (*begin != '#')
+	std::string_view parse_fragment(auto& __begin, const auto __end) {
+		if (*__begin != '#')
 			return {};
-		for (auto it = begin + 1; it != end; ++it) {
+		for (auto it = __begin + 1; it != __end; ++it) {
 			const auto c = *it;
 			if (c == '/' || c == '?' || path_char(it))
 				continue;
 			throw std::invalid_argument("invalid charater in fragment component");
 		}
-		std::string __r(begin + 1, end);
-		begin = end;
+		const auto begin = std::exchange(__begin, __end) + 1;
+		return {begin, __end};
+	}
+
+	uri uri::from(const std::string_view __s) {
+		uri __r;
+		auto it = __s.begin();
+		const auto end = __s.end();
+		__r.scheme = parse_scheme(it, end).value_or("");
+		if (auto authority = parse_authority(it, end))
+			std::tie(__r.userinfo, __r.host, __r.port) = std::move(authority.value());
+		__r.path = remove_dot_segments(parse_path(it, end));
+		__r.query = parse_query(it, end).value_or("");
+		__r.fragment = parse_fragment(it, end);
 		return __r;
-	}
-
-	uri::uri(const std::string_view __str) {
-		auto it = __str.begin();
-		const auto end = __str.end();
-		scheme = parse_scheme(it, end);
-		if (*it == '/' && *(it + 1) == '/') { // authority
-			std::advance(it, 2);
-			userinfo = from_pct_encoding(parse_userinfo(it, end));
-			host = from_pct_encoding(parse_host(it, end));
-			port = parse_port(it, end);
-		}
-		path = parse_path(it, end);
-		query = parse_query(it, end);
-		fragment = parse_fragment(it, end);
-	}
-
-	void uri::normalize() {
-		path = remove_dot_segments(path);
 	}
 
 	std::string uri::to_absolute() const {
@@ -280,32 +290,28 @@ namespace leaf::network {
 		}
 	}
 
-	uri uri::from_relative(const uri& ref) const {
+	uri uri::from_relative(const std::string_view ref) const {
 		uri __r;
-		if (!ref.scheme.empty()) {
-			__r.scheme = ref.scheme;
-			__r.userinfo = ref.userinfo;
-			__r.host = ref.host;
-			__r.port = ref.port;
-			__r.path = remove_dot_segments(ref.path);
-			__r.query = ref.query;
+		auto it = ref.begin();
+		const auto end = ref.end();
+		if (auto r_scheme = parse_scheme(it, end)) {
+			__r.scheme = std::move(r_scheme.value());
+			if (auto authority = parse_authority(it, end))
+				std::tie(__r.userinfo, __r.host, __r.port) = std::move(authority.value());
+			__r.path = remove_dot_segments(parse_path(it, end));
+			__r.query = parse_query(it, end).value_or("");
 		} else {
-			if (!ref.host.empty()) {
-				__r.userinfo = ref.userinfo;
-				__r.host = ref.host;
-				__r.port = ref.port;
-				__r.path = remove_dot_segments(ref.path);
-				__r.query = ref.query;
+			if (auto authority = parse_authority(it, end)) {
+				std::tie(__r.userinfo, __r.host, __r.port) = std::move(authority.value());
+				__r.path = remove_dot_segments(parse_path(it, end));
+				__r.query = parse_query(it, end).value_or("");
 			} else {
-				if (ref.path.empty()) {
+				if (const auto ref_path = parse_path(it, end); ref_path.empty()) {
 					__r.path = path;
-					__r.query = ref.query.empty() ? query : ref.query;
+					__r.query = parse_query(it, end).value_or(query);
 				} else {
-					if (ref.path.starts_with('/'))
-						__r.path = remove_dot_segments(ref.path);
-					else
-						__r.path = remove_dot_segments(merge_path(path, ref.path));
-					__r.query = ref.query;
+					__r.path = remove_dot_segments(ref_path.starts_with('/') ? ref_path : merge_path(path, ref_path));
+					__r.query = parse_query(it, end).value_or("");
 				}
 				__r.userinfo = userinfo;
 				__r.host = host;
@@ -313,7 +319,7 @@ namespace leaf::network {
 			}
 			__r.scheme = scheme;
 		}
-		__r.fragment = ref.fragment;
+		__r.fragment = parse_fragment(it, end);
 		return __r;
 	}
 
@@ -340,7 +346,7 @@ namespace leaf::network {
 	}
 }
 
-std::size_t std::hash<leaf::network::uri>::operator()(const leaf::network::uri& u) const {
+std::size_t std::hash<network::uri>::operator()(const network::uri& u) const noexcept {
 	std::size_t result;
 	hash_combine(result, u.scheme);
 	hash_combine(result, u.userinfo);

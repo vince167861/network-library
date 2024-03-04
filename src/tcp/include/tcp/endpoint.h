@@ -1,7 +1,6 @@
 #pragma once
-#include "basic_endpoint.h"
+#include "stream_endpoint.h"
 #include <stdexcept>
-#include <string>
 #include <format>
 
 #ifdef PLATFORM_Linux
@@ -42,7 +41,7 @@
 
 #endif
 
-namespace leaf::network::tcp {
+namespace network::tcp {
 
 #ifdef PLATFORM_Windows
 	class wsa_control {
@@ -65,27 +64,8 @@ namespace leaf::network::tcp {
 #endif
 
 
-	class endpoint: virtual public network::endpoint {
-	protected:
-		socket_t socket_;
+	struct endpoint: virtual stream_endpoint {
 
-		[[noreturn]] void handle_error_(std::string_view function) {
-			switch (const int error_no = last_error) {
-				case error_conn_aborted:
-					close();
-					throw std::runtime_error("tcp closed");
-				case error_conn_reset:
-					close();
-					throw std::runtime_error("tcp connection reset");
-				case error_conn_refused:
-					close();
-					throw std::runtime_error("tcp connection refused");
-				default:
-					throw std::runtime_error(std::format("{} gives error {}", function, error_no));
-			}
-		}
-
-	public:
 		endpoint(socket_t socket = invalid_socket)
 			: socket_(socket) {
 #ifdef PLATFORM_Windows
@@ -140,7 +120,7 @@ namespace leaf::network::tcp {
 		}
 
 		void write(const std::uint8_t octet) override {
-			write({reinterpret_cast<const std::uint8_t *>(&octet), 1});
+			write({&octet, 1});
 		}
 
 		void finish() override {
@@ -163,6 +143,25 @@ namespace leaf::network::tcp {
 #ifdef PLATFORM_Windows
 			wsa_control::release();
 #endif
+		}
+
+	protected:
+		socket_t socket_;
+
+		[[noreturn]] void handle_error_(std::string_view function) {
+			switch (const int error_no = last_error) {
+				case error_conn_aborted:
+					close();
+				throw std::runtime_error("tcp closed");
+				case error_conn_reset:
+					close();
+				throw std::runtime_error("tcp connection reset");
+				case error_conn_refused:
+					close();
+				throw std::runtime_error("tcp connection refused");
+				default:
+					throw std::runtime_error(std::format("{} gives error {}", function, error_no));
+			}
 		}
 	};
 }

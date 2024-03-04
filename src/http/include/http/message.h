@@ -1,26 +1,30 @@
 #pragma once
-#include "basic_endpoint.h"
+#include <expected>
+
+#include "basic_stream.h"
 #include "http/uri.h"
-#include <functional>
 #include <map>
 #include <format>
 
-namespace leaf::network::http {
+namespace network::http {
 
 	namespace internal {
 
-		struct http_field_name_less {
+		struct field_name_less {
 
 			bool operator()(const std::string&, const std::string&) const;
 		};
 
-		using http_field_base = std::map<std::string, std::string, http_field_name_less>;
+		using field_base = std::map<std::string, std::string, field_name_less>;
 	}
 
+	enum class field_parse_error {
+		invalid_line_folding, obsolete_line_folding, missing_colon, invalid_whitespace_after_name
+	};
 
-	struct http_fields: internal::http_field_base {
+	struct fields: internal::field_base {
 
-		using internal::http_field_base::map;
+		using internal::field_base::map;
 
 		std::string& append(std::string_view name, std::string_view value, std::string_view sep = ",");
 
@@ -30,15 +34,32 @@ namespace leaf::network::http {
 
 		operator std::string() const;
 
-		static http_fields from_http_headers(istream&);
+		static std::expected<fields, field_parse_error> from_http_headers(istream&);
 
-		static http_fields from_event_stream(istream&);
+		static fields from_event_stream(istream&);
 	};
+
+	enum class message_type {
+		request, response
+	};
+
+
+	enum class status: std::uint16_t {
+		no_content = 204, not_modified = 304, bad_request = 400, internal_error = 500
+	};
+
+	inline bool informational(const status code) {
+		return static_cast<std::uint16_t>(code) / 100 == 1;
+	}
+
+	inline bool redirection(const status code) {
+		return static_cast<std::uint16_t>(code) / 100 == 3;
+	}
 
 
 	struct message {
 
-		http_fields headers;
+		fields headers;
 	};
 
 
@@ -52,7 +73,7 @@ namespace leaf::network::http {
 
 		request() = default;
 
-		request(std::string method, uri, http_fields headers = {});
+		request(std::string method, uri, fields headers = {});
 
 		bool operator==(const request&) const;
 	};
@@ -60,13 +81,9 @@ namespace leaf::network::http {
 
 	struct response final: message {
 
-		unsigned status;
+		status code;
 
 		std::string content;
-
-		bool is_redirection() const {
-			return 300 <= status && status <= 399;
-		}
 	};
 
 
@@ -78,36 +95,59 @@ namespace leaf::network::http {
 
 		std::optional<std::string> id;
 	};
+
+
+	struct client_error final: std::runtime_error {
+
+		explicit client_error(const std::string_view msg)
+			: std::runtime_error(std::format("[HTTP client] {}", msg)) {
+		}
+	};
+
+
+	struct error final: std::runtime_error {
+
+		const status code;
+
+		explicit error(const status code, const std::string_view msg)
+			: std::runtime_error(std::format("[HTTP] {}", msg)), code(code) {
+		}
+	};
 }
 
-template<>
-struct std::hash<leaf::network::http::request> {
 
-	std::size_t operator()(const leaf::network::http::request&) const;
+template<>
+struct std::hash<network::http::request> {
+
+	std::size_t operator()(const network::http::request&) const;
 };
 
 
 template<>
-struct std::formatter<leaf::network::http::request> {
+struct std::formatter<network::http::request> {
 
 	constexpr auto parse(std::format_parse_context& ctx) {
 		return ctx.begin();
 	}
 
-	auto format(const leaf::network::http::request& req, std::format_context& ctx) const {
-		return std::format_to(ctx.out(), "request {} {}\n{}\n{}", req.method, req.target.to_absolute(), static_cast<std::string>(req.headers), req.content);
+	auto format(const network::http::request& req, std::format_context& ctx) const {
+		return std::format_to(ctx.out(),
+			"request {} {}\n{}\n{}",
+			req.method, req.target.to_absolute(), static_cast<std::string>(req.headers), req.content);
 	}
 };
 
 
 template<>
-struct std::formatter<leaf::network::http::response> {
+struct std::formatter<network::http::response> {
 
 	constexpr auto parse(std::format_parse_context& ctx) {
 		return ctx.begin();
 	}
 
-	auto format(const leaf::network::http::response& response, std::format_context& ctx) const {
-		return std::format_to(ctx.out(), "response ({})\n{}\n{}", response.status, static_cast<std::string>(response.headers), response.content);
+	auto format(const network::http::response& response, std::format_context& ctx) const {
+		return std::format_to(ctx.out(),
+			"response ({})\n{}\n{}",
+			static_cast<std::uint16_t>(response.code), static_cast<std::string>(response.headers), response.content);
 	}
 };

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "cipher/sha2.h"
-#include "cipher/hmac.h"
+#include "../../src/crypto"
+#include "../../src/crypto"
 
 using namespace leaf;
 

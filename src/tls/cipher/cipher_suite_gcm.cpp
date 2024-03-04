@@ -1,6 +1,6 @@
-#include "tls-cipher/cipher_suite_gcm.h"
+#include "tls/cipher/cipher_suite_gcm.h"
 
-namespace leaf::network::tls {
+namespace network::tls {
 
 	cipher_suite_gcm::cipher_suite_gcm(const std::size_t __k, const std::size_t __iv, const std::size_t __t)
 			: gcm(__k * 8, __iv * 8, __t * 8), tag_bits_(__t * 8) {
@@ -17,7 +17,10 @@ namespace leaf::network::tls {
 
 	big_unsigned
 	cipher_suite_gcm::decrypt(const big_unsigned nonce, const big_unsigned auth, const big_unsigned ciphertext) const {
-		const big_unsigned __enc(ciphertext >> tag_bits_, ciphertext.bit_most() - tag_bits_), tag(ciphertext, tag_bits_);
-		return gcm::decrypt(nonce, __enc, auth, tag);
+		return gcm::decrypt(
+			nonce,
+			{ciphertext >> tag_bits_, ciphertext.bit_most() - tag_bits_},
+			auth,
+			{ciphertext, tag_bits_});
 	}
 }

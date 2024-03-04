@@ -1,7 +1,9 @@
 #include "tls-extension/extension.h"
 #include "internal/utils.h"
 
-namespace leaf::network::tls {
+using namespace internal;
+
+namespace network::tls {
 
 	supported_versions::supported_versions(const extension_holder_t type, const byte_string_view source)
 			: holder_type(type) {

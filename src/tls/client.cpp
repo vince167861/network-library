@@ -5,12 +5,12 @@
 #include <iostream>
 #include <ranges>
 
-namespace leaf::network::tls {
+namespace network::tls {
 
 	constexpr std::uint8_t finished_label[] = "finished", empty_context[] = "";
 
-	client::client(network::client& client, std::unique_ptr<random_number_generator> generator)
-		: endpoint(client, endpoint_type_t::client, std::move(generator)), client_(client) {
+	client::client(stream_client& __c, std::unique_ptr<random_source> __g)
+			: endpoint(__c, endpoint_type::client, std::move(__g)), client_(__c) {
 	}
 
 	void client::connect(const std::string_view host, const uint16_t port) {
@@ -209,12 +209,14 @@ namespace leaf::network::tls {
 	void client::reset() {
 		if (init_random)
 			std::ranges::copy(init_random.value(), random.begin());
-		else for (auto& i : random)
-			i = random_->unit();
+		else {
+			for (auto& i : random)
+				i = static_cast<std::uint8_t>((*random_)());
+		}
 		if (init_session_id)
 			session_id = init_session_id.value();
 		else if (compatibility_mode)
-			session_id = random_->number(32);
+			session_id = (*random_)(32);
 		else
 			session_id.clear();
 		secret_.reset();

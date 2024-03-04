@@ -3,15 +3,11 @@
 #include <iostream>
 #include <format>
 
-namespace leaf::network::http2 {
+namespace network::http2 {
 
 	constexpr std::uint8_t preface[] = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
 
-	client::client(network::client& _c)
-		: client_(_c), state_(endpoint_type_t::client, _c) {
-	}
-
-	void client::connect(const std::string_view host, const tcp_port_t port) {
+	void client::connect_(const std::string_view host, const tcp_port_t port) {
 		if (client_.connected() && connected_host_ == host && connected_port_ == port)
 			return;
 		close();
@@ -48,7 +44,7 @@ namespace leaf::network::http2 {
 	}
 
 	std::future<http::response> client::fetch(http::request req) {
-		connect(req.target.host, [&] -> tcp_port_t {
+		connect_(req.target.host, [&] -> tcp_port_t {
 			if (req.target.port)
 				return req.target.port;
 			if (req.target.scheme == "http")

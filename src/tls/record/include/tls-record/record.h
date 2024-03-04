@@ -1,12 +1,11 @@
 #pragma once
-#include "common.h"
-#include "basic_endpoint.h"
-#include "tls-utils/type.h"
-#include "tls-cipher/traffic_secret_manager.h"
+#include "basic_stream.h"
+#include "tls/util/type.h"
+#include "tls/cipher/traffic_secret_manager.h"
 #include <string>
 #include <format>
 
-namespace leaf::network::tls {
+namespace network::tls {
 
 	/**
 	 * \brief A protocol layer message.
@@ -53,24 +52,26 @@ namespace leaf::network::tls {
 
 
 template<>
-struct std::formatter<leaf::network::tls::message> {
+struct std::formatter<network::tls::message> {
 
 	constexpr auto parse(const std::format_parse_context& ctx) {
 		return ctx.begin();
 	}
 
-	auto format(const leaf::network::tls::message& msg, std::format_context& ctx) const {
+	auto format(const network::tls::message& msg, std::format_context& ctx) const {
 		return msg.format(ctx.out());
 	}
 };
 
 
 template<>
-struct std::formatter<leaf::network::tls::record> {
+struct std::formatter<network::tls::record> {
 
 	constexpr auto parse(const std::format_parse_context& ctx) {
 		return ctx.begin();
 	}
 
-	std::format_context::iterator format(const leaf::network::tls::record&, std::format_context&) const;
+	std::format_context::iterator format(const network::tls::record& record, format_context& ctx) const {
+		return std::format_to(ctx.out(), "record [{}, payload size = {}]", record.type, record.messages.size());
+	}
 };
