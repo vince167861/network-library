@@ -1,6 +1,6 @@
 #include "http/uri.h"
 #include "internal/utils.h"
-#include "stl_hash.h"
+#include "custom_std/hash.h"
 #include <format>
 #include <charconv>
 #include <utility>

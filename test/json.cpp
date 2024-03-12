@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "../src/include/json.h"
+#include "encoding/json.h"
 
 using namespace leaf::json;
 using namespace testing;

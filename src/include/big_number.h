@@ -1,11 +1,12 @@
 #pragma once
 #include "byte_string.h"
+#include <optional>
 
 struct big_unsigned: byte_string {
 
 	big_unsigned() = default;
 
-	big_unsigned(const big_unsigned& value, std::optional<std::size_t> bits) {
+	big_unsigned(const big_unsigned& value, const std::optional<std::size_t> bits) {
 		resize(bits.value_or(value.bits_));
 		set(value, bits);
 	}

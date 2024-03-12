@@ -37,13 +37,6 @@ namespace internal {
 			*dst_ptr++ = *src++;
 	}
 
-	template<typename T>
-	constexpr T read(const std::endian endian, auto& src, const std::size_t count = sizeof(T)) {
-		T val{};
-		read(endian, val, src, count);
-		return val;
-	}
-
 	template<class T>
 	void read(const std::endian endian, T& val, istream& src, const std::size_t count = sizeof(T)) {
 		std::uint8_t* dst_ptr = reinterpret_cast<uint8_t *>(&val), * dst_end = dst_ptr + count;
@@ -52,7 +45,14 @@ namespace internal {
 			while (dst_ptr != dst_end)
 				*dst_ptr-- = src.read();
 		} else while (dst_ptr != dst_end)
-				*dst_ptr++ = src.read();
+			*dst_ptr++ = src.read();
+	}
+
+	template<typename T>
+	constexpr T read(const std::endian endian, auto& src, const std::size_t count = sizeof(T)) {
+		T val{};
+		read(endian, val, src, count);
+		return val;
 	}
 
 	template<typename iter>
@@ -133,7 +133,7 @@ namespace internal {
 namespace std {
 
 	template<class T1, class T2, class U1, class U2>
-	constexpr inline bool operator==(const std::pair<T1, T2>& lhs, const std::pair<U1, U2>& rhs) {
+	constexpr bool operator==(const std::pair<T1, T2>& lhs, const std::pair<U1, U2>& rhs) {
 		return lhs.first == rhs.first && lhs.second == rhs.second;
 	}
 }

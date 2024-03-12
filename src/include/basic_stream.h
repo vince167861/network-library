@@ -1,6 +1,7 @@
 #pragma once
 #include "byte_string.h"
 #include <algorithm>
+#include <stdexcept>
 
 struct istream {
 
@@ -62,7 +63,7 @@ struct string_stream: virtual stream, virtual byte_string {
 		return c;
 	}
 
-	byte_string read(std::size_t count) override {
+	byte_string read(const std::size_t count) override {
 		const auto str = substr(0, count);
 		erase(0, count);
 		return str;

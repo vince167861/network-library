@@ -29,5 +29,4 @@ if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL Generic)
 			https_event_stream_client.cpp)
 	target_link_libraries(example-https_event_stream_client
 			tcp tls http1_1)
-
 endif ()

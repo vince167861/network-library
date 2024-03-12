@@ -34,4 +34,9 @@ if (GTest_FOUND)
 			cipher/gcm.cpp
 			cipher/hash.cpp)
 	target_link_libraries(test-cipher cipher)
+
+	add_executable(test-encoding
+			encoding/base64.cpp
+			encoding/pem.cpp)
+	target_link_libraries(test-encoding encoding)
 endif ()
